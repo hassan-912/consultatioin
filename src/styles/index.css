@@ -62,3 +62,10 @@
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { scrollbar-width: none; }
 }
+
+@keyframes mg-fly {
+  0% { offset-distance: 0%; opacity: 0; }
+  8% { opacity: 1; }
+  60% { offset-distance: 100%; opacity: 1; }
+  70%, 100% { offset-distance: 100%; opacity: 0; }
+}
