@@ -4,7 +4,8 @@ import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useT } from '../../i18n'
 import { useAppStore } from '../../store/useAppStore'
-import { createReservation, getConsultant, SlotTaken, submitPayment } from '../../store/actions'
+import { getConsultant } from '../../store/actions'
+import { repo, SlotTaken } from '../../data'
 import { consultants } from '../../config/consultants'
 import { branchById } from '../../config/branches'
 import { Header } from '../../components/Header'
@@ -56,15 +57,16 @@ function Wizard({ id }: { id: string }) {
   const step = draft.step
   useEffect(() => {
     if (step !== 4 || draft.consultantId !== id) return
-    try {
-      createReservation()
-    } catch (e) {
-      if (e instanceof SlotTaken) {
-        setSlotError(t('booking.noTimes'))
-        updateDraft({ step: 1, slotStartIso: null })
-      }
-    }
-  }, [step, draft.consultantId, draft.slotStartIso, id, t, updateDraft])
+    const d = useAppStore.getState().draft
+    if (!d.format || !d.slotStartIso) return
+    repo.reserve({ consultantId: id, format: d.format, startIso: d.slotStartIso, details: d.details, lang, supersedes: d.bookingId ?? undefined })
+      .catch(e => {
+        if (e instanceof SlotTaken) {
+          setSlotError(t('booking.noTimes'))
+          updateDraft({ step: 1, slotStartIso: null })
+        }
+      })
+  }, [step, draft.consultantId, draft.slotStartIso, id, lang, t, updateDraft])
 
   const booking = draft.bookingId ? bookings[draft.bookingId] : undefined
   const go = (s: 0 | 1 | 2 | 3 | 4) => updateDraft({ step: s })
@@ -148,8 +150,8 @@ function Wizard({ id }: { id: string }) {
             {step === 4 && booking && (
               <PaymentStep
                 booking={booking}
-                onSubmit={p => {
-                  const b = submitPayment(booking.id, p)
+                onSubmit={async p => {
+                  const b = await repo.submitPayment(booking.manageToken, p)
                   resetDraft(null)
                   navigate(`/ticket/${b.manageToken}`)
                 }}

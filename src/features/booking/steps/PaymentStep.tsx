@@ -3,7 +3,8 @@ import { useT } from '../../../i18n'
 import type { Booking, PaymentMethodId } from '../../../domain/types'
 import { paymentConfig } from '../../../config/payments'
 import { useAppStore } from '../../../store/useAppStore'
-import { expireDue, SlotTaken } from '../../../store/actions'
+import { expireDue } from '../../../store/actions'
+import { SlotTaken } from '../../../data'
 import { compressReceipt } from '../../../domain/receipt'
 import { formatMoney } from '../../../domain/pricing'
 import { CopyField } from '../../../components/CopyField'
@@ -14,7 +15,7 @@ import { Icon } from '../../../components/Icon'
 
 export function PaymentStep({ booking, onSubmit, onExpiredRestart }: {
   booking: Booking
-  onSubmit: (p: { method: PaymentMethodId; txnRef: string; receiptName?: string; receiptImage?: string }) => void
+  onSubmit: (p: { method: PaymentMethodId; txnRef: string; receiptName?: string; receiptImage?: string }) => Promise<unknown>
   onExpiredRestart: () => void
 }) {
   const { t, l, lang } = useT()
@@ -44,12 +45,10 @@ export function PaymentStep({ booking, onSubmit, onExpiredRestart }: {
     if (txnRef.trim().length < 4) return setError(t('validation.txnRef'))
     // Timers are throttled in background tabs, so re-check the deadline at submit time.
     if (booking.status === 'reserved' && booking.holdExpiresAt <= now()) return void expireDue()
-    try {
-      onSubmit({ method, txnRef, receiptName: receipt, receiptImage })
-    } catch (err) {
+    onSubmit({ method, txnRef, receiptName: receipt, receiptImage }).catch(err => {
       if (err instanceof SlotTaken) return setError(t('payment.slotTaken'))
       expireDue()
-    }
+    })
   }
 
   return (

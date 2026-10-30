@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useT } from '../../../i18n'
 import { useAppStore, todayIn } from '../../../store/useAppStore'
-import { applyEvent } from '../../../store/actions'
+import { repo } from '../../../data'
 import { checkInVerdict, type CheckInVerdict } from '../../../domain/bookingStatus'
 import { formatInZone, dateInZone, formatDate } from '../../../domain/time'
 import { normalizeDigits } from '../../../domain/phone'
@@ -117,7 +117,7 @@ export function CheckIn() {
                 </div>
               )}
               {verdict === 'ok' && booking && (
-                <Button size="lg" variant="primary" onClick={() => applyEvent(booking.id, { type: 'check-in' }, 'reception')}>
+                <Button size="lg" variant="primary" onClick={() => repo.checkIn(booking.qrToken)}>
                   <Icon name="check" size={18} />
                   {t('staff.reception.record')}
                 </Button>

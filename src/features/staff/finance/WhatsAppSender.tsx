@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useT } from '../../../i18n'
 import { useAppStore } from '../../../store/useAppStore'
-import { applyEvent } from '../../../store/actions'
+import { repo } from '../../../data'
 import type { Booking, Lang } from '../../../domain/types'
 import { Button, Notice } from '../../../components/ui'
 import { Segmented, TextField } from '../../../components/fields'
@@ -53,7 +53,7 @@ export function WhatsAppSender({ b }: { b: Booking }) {
     try {
       const file = new File([await pdf()], filename, { type: 'application/pdf' })
       await navigator.share({ files: [file], text })
-      applyEvent(b.id, { type: 'mark-sent', via: 'whatsapp' }, 'finance')
+      await repo.staffTransition(b.id, { type: 'mark-sent', via: 'whatsapp' }, 'finance')
     } catch (err) {
       if ((err as Error)?.name !== 'AbortError') setError(true)
     } finally {
@@ -147,7 +147,7 @@ export function WhatsAppSender({ b }: { b: Booking }) {
               <Icon name="chat" size={16} />
               {saver ? '2. ' : ''}{t('staff.finance.step2')}
             </a>
-            <Button variant="ghost" disabled={!ready} onClick={() => applyEvent(b.id, { type: 'mark-sent', via: 'whatsapp' }, 'finance')}>
+            <Button variant="ghost" disabled={!ready} onClick={() => repo.staffTransition(b.id, { type: 'mark-sent', via: 'whatsapp' }, 'finance')}>
               {t('staff.finance.markSent')}
             </Button>
           </div>

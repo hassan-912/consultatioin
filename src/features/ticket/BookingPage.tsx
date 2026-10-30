@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useT } from '../../i18n'
 import { useAppStore } from '../../store/useAppStore'
-import { cancelBooking, getConsultant, rescheduleBooking, submitPayment } from '../../store/actions'
+import { getConsultant } from '../../store/actions'
+import { repo } from '../../data'
+import { useBookingByToken } from '../../data/useBookings'
 import { Header } from '../../components/Header'
 import { Footer } from '../../components/Footer'
 import { Button, ButtonLink, ConfirmButton, Notice, StatusChip } from '../../components/ui'
@@ -34,7 +36,7 @@ export function NotFound() {
 
 export function BookingPage() {
   const { token = '' } = useParams()
-  const booking = useAppStore(s => Object.values(s.bookings).find(b => b.manageToken === token))
+  const booking = useBookingByToken(token)
   if (!booking) return <NotFound />
   return <Manage b={booking} />
 }
@@ -104,7 +106,7 @@ function Manage({ b }: { b: Booking }) {
 
           {canPay && (
             <div className="rounded-3xl bg-paper p-1">
-              <PaymentStep booking={b} onSubmit={p => submitPayment(b.id, p)} onExpiredRestart={() => startBooking(b.consultantId)} />
+              <PaymentStep booking={b} onSubmit={p => repo.submitPayment(b.manageToken, p)} onExpiredRestart={() => startBooking(b.consultantId)} />
             </div>
           )}
 
@@ -132,7 +134,7 @@ function Manage({ b }: { b: Booking }) {
               </Button>
             )}
             {CANCELLABLE.includes(b.status) && (
-              <ConfirmButton size="lg" label={t('ticket.cancelBooking')} confirmText={t('ticket.cancelConfirm')} onConfirm={() => cancelBooking(b.id, 'customer')}>
+              <ConfirmButton size="lg" label={t('ticket.cancelBooking')} confirmText={t('ticket.cancelConfirm')} onConfirm={() => void repo.cancel(b.manageToken)}>
                 <Icon name="x" size={18} />
                 {t('ticket.cancelBooking')}
               </ConfirmButton>
@@ -164,9 +166,9 @@ function Manage({ b }: { b: Booking }) {
             className="w-full"
             size="lg"
             disabled={!newSlot}
-            onClick={() => {
+            onClick={async () => {
               try {
-                rescheduleBooking(b.id, newSlot!, 'customer')
+                await repo.reschedule(b.manageToken, newSlot!)
                 setReschedOpen(false)
                 setReschedError(null)
               } catch {

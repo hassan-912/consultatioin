@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useT } from '../../../i18n'
 import { useAppStore } from '../../../store/useAppStore'
-import { cancelBooking } from '../../../store/actions'
+import { repo } from '../../../data'
 import { canApply } from '../../../domain/bookingStatus'
 import type { BookingStatus } from '../../../domain/types'
 import { normalizeDigits } from '../../../domain/phone'
@@ -41,7 +41,7 @@ export function BookingsAdmin() {
             <div className="flex shrink-0 gap-2">
               <Link to={`/booking/${b.manageToken}`} className="inline-flex min-h-10 items-center rounded-xl px-3 text-sm font-semibold text-navy hover:bg-paper">{t('ticket.manage')}</Link>
               {role === 'admin' && canApply(b, 'cancel') && (
-                <ConfirmButton size="sm" label={t('ticket.cancelBooking')} confirmText={t('ticket.cancelConfirm')} onConfirm={() => cancelBooking(b.id, role)} />
+                <ConfirmButton size="sm" label={t('ticket.cancelBooking')} confirmText={t('ticket.cancelConfirm')} onConfirm={() => void repo.staffTransition(b.id, { type: 'cancel' }, role)} />
               )}
             </div>
           </article>

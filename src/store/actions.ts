@@ -25,7 +25,7 @@ function save(b: Booking) {
 }
 
 /** Creates (or returns the existing) held reservation for the current draft. Safe to call repeatedly. */
-export function createReservation(): Booking {
+export function createReservation(lang = get().lang): Booking {
   const { draft, bookings, now } = get()
   const existing = draft.bookingId ? bookings[draft.bookingId] : undefined
   if (existing?.status === 'reserved' && existing.startIso === draft.slotStartIso && existing.format === draft.format && existing.durationMin === draft.durationMin)
@@ -56,7 +56,7 @@ export function createReservation(): Booking {
     tz: branch.timeZone,
     price: priceFor(draft.format, draft.durationMin),
     // Messages to the customer follow the language they booked in.
-    customer: { ...draft.details, consultationLang: get().lang, phone: cleanPhone(draft.details.phone), email: draft.details.email.trim() },
+    customer: { ...draft.details, consultationLang: lang, phone: cleanPhone(draft.details.phone), email: draft.details.email.trim() },
     status: 'reserved',
     holdExpiresAt: now() + bookingConfig.holdMinutes * 60000,
     createdAt: now(),

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useT } from '../../../i18n'
 import { useAppStore } from '../../../store/useAppStore'
-import { applyEvent, SlotTaken } from '../../../store/actions'
+import { repo, SlotTaken } from '../../../data'
 import type { Booking } from '../../../domain/types'
 import { formatInZone } from '../../../domain/time'
 import { formatMoney } from '../../../domain/pricing'
@@ -24,14 +24,11 @@ function ReviewItem({ b }: { b: Booking }) {
   const method = paymentConfig.methods.find(m => m.id === b.payment?.method)
   const [slotTaken, setSlotTaken] = useState(false)
   const [viewing, setViewing] = useState(false)
-  const act = (e: Parameters<typeof applyEvent>[1]) => {
-    try {
-      applyEvent(b.id, e, 'finance')
-    } catch (err) {
+  const act = (e: Parameters<typeof repo.staffTransition>[1]) =>
+    repo.staffTransition(b.id, e, 'finance').catch(err => {
       if (err instanceof SlotTaken) setSlotTaken(true)
       else throw err
-    }
-  }
+    })
   const onHold = b.status === 'on-hold'
 
   return (
@@ -111,7 +108,7 @@ function SendItem({ b }: { b: Booking }) {
       {via === 'email' ? (
         <>
           <div className="mt-4">
-            <Button onClick={() => applyEvent(b.id, { type: 'mark-sent', via: 'email' }, 'finance')}>
+            <Button onClick={() => repo.staffTransition(b.id, { type: 'mark-sent', via: 'email' }, 'finance')}>
               <Icon name="mail" size={16} />
               {t('staff.finance.sendEmail')}
             </Button>

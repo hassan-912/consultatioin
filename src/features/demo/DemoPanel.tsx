@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useT } from '../../i18n'
 import { useAppStore } from '../../store/useAppStore'
-import { applyEvent, resetDemo, skipTime } from '../../store/actions'
+import { resetDemo, skipTime } from '../../store/actions'
+import { repo } from '../../data'
 import { canApply, type BookingEvent } from '../../domain/bookingStatus'
 import { Icon } from '../../components/Icon'
 import { Ltr, StatusChip } from '../../components/ui'
@@ -49,7 +50,7 @@ export function DemoPanel() {
               <p className="mb-2 px-1 text-xs text-mist">{t('demoPanel.noBooking')}</p>
             )}
             {actions.map(a => (
-              <button key={a.label} type="button" className={btn} disabled={!latest || !canApply(latest, a.e.type)} onClick={() => latest && applyEvent(latest.id, a.e, a.actor)}>
+              <button key={a.label} type="button" className={btn} disabled={!latest || !canApply(latest, a.e.type)} onClick={() => latest && void repo.staffTransition(latest.id, a.e, a.actor)}>
                 <Icon name="check" size={15} className="text-gold" />
                 {a.label}
               </button>

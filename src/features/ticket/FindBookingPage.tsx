@@ -1,8 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useT } from '../../i18n'
-import { useAppStore } from '../../store/useAppStore'
-import { cleanPhone, normalizeDigits } from '../../domain/phone'
+import { repo } from '../../data'
 import { Header } from '../../components/Header'
 import { Footer } from '../../components/Footer'
 import { TextField } from '../../components/fields'
@@ -12,18 +11,15 @@ import { Icon } from '../../components/Icon'
 export function FindBookingPage() {
   const { t } = useT()
   const navigate = useNavigate()
-  const bookings = useAppStore(s => s.bookings)
   const [ref, setRef] = useState('')
   const [phone, setPhone] = useState('')
   const [notFound, setNotFound] = useState(false)
 
-  const submit = (e: FormEvent) => {
+  const submit = async (e: FormEvent) => {
     e.preventDefault()
-    const r = normalizeDigits(ref).trim().toUpperCase()
-    const p = cleanPhone(phone)
-    const b = Object.values(bookings).find(x => x.reference === r && x.customer.phone === p)
-    if (!b) return setNotFound(true)
-    navigate(`/booking/${b.manageToken}`)
+    const token = await repo.find(ref, phone)
+    if (!token) return setNotFound(true)
+    navigate(`/booking/${token}`)
   }
 
   return (

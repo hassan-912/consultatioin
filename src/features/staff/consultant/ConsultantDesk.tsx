@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
 import { useT } from '../../../i18n'
 import { useAppStore, type Outcome } from '../../../store/useAppStore'
-import { applyEvent, getConsultants } from '../../../store/actions'
+import { getConsultants } from '../../../store/actions'
 import { canApply } from '../../../domain/bookingStatus'
+import { repo } from '../../../data'
 import { Button } from '../../../components/ui'
 import { SelectField, TextArea } from '../../../components/fields'
 import { ScreenTitle } from '../StaffApp'
@@ -62,9 +63,9 @@ export function MyBookings() {
           <article key={b.id} aria-label={b.reference} className="flex flex-col gap-3 rounded-2xl bg-white p-4 ring-1 ring-line sm:flex-row sm:items-center sm:justify-between">
             <BookingMeta b={b} />
             <div className="flex shrink-0 gap-2">
-              {canApply(b, 'complete') && <Button size="sm" onClick={() => applyEvent(b.id, { type: 'complete' }, 'consultant')}>{t('staff.consultant.markCompleted')}</Button>}
+              {canApply(b, 'complete') && <Button size="sm" onClick={() => repo.staffTransition(b.id, { type: 'complete' }, 'consultant')}>{t('staff.consultant.markCompleted')}</Button>}
               {canApply(b, 'no-show') && (
-                <Button size="sm" variant="ghost" onClick={() => applyEvent(b.id, { type: 'no-show' }, 'consultant')}>{t('staff.consultant.markNoShow')}</Button>
+                <Button size="sm" variant="ghost" onClick={() => repo.staffTransition(b.id, { type: 'no-show' }, 'consultant')}>{t('staff.consultant.markNoShow')}</Button>
               )}
             </div>
           </article>

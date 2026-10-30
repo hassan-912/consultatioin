@@ -62,13 +62,13 @@ test('find booking accepts Arabic-Indic digits in the phone', async () => {
   expect(await screen.findByText('MG-ABCD-EFGH', {}, { timeout: 2000 })).toBeInTheDocument()
 })
 
-test('wrong phone gives a clear not-found message', () => {
+test('wrong phone gives a clear not-found message', async () => {
   put({ status: 'confirmed' })
   open('/find')
   fireEvent.change(screen.getByLabelText(/booking reference/i), { target: { value: 'MG-ABCD-EFGH' } })
   fireEvent.change(screen.getByLabelText(/phone/i), { target: { value: '+201009999999' } })
   fireEvent.click(screen.getByRole('button', { name: /find booking/i }))
-  expect(screen.getByText('No booking found with these details.')).toBeInTheDocument()
+  expect(await screen.findByText('No booking found with these details.')).toBeInTheDocument()
 })
 
 test('unknown token shows not found', () => {

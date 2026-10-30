@@ -1,6 +1,6 @@
 import { useT } from '../../../i18n'
 import { useAppStore, todayIn } from '../../../store/useAppStore'
-import { applyEvent } from '../../../store/actions'
+import { repo } from '../../../data'
 import { dateInZone } from '../../../domain/time'
 import { Button } from '../../../components/ui'
 import { ScreenTitle } from '../StaffApp'
@@ -21,8 +21,8 @@ export function Arrivals() {
             <BookingMeta b={b} />
             {b.status === 'confirmed' && (
               <div className="flex shrink-0 gap-2">
-                <Button size="sm" onClick={() => applyEvent(b.id, { type: 'check-in' }, 'reception')}>{t('staff.reception.record')}</Button>
-                <Button size="sm" variant="ghost" onClick={() => applyEvent(b.id, { type: 'no-show' }, 'reception')}>{t('staff.reception.markNoShow')}</Button>
+                <Button size="sm" onClick={() => repo.staffTransition(b.id, { type: 'check-in' }, 'reception')}>{t('staff.reception.record')}</Button>
+                <Button size="sm" variant="ghost" onClick={() => repo.staffTransition(b.id, { type: 'no-show' }, 'reception')}>{t('staff.reception.markNoShow')}</Button>
               </div>
             )}
           </div>
