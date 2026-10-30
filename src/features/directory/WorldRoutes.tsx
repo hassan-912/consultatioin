@@ -176,7 +176,7 @@ export function WorldRoutes({ phase, cycle, className = '' }: { phase: RoutePhas
         const [x, y] = geo.pt(b.at)
         const on = branchActive(i)
         const focus = phase.kind === 'branch' && phase.index === i
-        const pos = b.id === 'nasr-city' ? { dx: 12, dy: -12, anchor: 'start' as const } : b.id === 'sheikh-zayed' ? { dx: -12, dy: 22, anchor: 'end' as const } : { dx: 12, dy: 22, anchor: 'start' as const }
+        const pos = b.id === 'nasr-city' ? { dx: 12, dy: -12, anchor: 'start' as const } : b.id === 'sheikh-zayed' ? { dx: -12, dy: 22, anchor: 'end' as const } : { dx: -12, dy: 24, anchor: 'end' as const }
         return (
           <g key={b.id}>
             <motion.circle cx={x} cy={y} fill="url(#pulse)" initial={false} animate={{ r: focus ? 34 : on ? 20 : 0 }} transition={{ duration: 0.5 }} />

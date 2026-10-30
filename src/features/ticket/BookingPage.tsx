@@ -1,6 +1,5 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { toPng } from 'html-to-image'
 import { useT } from '../../i18n'
 import { useAppStore } from '../../store/useAppStore'
 import { cancelBooking, getConsultant, rescheduleBooking, submitPayment } from '../../store/actions'
@@ -12,6 +11,7 @@ import { Icon } from '../../components/Icon'
 import { branchById } from '../../config/branches'
 import { contact } from '../../config/contact'
 import { BoardingPass } from './BoardingPass'
+import { getSaver, ticketPdf } from './ticketPdf'
 import { PaymentStep } from '../booking/steps/PaymentStep'
 import { SlotStep } from '../booking/steps/SlotStep'
 import { useStartBooking } from '../directory/ConsultantCard'
@@ -38,9 +38,6 @@ export function BookingPage() {
   return <Manage b={booking} />
 }
 
-// File downloads are blocked inside the shared artifact viewer.
-const CAN_DOWNLOAD = import.meta.env.MODE !== 'artifact'
-
 const RESCHEDULABLE = ['on-hold', 'confirmed']
 const CANCELLABLE = ['reserved', 'on-hold', 'confirmed']
 
@@ -58,15 +55,25 @@ function Manage({ b }: { b: Booking }) {
   const channel = t(b.customer.channel === 'email' ? 'booking.channelEmail' : 'booking.channelWhatsapp')
   const canPay = (b.status === 'reserved' && b.holdExpiresAt > now()) || b.status === 'rejected'
 
+  const [saver, setSaver] = useState<Awaited<ReturnType<typeof getSaver>>>(null)
+  const [downloadError, setDownloadError] = useState(false)
+  useEffect(() => {
+    let live = true
+    getSaver().then(fn => live && setSaver(() => fn))
+    return () => {
+      live = false
+    }
+  }, [])
+
   const download = async () => {
-    if (!passRef.current) return
+    if (!passRef.current || !saver) return
     setDownloading(true)
+    setDownloadError(false)
     try {
-      const url = await toPng(passRef.current, { pixelRatio: 2, backgroundColor: '#F6F7F9' })
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `MG-ticket-${b.reference}.png`
-      a.click()
+      await saver(`MG-ticket-${b.reference}.pdf`, await ticketPdf(passRef.current))
+    } catch (err) {
+      // A viewer declining the save dialog is not an error worth showing.
+      if ((err as { code?: string })?.code !== 'declined') setDownloadError(true)
     } finally {
       setDownloading(false)
     }
@@ -107,7 +114,7 @@ function Manage({ b }: { b: Booking }) {
                 {t('ticket.join')}
               </a>
             )}
-            {CAN_DOWNLOAD && (
+            {saver && (
               <Button variant="primary" size="lg" onClick={download} disabled={downloading}>
                 <Icon name="download" size={18} />
                 {downloading ? t('ticket.downloading') : t('ticket.download')}
@@ -130,6 +137,7 @@ function Manage({ b }: { b: Booking }) {
               </ConfirmButton>
             )}
           </div>
+          {downloadError && <Notice tone="bad">{t('ticket.downloadFailed')}</Notice>}
           <p className="text-xs text-muted">{t('ticket.policyPending')}</p>
 
           <div className="rounded-2xl bg-white p-4 text-sm ring-1 ring-line">
