@@ -1,9 +1,9 @@
-import { render, screen } from '@testing-library/react'
+import { render } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import App from './App'
 
-test('renders shell with LTR by default', () => {
+test('renders shell in Arabic (RTL) by default', () => {
   render(<MemoryRouter><App /></MemoryRouter>)
-  expect(screen.getAllByText(/MG International/i).length).toBeGreaterThan(0)
-  expect(document.documentElement.dir).toBe('ltr')
+  expect(document.documentElement.dir).toBe('rtl')
+  expect(document.documentElement.lang).toBe('ar')
 })
