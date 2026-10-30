@@ -1,7 +1,9 @@
+import { Component, type ReactNode } from 'react'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { BookingWizard } from './BookingWizard'
 import { useAppStore, emptyDraft } from '../../store/useAppStore'
+import { repo } from '../../data'
 import { slotsFor } from '../shared/availability'
 import { addDays } from '../../domain/time'
 import { todayIn } from '../../store/useAppStore'
@@ -99,4 +101,20 @@ test('submitting after the hold silently expired (throttled tab) shows the expir
   fireEvent.click(screen.getByRole('button', { name: /submit payment details/i }))
   expect(screen.getByText(/reservation expired/i)).toBeInTheDocument()
   expect(Object.values(useAppStore.getState().bookings)[0].status).toBe('expired')
+})
+
+class Boundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+  state = { error: null as Error | null }
+  static getDerivedStateFromError(error: Error) { return { error } }
+  render() { return this.state.error ? <p>CRASH: {this.state.error.message}</p> : this.props.children }
+}
+
+test('a reserve failure other than SlotTaken is surfaced, not swallowed', async () => {
+  vi.spyOn(console, 'error').mockImplementation(() => {})
+  vi.spyOn(repo, 'reserve').mockRejectedValueOnce(new Error('backend down'))
+  useAppStore.getState().updateDraft({ step: 4, format: 'online', durationMin: 30, slotStartIso: firstSlot('online', 30) })
+  useAppStore.getState().updateDetails(goodDetails)
+  render(<Boundary><MemoryRouter initialEntries={[`/book/${ID}`]}><Routes><Route path="/book/:id" element={<BookingWizard />} /></Routes></MemoryRouter></Boundary>)
+  expect(await screen.findByText(/CRASH: backend down/)).toBeInTheDocument()
+  vi.restoreAllMocks()
 })

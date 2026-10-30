@@ -43,6 +43,8 @@ function Wizard({ id }: { id: string }) {
   const [errors, setErrors] = useState<DetailErrors>({})
   const [tried, setTried] = useState(false)
   const [slotError, setSlotError] = useState<string | null>(null)
+  const [fatal, setFatal] = useState<unknown>(null)
+  if (fatal) throw fatal
 
   // Start a fresh draft when arriving for a different consultant.
   useEffect(() => {
@@ -64,6 +66,8 @@ function Wizard({ id }: { id: string }) {
         if (e instanceof SlotTaken) {
           setSlotError(t('booking.noTimes'))
           updateDraft({ step: 1, slotStartIso: null })
+        } else {
+          setFatal(e) // rethrown during render so the error boundary sees it, as the old sync call did
         }
       })
   }, [step, draft.consultantId, draft.slotStartIso, id, lang, t, updateDraft])
