@@ -55,7 +55,8 @@ export function createReservation(): Booking {
     endIso: new Date(end).toISOString(),
     tz: branch.timeZone,
     price: priceFor(draft.format, draft.durationMin),
-    customer: { ...draft.details, phone: cleanPhone(draft.details.phone), email: draft.details.email.trim() },
+    // Messages to the customer follow the language they booked in.
+    customer: { ...draft.details, consultationLang: get().lang, phone: cleanPhone(draft.details.phone), email: draft.details.email.trim() },
     status: 'reserved',
     holdExpiresAt: now() + bookingConfig.holdMinutes * 60000,
     createdAt: now(),

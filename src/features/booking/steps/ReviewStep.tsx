@@ -1,14 +1,16 @@
 import { useT } from '../../../i18n'
+import { bookingConfig } from '../../../config/booking'
 import type { Branch, Consultant, CustomerDetails, Format } from '../../../domain/types'
 import { programName } from '../../../config/programs'
 import { formatMoney, priceFor } from '../../../domain/pricing'
 import { cleanPhone } from '../../../domain/phone'
-import { Ltr, Notice } from '../../../components/ui'
+import { Button, Ltr, Notice } from '../../../components/ui'
 import { MapCard, TimeWithZone } from '../shared'
 
-export function ReviewStep({ consultant, branch, format, durationMin, slotStartIso, details, onEdit }: {
+export function ReviewStep({ consultant, branch, format, durationMin, slotStartIso, details, onEdit, onContinue }: {
   consultant: Consultant; branch: Branch; format: Format; durationMin: number; slotStartIso: string; details: CustomerDetails
   onEdit: (step: 0 | 1 | 2) => void
+  onContinue: () => void
 }) {
   const { t, l, lang } = useT()
   const price = priceFor(format, durationMin)
@@ -33,7 +35,7 @@ export function ReviewStep({ consultant, branch, format, durationMin, slotStartI
       {block(t('common.consultant'), 0, (
         <>
           <p className="font-semibold text-ink">{l(consultant.name)}</p>
-          <p className="text-sm text-slate">{t(`format.${format}`)} · {t('common.minutes', { n: durationMin })}</p>
+          <p className="text-sm text-slate">{t(`format.${format}`)} · {t('common.durationRange', bookingConfig.durationRange)}</p>
         </>
       ))}
       {block(t('common.date'), 1, <TimeWithZone iso={slotStartIso} tz={branch.timeZone} showLocal={format === 'online'} />)}
@@ -43,8 +45,7 @@ export function ReviewStep({ consultant, branch, format, durationMin, slotStartI
           <div><Ltr>{cleanPhone(details.phone)}</Ltr></div>
           <div><Ltr>{details.email}</Ltr></div>
           <div className="text-muted">
-            {t('booking.channel')}: {t(details.channel === 'email' ? 'booking.channelEmail' : 'booking.channelWhatsapp')} ·{' '}
-            {t('booking.consultationLang')}: {t(details.consultationLang === 'ar' ? 'booking.langAr' : 'booking.langEn')}
+            {t('booking.channel')}: {t(details.channel === 'email' ? 'booking.channelEmail' : 'booking.channelWhatsapp')}
           </div>
           {details.program && <div className="text-muted">{t('booking.program')}: {l(programName(details.program))}</div>}
           {details.note && <div className="text-muted">“{details.note}”</div>}
@@ -61,10 +62,11 @@ export function ReviewStep({ consultant, branch, format, durationMin, slotStartI
       <div className="flex items-center justify-between rounded-2xl bg-slate-deep px-5 py-4 text-white">
         <div>
           <p className="text-sm text-mist">{t('booking.total')}</p>
-          <p className="text-sm text-mist">{t('common.minutes', { n: durationMin })}</p>
+          <p className="text-sm text-mist">{t('common.durationRange', bookingConfig.durationRange)}</p>
         </div>
         <p className="font-display text-3xl font-semibold"><Ltr>{formatMoney(price, lang)}</Ltr></p>
       </div>
+      <Button variant="gold" size="lg" className="w-full" onClick={onContinue}>{t('booking.toPayment')}</Button>
     </div>
   )
 }

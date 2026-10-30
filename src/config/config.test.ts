@@ -50,7 +50,8 @@ describe('consultants', () => {
 
 describe('booking & payments', () => {
   test('durations and flags', () => {
-    expect(bookingConfig.durations).toEqual({ online: [15, 30], 'in-person': [30, 45] })
+    expect(bookingConfig.durationRange).toEqual({ min: 15, max: 30 })
+    expect(Object.values(bookingConfig.prices).flatMap(Object.values)).toEqual([1000, 1000])
     expect(bookingConfig.autoConfirm).toBe(false)
     expect(bookingConfig.holdMinutes).toBe(30)
   })

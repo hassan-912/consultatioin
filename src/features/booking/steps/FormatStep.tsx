@@ -8,11 +8,11 @@ export function FormatStep({ value, offered, branch, onChange }: { value: Format
   const opts: { f: Format; icon: 'video' | 'building'; desc: string }[] = [
     {
       f: 'online', icon: 'video',
-      desc: t('booking.onlineDesc', { min: Math.min(...bookingConfig.durations.online), max: Math.max(...bookingConfig.durations.online) }),
+      desc: t('booking.onlineDesc', { ...bookingConfig.durationRange }),
     },
     {
       f: 'in-person', icon: 'building',
-      desc: t('booking.inPersonDesc', { branch: l(branch.name), min: Math.min(...bookingConfig.durations['in-person']), max: Math.max(...bookingConfig.durations['in-person']) }),
+      desc: t('booking.inPersonDesc', { branch: l(branch.name), ...bookingConfig.durationRange }),
     },
   ]
   return (

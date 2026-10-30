@@ -32,18 +32,14 @@ beforeEach(() => {
   useAppStore.setState({ bookings: {}, audit: [], seeded: true, timeOffsetMs: 0, draft: { ...emptyDraft(), consultantId: ID } })
 })
 
-test('format step offers 15/30 online and 30/45 in person', async () => {
+test('choosing a format moves straight to the time step; duration is fixed, not selectable', async () => {
   renderWizard()
   fireEvent.click(screen.getByRole('radio', { name: /online consultation/i }))
-  fireEvent.click(screen.getByRole('button', { name: /continue/i }))
-  expect(await screen.findByRole('radio', { name: '15 min' })).toBeInTheDocument()
-  expect(screen.getByRole('radio', { name: '30 min' })).toBeInTheDocument()
-  expect(screen.queryByRole('radio', { name: '45 min' })).toBeNull()
+  expect(await screen.findByText(/choose a time/i)).toBeInTheDocument()
+  expect(screen.queryByRole('radio', { name: /min$/ })).toBeNull()
+  expect(screen.queryByRole('button', { name: /^continue$/i })).toBeNull()
   fireEvent.click(screen.getByRole('button', { name: /back/i }))
-  fireEvent.click(await screen.findByRole('radio', { name: /in-person consultation/i }))
-  fireEvent.click(screen.getByRole('button', { name: /continue/i }))
-  expect(await screen.findByRole('radio', { name: '45 min' })).toBeInTheDocument()
-  expect(screen.queryByRole('radio', { name: '15 min' })).toBeNull()
+  expect(await screen.findByRole('radio', { name: /in-person consultation/i })).toBeInTheDocument()
 })
 
 test('details step blocks invalid phone and empty email with messages', () => {
@@ -51,18 +47,18 @@ test('details step blocks invalid phone and empty email with messages', () => {
   renderWizard()
   fireEvent.change(screen.getByLabelText(/full name/i), { target: { value: 'Sara Ali' } })
   fireEvent.change(screen.getByLabelText(/phone number/i), { target: { value: '01001234567' } })
-  fireEvent.click(screen.getByRole('button', { name: /continue/i }))
+  fireEvent.click(screen.getByRole('button', { name: /review my booking/i }))
   expect(screen.getByText(/starting with \+ and the country code/i)).toBeInTheDocument()
   expect(screen.getByText(/valid email address/i)).toBeInTheDocument()
   expect(useAppStore.getState().draft.step).toBe(2)
 })
 
 test('review shows price and duration before payment', () => {
-  useAppStore.getState().updateDraft({ step: 3, format: 'in-person', durationMin: 45, slotStartIso: firstSlot('in-person', 45) })
+  useAppStore.getState().updateDraft({ step: 3, format: 'in-person', durationMin: 30, slotStartIso: firstSlot('in-person', 30) })
   useAppStore.getState().updateDetails(goodDetails)
   renderWizard()
-  expect(screen.getAllByText('1,400 EGP').length).toBeGreaterThan(0)
-  expect(screen.getAllByText('45 min').length).toBeGreaterThan(0)
+  expect(screen.getAllByText('1,000 EGP').length).toBeGreaterThan(0)
+  expect(screen.getAllByText('15–30 min').length).toBeGreaterThan(0)
   expect(screen.getByText(/Makram Ebeid/)).toBeInTheDocument()
 })
 

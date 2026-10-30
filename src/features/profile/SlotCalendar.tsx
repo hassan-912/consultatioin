@@ -23,7 +23,7 @@ export function SlotCalendar({ consultant }: { consultant: Consultant }) {
   const [format, setFormat] = useState<Format>(
     filters.format !== 'any' && formats.includes(filters.format) ? filters.format : formats[0],
   )
-  const [duration, setDuration] = useState(bookingConfig.durations[format][0])
+  const duration = bookingConfig.durations[format][0]
   const [date, setDate] = useState(filters.date)
   const startBooking = useStartBooking()
 
@@ -39,14 +39,13 @@ export function SlotCalendar({ consultant }: { consultant: Consultant }) {
         <h2 id="cal-title" className="text-lg font-semibold text-ink">{t('common.availableAppointments')}</h2>
         <DemoBadge />
       </div>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <Segmented
           name="cal-format"
           label={t('profile.pickFormat')}
           value={format}
           onChange={f => {
             setFormat(f)
-            setDuration(bookingConfig.durations[f][0])
           }}
           options={(['online', 'in-person'] as Format[]).map(f => ({
             value: f,
@@ -59,13 +58,9 @@ export function SlotCalendar({ consultant }: { consultant: Consultant }) {
             ),
           }))}
         />
-        <Segmented
-          name="cal-duration"
-          label={t('profile.pickDuration')}
-          value={duration}
-          onChange={setDuration}
-          options={bookingConfig.durations[format].map(d => ({ value: d, label: t('common.minutes', { n: d }) }))}
-        />
+        <p className="flex items-center gap-1.5 text-sm text-slate">
+          <span className="font-semibold">{t('common.duration')}:</span> {t('common.durationRange', bookingConfig.durationRange)}
+        </p>
       </div>
       <div className="mt-5">
         <DateStrip label={t('booking.chooseDate')} value={date} onChange={setDate} />

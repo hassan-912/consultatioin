@@ -2,14 +2,21 @@ import { useT } from '../../../i18n'
 import type { CustomerDetails } from '../../../domain/types'
 import { programs } from '../../../config/programs'
 import { SelectField, Segmented, TextArea, TextField } from '../../../components/fields'
-import { Notice } from '../../../components/ui'
+import { Button, Notice } from '../../../components/ui'
 import type { DetailErrors } from '../shared'
 
-export function DetailsStep({ value, onChange, errors, showSummary }: { value: CustomerDetails; onChange: (p: Partial<CustomerDetails>) => void; errors: DetailErrors; showSummary: boolean }) {
+export function DetailsStep({ value, onChange, errors, showSummary, onSubmit }: { value: CustomerDetails; onChange: (p: Partial<CustomerDetails>) => void; errors: DetailErrors; showSummary: boolean; onSubmit: () => void }) {
   const { t, l } = useT()
   const err = (k: keyof DetailErrors) => (errors[k] ? t(errors[k]!) : undefined)
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)] gap-5">
+    <form
+      noValidate
+      onSubmit={e => {
+        e.preventDefault()
+        onSubmit()
+      }}
+      className="grid grid-cols-[minmax(0,1fr)] gap-5"
+    >
       <div>
         <h2 className="text-2xl font-semibold text-ink">{t('booking.detailsTitle')}</h2>
         <p className="mt-1 text-sm text-muted">{t('booking.detailsHint')}</p>
@@ -52,22 +59,13 @@ export function DetailsStep({ value, onChange, errors, showSummary }: { value: C
           { value: 'email', label: t('booking.channelEmail') },
         ]}
       />
-      <Segmented
-        name="consultation-lang"
-        label={t('booking.consultationLang')}
-        value={value.consultationLang}
-        onChange={consultationLang => onChange({ consultationLang })}
-        options={[
-          { value: 'ar', label: t('booking.langAr') },
-          { value: 'en', label: t('booking.langEn') },
-        ]}
-      />
       <SelectField label={t('booking.program')} value={value.program} onChange={e => onChange({ program: e.target.value as CustomerDetails['program'] })} error={err('program')}>
         <option value="">{t('booking.programPick')}</option>
         {programs.map(p => <option key={p.id} value={p.id}>{l(p.name)}</option>)}
       </SelectField>
       <TextArea label={t('booking.note')} maxLength={300} value={value.note} onChange={e => onChange({ note: e.target.value })} hint={t('booking.noteHint')} error={err('note')} />
       <p className="text-xs text-muted">{t('booking.privacy')}</p>
-    </div>
+      <Button type="submit" size="lg" className="w-full sm:w-auto sm:justify-self-start">{t('booking.reviewCta')}</Button>
+    </form>
   )
 }

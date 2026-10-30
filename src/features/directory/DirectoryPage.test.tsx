@@ -47,7 +47,7 @@ test('a company holiday shows no slots on that date and still gives the next ava
 })
 
 test('empty result offers to clear filters', () => {
-  useAppStore.getState().setFilters({ branch: 'dubai', program: 'tourism' })
+  useAppStore.getState().setFilters({ branch: 'dubai', program: 'investment' })
   renderPage()
   expect(screen.getByText(/no consultants match/i)).toBeInTheDocument()
   expect(screen.getAllByRole('button', { name: /clear filters/i }).length).toBeGreaterThan(0)

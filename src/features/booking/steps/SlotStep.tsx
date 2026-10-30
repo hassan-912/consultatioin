@@ -4,7 +4,6 @@ import type { Branch, Format } from '../../../domain/types'
 import { bookingConfig } from '../../../config/booking'
 import { useAppStore } from '../../../store/useAppStore'
 import { dateInZone, formatInZone, zoneLabel } from '../../../domain/time'
-import { Segmented } from '../../../components/fields'
 import { Icon } from '../../../components/Icon'
 import { DemoBadge, Notice } from '../../../components/ui'
 import { DateStrip } from '../../directory/Filters'
@@ -34,13 +33,6 @@ export function SlotStep({ consultantId, branch, format, durationMin, slotStartI
         <DemoBadge />
       </div>
       {error && <Notice tone="bad">{error}</Notice>}
-      <Segmented
-        name="duration"
-        label={t('booking.chooseDuration')}
-        value={duration}
-        onChange={d => onChange({ durationMin: d, slotStartIso: null })}
-        options={bookingConfig.durations[format].map(d => ({ value: d, label: t('common.minutes', { n: d }) }))}
-      />
       <div>
         <p className="mb-2 text-sm font-semibold text-ink">{t('booking.chooseDate')}</p>
         <DateStrip label={t('booking.chooseDate')} value={date} onChange={setDate} days={21} />

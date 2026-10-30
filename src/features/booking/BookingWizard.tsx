@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { bookingConfig } from '../../config/booking'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useT } from '../../i18n'
@@ -6,9 +7,8 @@ import { useAppStore } from '../../store/useAppStore'
 import { createReservation, getConsultant, SlotTaken, submitPayment } from '../../store/actions'
 import { consultants } from '../../config/consultants'
 import { branchById } from '../../config/branches'
-import { formatMoney, priceFor } from '../../domain/pricing'
 import { Header } from '../../components/Header'
-import { Button, Ltr } from '../../components/ui'
+import { Button } from '../../components/ui'
 import { Icon } from '../../components/Icon'
 import { offeredFormats } from '../shared/availability'
 import { FormatStep } from './steps/FormatStep'
@@ -69,10 +69,6 @@ function Wizard({ id }: { id: string }) {
   const booking = draft.bookingId ? bookings[draft.bookingId] : undefined
   const go = (s: 0 | 1 | 2 | 3 | 4) => updateDraft({ step: s })
 
-  const canContinue =
-    step === 0 ? !!draft.format :
-    step === 1 ? !!draft.slotStartIso && !!draft.durationMin :
-    true
 
   const next = () => {
     if (step === 2) {
@@ -85,16 +81,23 @@ function Wizard({ id }: { id: string }) {
     if (step < 4) go((step + 1) as 0 | 1 | 2 | 3 | 4)
   }
 
-  const price = draft.format && draft.durationMin ? priceFor(draft.format, draft.durationMin) : null
 
   return (
     <>
       <Header />
       <section aria-labelledby="wizard-title" className="border-b border-line bg-white">
         <div className="mx-auto max-w-6xl px-4 py-4 sm:px-6">
-          <h1 id="wizard-title" className="text-sm font-normal text-muted">
-            {t('booking.title')} {t('booking.with', { name: l(consultant.name) })}
-          </h1>
+          <div className="flex items-center gap-3">
+            {step > 0 && (
+              <Button variant="ghost" size="sm" onClick={() => go((step - 1) as 0 | 1 | 2 | 3)} className="shrink-0">
+                <Icon name="chevron" size={16} className="rotate-180" />
+                {t('common.back')}
+              </Button>
+            )}
+            <h1 id="wizard-title" className="text-sm font-normal text-muted">
+              {t('booking.title')} {t('booking.with', { name: l(consultant.name) })}
+            </h1>
+          </div>
           <ol className="mt-3 flex gap-1.5" aria-label={t('booking.stepOf', { n: step + 1, total: 5 })}>
             {STEP_KEYS.map((k, i) => (
               <li key={k} className="flex-1" aria-current={i === step ? 'step' : undefined}>
@@ -109,7 +112,7 @@ function Wizard({ id }: { id: string }) {
         </div>
       </section>
 
-      <main id="main" className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)] gap-8 px-4 py-6 pb-32 sm:px-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:pb-12">
+      <main id="main" className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)] gap-8 px-4 py-6 pb-16 sm:px-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         <AnimatePresence mode="wait">
           <motion.div
             key={step}
@@ -119,7 +122,7 @@ function Wizard({ id }: { id: string }) {
             transition={{ duration: 0.22 }}
             className="min-w-0"
           >
-            {step === 0 && <FormatStep value={draft.format} offered={offered} branch={branch} onChange={f => updateDraft({ format: f, durationMin: null, slotStartIso: null })} />}
+            {step === 0 && <FormatStep value={draft.format} offered={offered} branch={branch} onChange={f => updateDraft({ format: f, durationMin: bookingConfig.durations[f][0], slotStartIso: null, step: 1 })} />}
             {step === 1 && draft.format && (
               <SlotStep
                 consultantId={id}
@@ -130,16 +133,17 @@ function Wizard({ id }: { id: string }) {
                 error={slotError}
                 onChange={p => {
                   setSlotError(null)
-                  updateDraft(p)
+                  // Picking a time moves straight on to the details step.
+                  updateDraft(p.slotStartIso ? { ...p, step: 2 } : p)
                 }}
               />
             )}
             {step === 2 && <DetailsStep value={draft.details} onChange={p => {
               updateDetails(p)
               if (tried) setErrors(validateDetails({ ...draft.details, ...p }))
-            }} errors={errors} showSummary={tried} />}
+            }} errors={errors} showSummary={tried} onSubmit={next} />}
             {step === 3 && draft.format && draft.durationMin && draft.slotStartIso && (
-              <ReviewStep consultant={consultant} branch={branch} format={draft.format} durationMin={draft.durationMin} slotStartIso={draft.slotStartIso} details={draft.details} onEdit={go} />
+              <ReviewStep consultant={consultant} branch={branch} format={draft.format} durationMin={draft.durationMin} slotStartIso={draft.slotStartIso} details={draft.details} onEdit={go} onContinue={next} />
             )}
             {step === 4 && booking && (
               <PaymentStep
@@ -161,31 +165,6 @@ function Wizard({ id }: { id: string }) {
           </div>
         </aside>
       </main>
-
-      {step < 4 && (
-        <div className="safe-bottom fixed inset-x-0 bottom-0 z-20 border-t border-line bg-white/95 pt-3 backdrop-blur">
-          <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 sm:px-6">
-            {step > 0 && (
-              <Button variant="ghost" onClick={() => go((step - 1) as 0 | 1 | 2 | 3)} aria-label={t('common.back')} className="px-3.5">
-                <Icon name="chevron" size={18} className="rotate-180" />
-                <span className="hidden sm:inline">{t('common.back')}</span>
-              </Button>
-            )}
-            <div className="min-w-0 flex-1 lg:hidden">
-              {price && (
-                <>
-                  <p className="text-xs text-muted">{t('common.minutes', { n: draft.durationMin! })}</p>
-                  <p className="font-display text-lg font-semibold text-ink"><Ltr>{formatMoney(price, lang)}</Ltr></p>
-                </>
-              )}
-            </div>
-            <div className="hidden flex-1 lg:block" />
-            <Button variant={step === 3 ? 'gold' : 'primary'} size="lg" disabled={!canContinue} onClick={next} className="min-w-40">
-              {step === 3 ? t('booking.toPayment') : t('common.continue')}
-            </Button>
-          </div>
-        </div>
-      )}
     </>
   )
 }

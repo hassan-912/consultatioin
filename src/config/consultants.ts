@@ -1,10 +1,10 @@
 import type { Consultant } from '../domain/types'
 
-type Seed = Pick<Consultant, 'id' | 'name' | 'branchId' | 'experienceYears' | 'programs' | 'countries'> &
+type Seed = Pick<Consultant, 'id' | 'name' | 'branchId' | 'experienceYears' | 'programs'> &
   Partial<Pick<Consultant, 'title' | 'experienceLabel' | 'nameNeedsConfirmation'>>
 
 // Only names, branches, years and Mohamed Gamal's title come from the company.
-// Programs/countries are demo assignments (demoPrograms: true) until supplied.
+// Program assignments are demo data (demoPrograms: true) until supplied.
 const make = (s: Seed): Consultant => ({
   title: null,
   photo: null,
@@ -23,8 +23,7 @@ export const consultants: Consultant[] = [
     title: { en: 'Senior Immigration Specialist & Contract Manager', ar: 'أخصائي هجرة أول ومدير التعاقدات' },
     branchId: 'nasr-city',
     experienceYears: 5,
-    programs: ['immigration', 'employment', 'investment'],
-    countries: ['CA', 'AU', 'NZ'],
+    programs: ['immigration', 'investment', 'job-seeking'],
   }),
   make({
     id: 'ahmed-salama',
@@ -33,7 +32,6 @@ export const consultants: Consultant[] = [
     experienceYears: 3,
     experienceLabel: { en: '3+', ar: '+3' },
     programs: ['immigration', 'job-seeking'],
-    countries: ['CA', 'AU'],
   }),
   make({
     id: 'ahmed-khalil',
@@ -41,7 +39,6 @@ export const consultants: Consultant[] = [
     branchId: 'nasr-city',
     experienceYears: 1.5,
     programs: ['education', 'tourism'],
-    countries: ['CA', 'NZ'],
   }),
   make({
     id: 'mohamed-esmail',
@@ -49,8 +46,7 @@ export const consultants: Consultant[] = [
     branchId: 'nasr-city',
     experienceYears: 2,
     nameNeedsConfirmation: true,
-    programs: ['employment', 'education'],
-    countries: ['AU', 'NZ'],
+    programs: ['education', 'job-seeking'],
   }),
   make({
     id: 'ahmed-tarek',
@@ -58,7 +54,6 @@ export const consultants: Consultant[] = [
     branchId: 'sheikh-zayed',
     experienceYears: 3,
     programs: ['immigration', 'investment'],
-    countries: ['CA', 'AU'],
   }),
   make({
     id: 'mohamed-salah',
@@ -66,14 +61,12 @@ export const consultants: Consultant[] = [
     branchId: 'sheikh-zayed',
     experienceYears: 1.5,
     programs: ['job-seeking', 'tourism'],
-    countries: ['CA', 'NZ'],
   }),
   make({
     id: 'mohamed-abdelaziz',
     name: { en: 'Mohamed Abdelaziz', ar: 'محمد عبد العزيز' },
     branchId: 'dubai',
     experienceYears: 2,
-    programs: ['employment', 'immigration', 'education'],
-    countries: ['CA', 'AU'],
+    programs: ['immigration', 'education', 'tourism'],
   }),
 ]

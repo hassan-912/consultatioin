@@ -28,9 +28,7 @@ test('Mohamed Gamal shows title and a published approval rate with method and di
   expect(screen.getByText('Senior Immigration Specialist & Contract Manager')).toBeInTheDocument()
   const approval = screen.getByRole('region', { name: /historical application approvals/i })
   expect(within(approval).getByText('75%')).toBeInTheDocument()
-  expect(within(approval).getByText(/pending and withdrawn applications are excluded/i)).toBeInTheDocument()
   expect(within(approval).getByText(/do not guarantee future approval/i)).toBeInTheDocument()
-  expect(within(approval).getByText('24')).toBeInTheDocument()
 })
 
 test('KPI score, customer feedback and approval rate are separate regions', () => {

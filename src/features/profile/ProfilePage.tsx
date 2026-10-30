@@ -5,7 +5,7 @@ import { getConsultant } from '../../store/actions'
 import { consultants } from '../../config/consultants'
 import { branchById } from '../../config/branches'
 import { kpiConfig } from '../../config/kpi'
-import { countryById, programName } from '../../config/programs'
+import { programName } from '../../config/programs'
 import { Header } from '../../components/Header'
 import { Footer } from '../../components/Footer'
 import { Avatar, CountUp } from '../../components/widgets'
@@ -82,18 +82,6 @@ function Profile({ c, t, l, lang, minSample }: { c: ReturnType<typeof getConsult
                 <li key={p} className="rounded-full bg-paper px-3 py-1.5 text-sm font-semibold text-slate ring-1 ring-line">{l(programName(p))}</li>
               ))}
             </ul>
-            <h3 className="mt-5 mb-2 text-sm font-semibold text-ink">{t('profile.countries')}</h3>
-            <ul className="flex flex-wrap gap-2">
-              {c.countries.map(code => {
-                const ct = countryById(code)
-                return (
-                  <li key={code} className="inline-flex items-center gap-2 rounded-full bg-paper px-3 py-1.5 text-sm text-slate ring-1 ring-line">
-                    <Icon name="plane" size={14} className="text-gold-deep" />
-                    {l(ct.name)}
-                  </li>
-                )
-              })}
-            </ul>
             {c.demoPrograms && <p className="mt-3 text-xs text-muted">{t('profile.demoPrograms')}</p>}
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
               <div>
@@ -130,7 +118,6 @@ function Profile({ c, t, l, lang, minSample }: { c: ReturnType<typeof getConsult
                 <dd className="mt-1 font-display text-2xl font-semibold"><CountUp value={stats.thisMonth} /></dd>
               </div>
             </dl>
-            <p className="mt-4 text-xs leading-relaxed text-muted">{t('profile.activityNote')}</p>
           </section>
 
           <section role="region" aria-labelledby="kpi" className="rounded-3xl bg-white p-5 ring-1 ring-line sm:p-6">

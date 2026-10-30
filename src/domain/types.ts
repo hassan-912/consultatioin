@@ -3,8 +3,7 @@ export type L10n = Record<Lang, string>
 
 export type BranchId = 'nasr-city' | 'sheikh-zayed' | 'dubai'
 export type Format = 'online' | 'in-person'
-export type ProgramId = 'investment' | 'employment' | 'job-seeking' | 'education' | 'tourism' | 'immigration'
-export type CountryCode = 'AU' | 'CA' | 'NZ'
+export type ProgramId = 'investment' | 'job-seeking' | 'education' | 'tourism' | 'immigration'
 export type TimeZone = 'Africa/Cairo' | 'Asia/Dubai'
 
 export interface Branch {
@@ -28,16 +27,18 @@ export interface Consultant {
   bio: L10n | null
   videoUrl: string | null
   programs: ProgramId[]
-  countries: CountryCode[]
   languages: L10n[] | null
   qualifications: L10n[] | null
   nameNeedsConfirmation?: boolean
-  /** programs/countries are demo assignments until the company supplies real ones */
+  /** program assignments are demo data until the company supplies real ones */
   demoPrograms: boolean
 }
 
 export interface BookingConfig {
+  /** Length each appointment reserves on the calendar (the top of the range). */
   durations: Record<Format, number[]>
+  /** What customers are told: a consultation lasts between min and max minutes; not selectable. */
+  durationRange: { min: number; max: number }
   bufferMin: number
   holdMinutes: number
   prices: Record<Format, Record<number, number>>
