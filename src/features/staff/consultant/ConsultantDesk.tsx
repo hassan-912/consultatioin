@@ -1,13 +1,13 @@
 import { useMemo, useState } from 'react'
 import { useT } from '../../../i18n'
-import { useAppStore, todayIn, type Outcome } from '../../../store/useAppStore'
+import { useAppStore, type Outcome } from '../../../store/useAppStore'
 import { applyEvent, getConsultants } from '../../../store/actions'
 import { canApply } from '../../../domain/bookingStatus'
-import { addDays, dateInZone, formatDate, formatInZone } from '../../../domain/time'
 import { Button } from '../../../components/ui'
 import { SelectField, TextArea } from '../../../components/fields'
 import { ScreenTitle } from '../StaffApp'
 import { BookingMeta, Empty, Tabs } from '../common'
+import { AvailabilityBoard } from './AvailabilityBoard'
 
 function ConsultantPicker() {
   const { t, l } = useT()
@@ -32,32 +32,15 @@ function useMine() {
 }
 
 export function MyCalendar() {
-  const { t, lang } = useT()
-  const mine = useMine()
-  const today = todayIn('Africa/Cairo')
-  const days = Array.from({ length: 7 }, (_, i) => addDays(today, i))
+  const { t } = useT()
+  const role = useAppStore(s => s.role)
+  const own = useAppStore(s => s.staffSession?.consultantId ?? null)
+  // Consultants see their own row; admins see the whole team.
+  const ids = role === 'consultant' && own ? [own] : undefined
   return (
     <>
-      <ScreenTitle title={t('staff.screens.myCalendar')}><ConsultantPicker /></ScreenTitle>
-      <div className="grid gap-3 md:grid-cols-7">
-        {days.map(d => {
-          const items = mine.filter(b => dateInZone(b.startIso, b.tz) === d && !['expired', 'cancelled'].includes(b.status)).sort((a, b) => a.startIso.localeCompare(b.startIso))
-          return (
-            <div key={d} className="min-h-32 rounded-2xl bg-white p-3 ring-1 ring-line">
-              <p className="text-xs font-semibold text-muted">{formatDate(d, lang, 'weekday')}</p>
-              <p className="font-display text-lg font-semibold text-ink">{formatDate(d, lang, 'short')}</p>
-              <ul className="mt-2 grid gap-1.5">
-                {items.map(b => (
-                  <li key={b.id} className={`rounded-lg px-2 py-1.5 text-xs ${b.status === 'on-hold' ? 'bg-warn-soft text-warn' : 'bg-slate text-white'}`}>
-                    <span dir="ltr" className="font-semibold tabular">{formatInZone(b.startIso, b.tz, lang, 'time')}</span>{' '}
-                    {t(`format.${b.format === 'online' ? 'onlineShort' : 'inPersonShort'}`)}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )
-        })}
-      </div>
+      <ScreenTitle title={role === 'consultant' ? t('staff.screens.myCalendar') : t('staff.calendar.title')} />
+      <AvailabilityBoard consultantIds={ids} />
     </>
   )
 }

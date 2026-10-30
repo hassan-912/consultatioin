@@ -78,7 +78,7 @@ function clashes(consultantId: string, start: number, end: number, excludeId?: s
 
 const ownSlotClashes = (b: Booking) => clashes(b.consultantId, Date.parse(b.startIso), Date.parse(b.endIso), b.id)
 
-export function submitPayment(id: string, p: { method: PaymentMethodId; txnRef: string; receiptName?: string }): Booking {
+export function submitPayment(id: string, p: { method: PaymentMethodId; txnRef: string; receiptName?: string; receiptImage?: string }): Booking {
   const b = get().bookings[id]
   if (b.status === 'on-hold') return b // double submit: already received
   // A rejected booking released its slot; make sure nobody took it meanwhile.

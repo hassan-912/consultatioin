@@ -108,6 +108,8 @@ export interface PaymentSubmission {
   method: PaymentMethodId
   txnRef: string
   receiptName?: string
+  /** Compressed image of the uploaded receipt (data URL), when the upload was an image. */
+  receiptImage?: string
   submittedAt: number
 }
 

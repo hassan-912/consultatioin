@@ -9,6 +9,7 @@ import { paymentConfig } from '../../../config/payments'
 import { Button, Ltr, Notice } from '../../../components/ui'
 import { TextField } from '../../../components/fields'
 import { Icon } from '../../../components/Icon'
+import { BottomSheet } from '../../../components/widgets'
 import { manageUrl } from '../../ticket/BoardingPass'
 import { ScreenTitle } from '../StaffApp'
 import { BookingMeta, Empty, Tabs } from '../common'
@@ -22,6 +23,7 @@ function ReviewItem({ b }: { b: Booking }) {
   const [err, setErr] = useState<string>()
   const method = paymentConfig.methods.find(m => m.id === b.payment?.method)
   const [slotTaken, setSlotTaken] = useState(false)
+  const [viewing, setViewing] = useState(false)
   const act = (e: Parameters<typeof applyEvent>[1]) => {
     try {
       applyEvent(b.id, e, 'finance')
@@ -41,7 +43,16 @@ function ReviewItem({ b }: { b: Booking }) {
         <div><dt className="text-xs text-muted">{t('staff.finance.txn')}</dt><dd className="font-semibold"><Ltr>{b.payment?.txnRef ?? '—'}</Ltr></dd></div>
         <div>
           <dt className="text-xs text-muted">{t('staff.finance.receipt')}</dt>
-          <dd className="truncate font-semibold">{b.payment?.receiptName ?? <span className="font-normal text-muted">{t('staff.finance.noReceipt')}</span>}</dd>
+          <dd className="truncate font-semibold">
+            {b.payment?.receiptImage ? (
+              <button type="button" onClick={() => setViewing(true)} className="group mt-0.5 flex items-center gap-2 text-start" aria-label={t('staff.finance.viewReceipt')}>
+                <img src={b.payment.receiptImage} alt="" className="h-12 w-9 rounded-md object-cover ring-1 ring-line group-hover:ring-slate" />
+                <span className="text-sm font-semibold text-navy group-hover:underline">{t('staff.finance.viewReceipt')}</span>
+              </button>
+            ) : (
+              b.payment?.receiptName ?? <span className="font-normal text-muted">{t('staff.finance.noReceipt')}</span>
+            )}
+          </dd>
         </div>
         {b.payment && (
           <div className="col-span-2 sm:col-span-4"><dt className="sr-only">{t('staff.finance.submitted')}</dt>
@@ -50,6 +61,17 @@ function ReviewItem({ b }: { b: Booking }) {
         )}
       </dl>
 
+      <BottomSheet open={viewing} onClose={() => setViewing(false)} title={`${t('staff.finance.receipt')} — ${b.reference}`}>
+        <div className="grid gap-4 pb-4 sm:grid-cols-[1fr_200px]">
+          <img src={b.payment?.receiptImage} alt={t('staff.finance.receipt')} className="mx-auto max-h-[60dvh] w-auto rounded-xl ring-1 ring-line" />
+          <dl className="grid content-start gap-3 text-sm">
+            <div><dt className="text-xs text-muted">{t('staff.finance.expected')}</dt><dd className="font-semibold"><Ltr>{formatMoney(b.price, lang)}</Ltr></dd></div>
+            <div><dt className="text-xs text-muted">{t('staff.finance.txn')}</dt><dd className="font-semibold"><Ltr>{b.payment?.txnRef}</Ltr></dd></div>
+            <div><dt className="text-xs text-muted">{t('payment.method')}</dt><dd className="font-semibold">{method ? l(method.label) : '—'}</dd></div>
+            <p className="text-xs text-muted">{t('staff.finance.verifiedBy')}</p>
+          </dl>
+        </div>
+      </BottomSheet>
       {slotTaken && <Notice tone="bad" className="mt-4">{t('staff.finance.slotTaken')}</Notice>}
       {rejecting ? (
         <div className="mt-4 grid gap-3">

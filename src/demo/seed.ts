@@ -7,6 +7,7 @@ import { isDayOff } from '../domain/availability'
 import { addDays, dateInZone, zonedDateTimeToIso } from '../domain/time'
 import { makeReference, makeToken } from '../domain/ids'
 import { priceFor } from '../domain/pricing'
+import { demoReceipt } from '../domain/receipt'
 
 // ---- DEMO statistics: every number here is demonstration data, not company records. ----
 export interface DemoStats { kpi: number; total: number; thisMonth: number; outcomes: Outcomes }
@@ -99,7 +100,8 @@ export function buildSeed(nowMs: number): Record<string, Booking> {
       status: s.status,
       holdExpiresAt: created + 30 * 60000,
       payment: s.txn
-        ? { method: i % 2 ? 'instapay' : 'vodafone-cash', txnRef: `TX${String(48210 + i * 113)}`, receiptName: s.receipt ? `receipt-${i}.jpg` : undefined, submittedAt: created + 12 * 60000 }
+        ? { method: i % 2 ? 'instapay' : 'vodafone-cash', txnRef: `TX${String(48210 + i * 113)}`, receiptName: s.receipt ? `receipt-${i}.jpg` : undefined,
+            receiptImage: s.receipt ? demoReceipt(i % 2 ? 'instapay' : 'vodafone-cash', priceFor(s.format, s.dur).amount, `TX${String(48210 + i * 113)}`, new Date(created + 12 * 60000).toISOString().slice(0, 16).replace('T', ' ')) : undefined, submittedAt: created + 12 * 60000 }
         : undefined,
       checkedInAt: s.status === 'checked-in' ? start - 5 * 60000 : undefined,
       meetingUrl: s.format === 'online' && ['confirmed', 'completed'].includes(s.status) ? `#/meet/${makeToken()}` : undefined,

@@ -4,6 +4,7 @@ import type { Booking, PaymentMethodId } from '../../../domain/types'
 import { paymentConfig } from '../../../config/payments'
 import { useAppStore } from '../../../store/useAppStore'
 import { expireDue, SlotTaken } from '../../../store/actions'
+import { compressReceipt } from '../../../domain/receipt'
 import { formatMoney } from '../../../domain/pricing'
 import { CopyField } from '../../../components/CopyField'
 import { Countdown } from '../../../components/widgets'
@@ -13,7 +14,7 @@ import { Icon } from '../../../components/Icon'
 
 export function PaymentStep({ booking, onSubmit, onExpiredRestart }: {
   booking: Booking
-  onSubmit: (p: { method: PaymentMethodId; txnRef: string; receiptName?: string }) => void
+  onSubmit: (p: { method: PaymentMethodId; txnRef: string; receiptName?: string; receiptImage?: string }) => void
   onExpiredRestart: () => void
 }) {
   const { t, l, lang } = useT()
@@ -21,6 +22,7 @@ export function PaymentStep({ booking, onSubmit, onExpiredRestart }: {
   const [method, setMethod] = useState<PaymentMethodId>('instapay')
   const [txnRef, setTxnRef] = useState('')
   const [receipt, setReceipt] = useState<string>()
+  const [receiptImage, setReceiptImage] = useState<string>()
   const [error, setError] = useState<string>()
   const m = paymentConfig.methods.find(x => x.id === method)!
   const expired = booking.status === 'expired' || (booking.status === 'reserved' && booking.holdExpiresAt <= now())
@@ -43,7 +45,7 @@ export function PaymentStep({ booking, onSubmit, onExpiredRestart }: {
     // Timers are throttled in background tabs, so re-check the deadline at submit time.
     if (booking.status === 'reserved' && booking.holdExpiresAt <= now()) return void expireDue()
     try {
-      onSubmit({ method, txnRef, receiptName: receipt })
+      onSubmit({ method, txnRef, receiptName: receipt, receiptImage })
     } catch (err) {
       if (err instanceof SlotTaken) return setError(t('payment.slotTaken'))
       expireDue()
@@ -130,8 +132,13 @@ export function PaymentStep({ booking, onSubmit, onExpiredRestart }: {
         <label className="flex min-h-14 cursor-pointer items-center gap-3 rounded-xl border border-dashed border-mist bg-white px-4 text-sm text-slate hover:bg-paper has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-gold/40">
           <Icon name="upload" size={18} />
           <span className="truncate">{receipt ? t('payment.receiptChosen', { name: receipt }) : t('payment.receipt')}</span>
-          <input type="file" accept="image/*,application/pdf" className="sr-only" onChange={e => setReceipt(e.target.files?.[0]?.name)} />
+          <input type="file" accept="image/*,application/pdf" className="sr-only" onChange={async e => {
+              const file = e.target.files?.[0]
+              setReceipt(file?.name)
+              setReceiptImage(file ? await compressReceipt(file) : undefined)
+            }} />
         </label>
+        {receiptImage && <img src={receiptImage} alt={t('payment.receipt')} className="mt-2 max-h-40 rounded-lg ring-1 ring-line" />}
         <p className="mt-1.5 text-xs text-muted">{t('payment.receiptHint')}</p>
       </div>
 

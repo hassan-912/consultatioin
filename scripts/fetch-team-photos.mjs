@@ -12,7 +12,7 @@ const fail = []
 async function get([, name, , p]) {
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      const r = await fetch(`https://mg-visa.com/wp-content/uploads/${p}`, { signal: AbortSignal.timeout(45000) })
+      const r = await fetch(`https://mg-visa.com/wp-content/uploads/${p}`, { signal: AbortSignal.timeout(180000) })
       if (!r.ok) throw new Error(String(r.status))
       writeFileSync(`.cache/team-raw/${p.split('/').pop()}`, Buffer.from(await r.arrayBuffer()))
       ok++

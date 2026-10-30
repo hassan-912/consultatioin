@@ -45,7 +45,7 @@ function Profile({ c, t, l, lang, minSample }: { c: ReturnType<typeof getConsult
             {t('profile.back')}
           </Link>
           <div className="mt-4 flex flex-col gap-5 sm:flex-row sm:items-end">
-            <Avatar consultant={c} size="xl" showPending />
+            <Avatar consultant={c} size="2xl" showPending />
             <div className="min-w-0 flex-1">
               <h1 id="profile-name" className="text-3xl font-semibold leading-tight sm:text-4xl">{l(c.name)}</h1>
               <p className={`mt-1.5 text-base ${c.title ? 'text-white/90' : 'text-mist'}`}>{c.title ? l(c.title) : t('placeholder.title')}</p>
@@ -83,16 +83,6 @@ function Profile({ c, t, l, lang, minSample }: { c: ReturnType<typeof getConsult
               ))}
             </ul>
             {c.demoPrograms && <p className="mt-3 text-xs text-muted">{t('profile.demoPrograms')}</p>}
-            <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              <div>
-                <h3 className="mb-2 text-sm font-semibold text-ink">{t('profile.languages')}</h3>
-                {c.languages ? <p>{c.languages.map(l).join('، ')}</p> : <Placeholder kind="languages" />}
-              </div>
-              <div>
-                <h3 className="mb-2 text-sm font-semibold text-ink">{t('profile.qualifications')}</h3>
-                {c.qualifications ? <ul>{c.qualifications.map((q, i) => <li key={i}>{l(q)}</li>)}</ul> : <Placeholder kind="qualifications" />}
-              </div>
-            </div>
           </section>
 
           <SlotCalendar consultant={c} />
