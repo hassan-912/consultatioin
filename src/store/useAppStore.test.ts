@@ -1,0 +1,56 @@
+import { useAppStore } from './useAppStore'
+import { en } from '../i18n/en'
+import { ar } from '../i18n/ar'
+
+const keysOf = (o: object, p = ''): string[] =>
+  Object.entries(o).flatMap(([k, v]) => (typeof v === 'object' ? keysOf(v, `${p}${k}.`) : [`${p}${k}`]))
+
+test('setLang switches document direction', () => {
+  useAppStore.getState().setLang('ar')
+  expect(document.documentElement.dir).toBe('rtl')
+  expect(document.documentElement.lang).toBe('ar')
+  useAppStore.getState().setLang('en')
+  expect(document.documentElement.dir).toBe('ltr')
+})
+
+test('language switch keeps filters and booking draft through rehydration', async () => {
+  const s = useAppStore.getState()
+  s.setFilters({ branch: 'dubai' })
+  s.updateDraft({ step: 3, consultantId: 'mohamed-abdelaziz' })
+  s.updateDetails({ name: 'Sara' })
+  s.setLang('ar')
+
+  // simulate a reload: wipe memory state (which also overwrites storage), then restore the saved snapshot
+  const saved = sessionStorage.getItem('mg-proto-v1')!
+  useAppStore.setState({ filters: { ...s.filters, branch: 'all' }, draft: { ...s.draft, step: 0 } })
+  sessionStorage.setItem('mg-proto-v1', saved)
+  await useAppStore.persist.rehydrate()
+
+  const r = useAppStore.getState()
+  expect(r.lang).toBe('ar')
+  expect(r.filters.branch).toBe('dubai')
+  expect(r.draft.step).toBe(3)
+  expect(r.draft.details.name).toBe('Sara')
+})
+
+test('Arabic and English dictionaries have identical keys and no empty strings', () => {
+  expect(keysOf(ar).sort()).toEqual(keysOf(en).sort())
+  const values = (o: object): string[] => Object.values(o).flatMap(v => (typeof v === 'object' ? values(v) : [v]))
+  expect(values(ar).every(v => v.trim().length > 0)).toBe(true)
+})
+
+test('spec labels are verbatim', () => {
+  expect(en.directory.title).toBe('Choose your consultant')
+  expect(ar.directory.title).toBe('اختر مستشارك')
+  expect(ar.common.availableAppointments).toBe('المواعيد المتاحة')
+  expect(ar.format.online).toBe('استشارة أونلاين')
+  expect(ar.format['in-person']).toBe('استشارة في الفرع')
+  expect(ar.status.confirmed).toBe('تم تأكيد الحجز')
+  expect(ar.status['on-hold']).toBe('معلّق – الدفع قيد المراجعة')
+  expect(ar.common.viewProfile).toBe('عرض الملف الشخصي')
+  expect(ar.common.book).toBe('احجز استشارة')
+  expect(ar.common.nextAvailable).toBe('أقرب موعد متاح')
+  expect(ar.ticket.join).toBe('انضم للاستشارة')
+  expect(ar.placeholder.bio).toBe('النبذة قيد الإعداد')
+  expect(ar.common.demo).toBe('بيانات تجريبية')
+})
