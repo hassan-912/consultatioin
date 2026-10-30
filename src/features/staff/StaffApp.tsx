@@ -1,3 +1,138 @@
+import { useState, type ReactNode } from 'react'
+import { Link, NavLink, Navigate, Route, Routes } from 'react-router-dom'
+import { useT } from '../../i18n'
+import { useAppStore } from '../../store/useAppStore'
+import type { StaffRole } from '../../domain/types'
+import { Logo } from '../../components/Logo'
+import { LangSwitch } from '../../components/LangSwitch'
+import { BottomSheet } from '../../components/widgets'
+import { Icon } from '../../components/Icon'
+import { can, permissions, screens, type StaffScreen } from './permissions'
+import { Overview } from './Overview'
+import { PaymentQueue } from './finance/PaymentQueue'
+import { CheckIn } from './reception/CheckIn'
+import { Arrivals } from './reception/Arrivals'
+import { MyCalendar, MyBookings, Records } from './consultant/ConsultantDesk'
+import { ConsultantsAdmin } from './admin/ConsultantsAdmin'
+import { AvailabilityAdmin } from './admin/AvailabilityAdmin'
+import { BookingsAdmin } from './admin/BookingsAdmin'
+import { PaymentsAdmin, KpiAdmin } from './admin/SettingsAdmin'
+import { AuditLog } from './admin/AuditLog'
+import { PendingDecisions } from './admin/PendingDecisions'
+
+const views: Record<StaffScreen, () => ReactNode> = {
+  overview: () => <Overview />,
+  payments: () => <PaymentQueue />,
+  checkin: () => <CheckIn />,
+  arrivals: () => <Arrivals />,
+  myCalendar: () => <MyCalendar />,
+  myBookings: () => <MyBookings />,
+  records: () => <Records />,
+  bookings: () => <BookingsAdmin />,
+  consultants: () => <ConsultantsAdmin />,
+  availability: () => <AvailabilityAdmin />,
+  paymentSettings: () => <PaymentsAdmin />,
+  kpi: () => <KpiAdmin />,
+  audit: () => <AuditLog />,
+  decisions: () => <PendingDecisions />,
+}
+
+function RoleSwitcher({ dark = true }: { dark?: boolean }) {
+  const { t } = useT()
+  const role = useAppStore(s => s.role)
+  const setRole = useAppStore(s => s.setRole)
+  return (
+    <label className="block">
+      <span className={`mb-1.5 block text-xs ${dark ? 'text-mist' : 'text-muted'}`}>{t('staff.viewingAs')}</span>
+      <select
+        value={role}
+        onChange={e => setRole(e.target.value as StaffRole)}
+        className={`min-h-11 w-full rounded-xl px-3 text-sm font-semibold ${dark ? 'bg-white/10 text-white ring-1 ring-white/20 [&>option]:text-ink' : 'bg-white text-ink ring-1 ring-line'}`}
+      >
+        {(Object.keys(permissions) as StaffRole[]).map(r => <option key={r} value={r}>{t(`staff.roles.${r}`)}</option>)}
+      </select>
+    </label>
+  )
+}
+
+function Nav({ onNavigate }: { onNavigate?: () => void }) {
+  const { t } = useT()
+  const role = useAppStore(s => s.role)
+  return (
+    <nav aria-label={t('staff.title')} className="grid gap-0.5">
+      {screens.filter(s => can(role, s.id)).map(s => (
+        <NavLink
+          key={s.id}
+          to={`/staff/${s.path}`}
+          end={s.path === ''}
+          onClick={onNavigate}
+          className={({ isActive }) =>
+            `flex min-h-11 items-center gap-3 rounded-xl px-3 text-sm font-semibold transition-colors ${isActive ? 'bg-white text-ink' : 'text-mist hover:bg-white/10 hover:text-white'}`
+          }
+        >
+          <Icon name={s.icon} size={17} />
+          {t(`staff.screens.${s.id}`)}
+        </NavLink>
+      ))}
+    </nav>
+  )
+}
+
 export function StaffApp() {
-  return null
+  const { t } = useT()
+  const role = useAppStore(s => s.role)
+  const [open, setOpen] = useState(false)
+
+  return (
+    <div className="min-h-dvh bg-paper lg:grid lg:grid-cols-[260px_minmax(0,1fr)]">
+      <aside className="sticky top-0 hidden h-dvh flex-col gap-6 overflow-y-auto bg-slate-deep p-5 lg:flex">
+        <Link to="/" aria-label={t('nav.home')}><Logo className="h-9" /></Link>
+        <RoleSwitcher />
+        <Nav />
+        <p className="mt-auto text-xs leading-relaxed text-mist/80">{t('staff.demoAccess')}</p>
+      </aside>
+
+      <div className="min-w-0">
+        <header className="sticky top-0 z-20 flex h-16 items-center justify-between gap-3 border-b border-line bg-white/95 px-4 backdrop-blur sm:px-6">
+          <div className="flex items-center gap-3">
+            <button type="button" onClick={() => setOpen(true)} className="inline-flex size-11 items-center justify-center rounded-xl ring-1 ring-line lg:hidden" aria-label={t('nav.menu')}>
+              <Icon name="menu" />
+            </button>
+            <div>
+              <p className="text-xs text-muted">{t('staff.title')}</p>
+              <p className="text-sm font-semibold text-ink">{t(`staff.roles.${role}`)}</p>
+            </div>
+          </div>
+          <LangSwitch tone="light" />
+        </header>
+
+        <main id="main" className="mx-auto max-w-5xl px-4 py-6 sm:px-6">
+          <Routes>
+            {screens.map(s => {
+              const element = can(role, s.id) ? <>{views[s.id]()}</> : <Navigate to="/staff" replace />
+              return s.path ? <Route key={s.id} path={s.path} element={element} /> : <Route key={s.id} index element={element} />
+            })}
+            <Route path="*" element={<Navigate to="/staff" replace />} />
+          </Routes>
+        </main>
+      </div>
+
+      <BottomSheet open={open} onClose={() => setOpen(false)} title={t('staff.title')}>
+        <div className="grid gap-4 rounded-2xl bg-slate-deep p-4 pb-5">
+          <RoleSwitcher />
+          <Nav onNavigate={() => setOpen(false)} />
+          <p className="text-xs text-mist/80">{t('staff.demoAccess')}</p>
+        </div>
+      </BottomSheet>
+    </div>
+  )
+}
+
+export function ScreenTitle({ title, children }: { title: string; children?: ReactNode }) {
+  return (
+    <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+      <h1 className="text-2xl font-semibold text-ink">{title}</h1>
+      {children}
+    </div>
+  )
 }
