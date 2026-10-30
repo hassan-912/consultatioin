@@ -4,3 +4,4 @@ dist-artifact
 .superpowers
 coverage
 *.log
+artifact

@@ -6,7 +6,7 @@ import { useAppStore } from '../../store/useAppStore'
 import { cancelBooking, getConsultant, rescheduleBooking, submitPayment } from '../../store/actions'
 import { Header } from '../../components/Header'
 import { Footer } from '../../components/Footer'
-import { Button, ButtonLink, Notice, StatusChip } from '../../components/ui'
+import { Button, ButtonLink, ConfirmButton, Notice, StatusChip } from '../../components/ui'
 import { BottomSheet } from '../../components/widgets'
 import { Icon } from '../../components/Icon'
 import { branchById } from '../../config/branches'
@@ -37,6 +37,9 @@ export function BookingPage() {
   if (!booking) return <NotFound />
   return <Manage b={booking} />
 }
+
+// File downloads are blocked inside the shared artifact viewer.
+const CAN_DOWNLOAD = import.meta.env.MODE !== 'artifact'
 
 const RESCHEDULABLE = ['on-hold', 'confirmed']
 const CANCELLABLE = ['reserved', 'on-hold', 'confirmed']
@@ -103,10 +106,12 @@ function Manage({ b }: { b: Booking }) {
                 {t('ticket.join')}
               </a>
             )}
-            <Button variant="primary" size="lg" onClick={download} disabled={downloading}>
-              <Icon name="download" size={18} />
-              {downloading ? t('ticket.downloading') : t('ticket.download')}
-            </Button>
+            {CAN_DOWNLOAD && (
+              <Button variant="primary" size="lg" onClick={download} disabled={downloading}>
+                <Icon name="download" size={18} />
+                {downloading ? t('ticket.downloading') : t('ticket.download')}
+              </Button>
+            )}
             <Button variant="ghost" size="lg" onClick={() => startBooking(b.consultantId)}>
               <Icon name="history" size={18} />
               {t('ticket.bookAgain')}
@@ -118,14 +123,10 @@ function Manage({ b }: { b: Booking }) {
               </Button>
             )}
             {CANCELLABLE.includes(b.status) && (
-              <Button
-                variant="danger"
-                size="lg"
-                onClick={() => window.confirm(t('ticket.cancelConfirm')) && cancelBooking(b.id, 'customer')}
-              >
+              <ConfirmButton size="lg" label={t('ticket.cancelBooking')} confirmText={t('ticket.cancelConfirm')} onConfirm={() => cancelBooking(b.id, 'customer')}>
                 <Icon name="x" size={18} />
                 {t('ticket.cancelBooking')}
-              </Button>
+              </ConfirmButton>
             )}
           </div>
           <p className="text-xs text-muted">{t('ticket.policyPending')}</p>

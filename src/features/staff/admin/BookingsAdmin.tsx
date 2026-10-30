@@ -6,7 +6,7 @@ import { cancelBooking } from '../../../store/actions'
 import { canApply } from '../../../domain/bookingStatus'
 import type { BookingStatus } from '../../../domain/types'
 import { normalizeDigits } from '../../../domain/phone'
-import { Button } from '../../../components/ui'
+import { ConfirmButton } from '../../../components/ui'
 import { SelectField, TextField } from '../../../components/fields'
 import { ScreenTitle } from '../StaffApp'
 import { BookingMeta, Empty } from '../common'
@@ -41,7 +41,7 @@ export function BookingsAdmin() {
             <div className="flex shrink-0 gap-2">
               <Link to={`/booking/${b.manageToken}`} className="inline-flex min-h-10 items-center rounded-xl px-3 text-sm font-semibold text-navy hover:bg-paper">{t('ticket.manage')}</Link>
               {role === 'admin' && canApply(b, 'cancel') && (
-                <Button size="sm" variant="danger" onClick={() => window.confirm(t('ticket.cancelConfirm')) && cancelBooking(b.id, role)}>{t('ticket.cancelBooking')}</Button>
+                <ConfirmButton size="sm" label={t('ticket.cancelBooking')} confirmText={t('ticket.cancelConfirm')} onConfirm={() => cancelBooking(b.id, role)} />
               )}
             </div>
           </article>

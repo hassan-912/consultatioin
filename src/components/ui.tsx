@@ -1,4 +1,4 @@
-import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react'
+import { forwardRef, useState, type ButtonHTMLAttributes, type ReactNode } from 'react'
 import { Link, type LinkProps } from 'react-router-dom'
 import { useT } from '../i18n'
 import type { BookingStatus } from '../domain/types'
@@ -117,6 +117,23 @@ export function Notice({ tone = 'info', children, className = '' }: { tone?: 'in
     <div className={`flex gap-2.5 rounded-xl px-3.5 py-3 text-sm ${map[tone][0]} ${className}`}>
       <Icon name={map[tone][1]} size={17} className="mt-0.5" />
       <div className="min-w-0">{children}</div>
+    </div>
+  )
+}
+
+/** Two-step in-page confirmation (native confirm() is unavailable in embedded viewers). */
+export function ConfirmButton({ label, confirmText, onConfirm, variant = 'danger', size = 'md', className = '', children }: {
+  label: string; confirmText: string; onConfirm: () => void; variant?: Variant; size?: Size; className?: string; children?: ReactNode
+}) {
+  const [asking, setAsking] = useState(false)
+  const { t } = useT()
+  if (!asking)
+    return <Button variant={variant} size={size} className={className} onClick={() => setAsking(true)}>{children ?? label}</Button>
+  return (
+    <div role="group" aria-label={confirmText} className={`col-span-full flex flex-wrap items-center gap-2 rounded-xl bg-bad-soft p-2 ${className}`}>
+      <p className="flex-1 px-1 text-sm font-semibold text-bad">{confirmText}</p>
+      <Button size="sm" variant="danger" onClick={() => { setAsking(false); onConfirm() }}>{t('common.confirm')}</Button>
+      <Button size="sm" variant="ghost" onClick={() => setAsking(false)}>{t('common.cancel')}</Button>
     </div>
   )
 }

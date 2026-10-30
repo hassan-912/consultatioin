@@ -58,7 +58,7 @@ export function DemoPanel() {
               <Icon name="clock" size={15} className="text-gold" />
               {t('demoPanel.skip')}
             </button>
-            <button type="button" className={`${btn} mt-1 border-t border-white/10 pt-1`} onClick={() => window.confirm(`${t('demoPanel.reset')}?`) && resetDemo()}>
+            <button type="button" className={`${btn} mt-1 border-t border-white/10 pt-1`} onClick={() => resetDemo()}>
               <Icon name="history" size={15} className="text-mist" />
               {t('demoPanel.reset')}
             </button>
