@@ -2,7 +2,7 @@
 -- (rolled back). Every weekday is open 10:00-18:00 Cairo with a 13:00-13:30 break, so weekday doesn't matter.
 begin;
 set local search_path = public, extensions;
-select plan(52);
+select plan(59);
 
 insert into schedules (consultant_id, weekly, breaks, formats, max_per_day)
 select 'mohamed-gamal', jsonb_object_agg(d::text, '[{"start":600,"end":1080}]'::jsonb), '[{"start":780,"end":810}]', '{online,in-person}', 10
@@ -92,8 +92,12 @@ select pg_temp.mk('MG-TAKE-NOW1', pg_temp.at(24, '10:15'), 'confirmed');
 select throws_ok($$select submit_payment(pg_temp.tok('MG-REJE-CTED'), 'vodafone-cash', 'TX2')$$, 'P0001', 'SLOT_TAKEN', 'submit: rejected + slot taken -> SLOT_TAKEN');
 select pg_temp.mk('MG-REJE-CTD2', pg_temp.at(24, '15:00'), 'rejected');
 select is((submit_payment(pg_temp.tok('MG-REJE-CTD2'), 'vodafone-cash', 'TX3'))->>'status', 'on-hold', 'submit: rejected + slot free -> on-hold');
-select throws_ok($$select submit_payment(pg_temp.tok('MG-STAL-E001'), 'instapay', 'TX4', 'receipts/' || gen_random_uuid() || '/x.jpg')$$,
+select pg_temp.mk('MG-RCPT-0001', pg_temp.at(26, '10:00'), 'reserved');
+select throws_ok($$select submit_payment(pg_temp.tok('MG-RCPT-0001'), 'instapay', 'TX4', 'receipts/' || gen_random_uuid() || '/x.jpg')$$,
   'P0001', 'INVALID_INPUT', 'submit: receipt path of another booking refused');
+select submit_payment(pg_temp.tok('MG-RCPT-0001'), 'instapay', 'TX5', 'receipts/' || (select id from bookings where reference = 'MG-RCPT-0001') || '/x.jpg');
+select is((select receipt_path from payments where booking_id = (select id from bookings where reference = 'MG-RCPT-0001')),
+  'receipts/' || (select id from bookings where reference = 'MG-RCPT-0001') || '/x.jpg', 'submit: own receipt path accepted and stored');
 
 -- find_booking
 select pg_temp.mk('MG-ABCD-EFGH', pg_temp.at(25, '10:00'), 'confirmed', 30, '+201001234567');
@@ -112,11 +116,24 @@ select throws_ok($$select cancel_booking(pg_temp.tok('MG-REJE-CTD2'))$$, 'P0001'
 select is(((reschedule_booking((select j->>'manage_token' from r1), pg_temp.at(14, '16:00')))->>'starts_at')::timestamptz, pg_temp.at(14, '16:00'), 'reschedule: moved to open slot');
 select throws_ok($$select reschedule_booking((select j->>'manage_token' from r1), pg_temp.at(22, '10:15'))$$, 'P0001', 'SLOT_TAKEN', 'reschedule: taken slot -> SLOT_TAKEN');
 
+-- review round 1: expired (cron-flipped) holds answer HOLD_EXPIRED; find limit per reference; stale windows purged
+select pg_temp.mk('MG-EXPI-RED1', pg_temp.at(27, '10:00'), 'expired');
+select throws_ok($$select submit_payment(pg_temp.tok('MG-EXPI-RED1'), 'instapay', 'TX6')$$, 'P0001', 'HOLD_EXPIRED', 'submit: expired status -> HOLD_EXPIRED');
+select throws_ok($$select reschedule_booking(pg_temp.tok('MG-EXPI-RED1'), pg_temp.at(27, '11:00'))$$, 'P0001', 'HOLD_EXPIRED', 'reschedule: expired status -> HOLD_EXPIRED');
+insert into rate_limits (key, window_start, count) values ('find-ref:MG-OLD0-OLD0', now() - interval '2 hours', 5);
+select is((select count(*)::int from generate_series(1, 10) i
+           where find_booking('MG-RATE-LIM1', '+2010000000' || lpad(i::text, 2, '0')) is null), 10, 'find: 10 wrong phones on one reference -> null');
+select throws_ok($$select find_booking('MG-RATE-LIM1', '+201000000011')$$, 'P0001', 'RATE_LIMITED', 'find: 11th phone on same reference -> RATE_LIMITED');
+select ok(not exists (select 1 from rate_limits where key = 'find-ref:MG-OLD0-OLD0'), 'stale rate_limits rows purged');
+select is(find_booking('mg- abcd -efgh', '+201001234567'), pg_temp.tok('MG-ABCD-EFGH'), 'find: inner spaces in reference ignored');
+
 -- privileges
 select ok(bool_and(has_function_privilege('anon', f, 'execute')), 'anon can execute the 7 customer RPCs') from unnest(array[
   'public.available_slots(text,date,text)', 'public.reserve_slot(text,text,timestamptz,jsonb)', 'public.submit_payment(text,text,text,text)',
   'public.get_booking(text)', 'public.find_booking(text,text)', 'public.cancel_booking(text)', 'public.reschedule_booking(text,timestamptz)']) f;
 select ok(not has_function_privilege('anon', 'public.assert_slot_open(text,text,timestamptz,uuid)', 'execute')
+      and not has_function_privilege('anon', 'public.purge_rate_limits(interval)', 'execute')
+      and not has_function_privilege('authenticated', 'public.purge_rate_limits(interval)', 'execute')
       and not has_table_privilege('anon', 'public.rate_limits', 'select')
       and not has_table_privilege('anon', 'public.consultant_branches', 'select'), 'helpers and tables private to anon');
 
