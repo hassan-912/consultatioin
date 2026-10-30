@@ -36,13 +36,13 @@ export function DirectoryPage() {
         <div className="grain absolute inset-0" aria-hidden />
         <div className="absolute -end-40 -top-40 size-[520px] rounded-full bg-navy/60 blur-3xl" aria-hidden />
         <Header variant="overlay" />
-        <div className="relative mx-auto grid max-w-6xl items-center gap-6 px-4 pt-24 sm:px-6 sm:pt-32 lg:grid-cols-[1.05fr_1fr]">
+        <section aria-labelledby="hero-title" className="relative mx-auto grid max-w-6xl items-center gap-6 px-4 pt-24 sm:px-6 sm:pt-32 lg:grid-cols-[1.05fr_1fr]">
           <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: [0.2, 0.8, 0.2, 1] }}>
-            <h1 className="max-w-[14ch] text-[2.6rem] font-semibold leading-[1.05] sm:text-6xl">{t('directory.title')}</h1>
+            <h1 id="hero-title" className="max-w-[14ch] text-[2.6rem] font-semibold leading-[1.05] sm:text-6xl">{t('directory.title')}</h1>
             <p className="mt-5 max-w-[52ch] text-base leading-relaxed text-mist sm:text-lg">{t('directory.subtitle')}</p>
           </motion.div>
           <FlightPaths className="pointer-events-none mx-auto -mt-2 h-52 w-full opacity-90 sm:h-auto lg:mt-0" />
-        </div>
+        </section>
       </div>
 
       <main id="main" className="mx-auto max-w-6xl px-4 sm:px-6">

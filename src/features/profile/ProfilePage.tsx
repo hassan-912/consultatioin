@@ -38,7 +38,7 @@ function Profile({ c, t, l, lang, minSample }: { c: ReturnType<typeof getConsult
   return (
     <>
       <Header />
-      <div className="bg-slate-deep text-white">
+      <section aria-labelledby="profile-name" className="bg-slate-deep text-white">
         <div className="mx-auto max-w-6xl px-4 pb-10 pt-6 sm:px-6">
           <Link to="/" className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-mist hover:text-white">
             <Icon name="chevron" size={16} className="rotate-180" />
@@ -47,7 +47,7 @@ function Profile({ c, t, l, lang, minSample }: { c: ReturnType<typeof getConsult
           <div className="mt-4 flex flex-col gap-5 sm:flex-row sm:items-end">
             <Avatar consultant={c} size="xl" showPending />
             <div className="min-w-0 flex-1">
-              <h1 className="text-3xl font-semibold leading-tight sm:text-4xl">{l(c.name)}</h1>
+              <h1 id="profile-name" className="text-3xl font-semibold leading-tight sm:text-4xl">{l(c.name)}</h1>
               <p className={`mt-1.5 text-base ${c.title ? 'text-white/90' : 'text-mist'}`}>{c.title ? l(c.title) : t('placeholder.title')}</p>
               <p className="mt-2 flex items-center gap-1.5 text-sm text-mist">
                 <Icon name="pin" size={15} className="text-gold" />
@@ -61,7 +61,7 @@ function Profile({ c, t, l, lang, minSample }: { c: ReturnType<typeof getConsult
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
       <main id="main" className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)] gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,1fr)_380px]">
         <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6">

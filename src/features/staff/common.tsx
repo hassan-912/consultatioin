@@ -16,7 +16,7 @@ export function BookingMeta({ b, showStatus = true }: { b: Booking; showStatus?:
       <div className="flex flex-wrap items-center gap-2">
         <Ltr className="font-display text-base font-semibold tracking-wider text-ink">{b.reference}</Ltr>
         {showStatus && <StatusChip status={b.status} />}
-        {b.demo && <span className="rounded-full bg-gold-soft px-2 py-0.5 text-[10px] font-semibold text-gold-deep">{t('common.demo')}</span>}
+        {b.demo && <span className="rounded-full bg-gold-soft px-2 py-0.5 text-[11px] font-semibold text-gold-deep">{t('common.demo')}</span>}
       </div>
       <p className="mt-1 text-sm font-semibold text-slate">{b.customer.name} — <Ltr>{b.customer.phone}</Ltr></p>
       <p className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm text-muted">

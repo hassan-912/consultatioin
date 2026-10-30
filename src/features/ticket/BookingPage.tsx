@@ -87,7 +87,7 @@ function Manage({ b }: { b: Booking }) {
           <Notice tone={tone}>
             <p className="font-semibold">{t(`status.${b.status}`)}</p>
             <p className="mt-0.5">{help}</p>
-            {b.ticketSentVia && <p className="mt-1 text-xs opacity-80">{t('ticket.sentVia', { channel: t(b.ticketSentVia === 'email' ? 'booking.channelEmail' : 'booking.channelWhatsapp') })}</p>}
+            {b.ticketSentVia && <p className="mt-1 text-xs">{t('ticket.sentVia', { channel: t(b.ticketSentVia === 'email' ? 'booking.channelEmail' : 'booking.channelWhatsapp') })}</p>}
           </Notice>
 
           {canPay && (
@@ -138,7 +138,7 @@ function Manage({ b }: { b: Booking }) {
               <a className="text-navy hover:underline" href={`mailto:${contact.email}`}><bdi dir="ltr">{contact.email}</bdi></a>
             </p>
             <p className="mt-2 text-muted">
-              <Link to={`/consultant/${consultant.id}`} className="text-navy hover:underline">{l(consultant.name)}</Link> — {l(branch.name)}
+              <Link to={`/consultant/${consultant.id}`} className="text-navy underline underline-offset-2">{l(consultant.name)}</Link> — {l(branch.name)}
             </p>
           </div>
         </div>

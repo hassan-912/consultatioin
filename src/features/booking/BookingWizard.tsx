@@ -90,11 +90,11 @@ function Wizard({ id }: { id: string }) {
   return (
     <>
       <Header />
-      <div className="border-b border-line bg-white">
+      <section aria-labelledby="wizard-title" className="border-b border-line bg-white">
         <div className="mx-auto max-w-6xl px-4 py-4 sm:px-6">
-          <p className="text-sm text-muted">
+          <h1 id="wizard-title" className="text-sm font-normal text-muted">
             {t('booking.title')} {t('booking.with', { name: l(consultant.name) })}
-          </p>
+          </h1>
           <ol className="mt-3 flex gap-1.5" aria-label={t('booking.stepOf', { n: step + 1, total: 5 })}>
             {STEP_KEYS.map((k, i) => (
               <li key={k} className="flex-1" aria-current={i === step ? 'step' : undefined}>
@@ -107,7 +107,7 @@ function Wizard({ id }: { id: string }) {
             {t('booking.stepOf', { n: step + 1, total: 5 })}: {t(`booking.steps.${STEP_KEYS[step]}`)}
           </p>
         </div>
-      </div>
+      </section>
 
       <main id="main" className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)] gap-8 px-4 py-6 pb-32 sm:px-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:pb-12">
         <AnimatePresence mode="wait">

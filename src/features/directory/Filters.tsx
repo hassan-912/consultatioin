@@ -32,7 +32,7 @@ export function DateStrip({ value, onChange, days = 14, label }: { value: string
               {i === 0 ? t('common.today') : i === 1 ? t('common.tomorrow') : formatDate(d, lang, 'weekday')}
             </span>
             <span dir="ltr" className="font-display text-lg font-semibold tabular leading-tight">{Number(d.slice(8))}</span>
-            <span className={`text-[10px] ${active ? 'text-mist' : 'text-muted'}`}>{formatDate(d, lang, 'short').replace(/\d+\s*/, '')}</span>
+            <span className={`text-[11px] ${active ? 'text-mist' : 'text-muted'}`}>{formatDate(d, lang, 'short').replace(/\d+\s*/, '')}</span>
           </button>
         )
       })}

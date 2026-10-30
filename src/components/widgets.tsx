@@ -28,7 +28,7 @@ export function Avatar({ consultant, size = 'md', showPending = false }: { consu
         <span className="relative" dir="auto">{initials(l(consultant.name))}</span>
       </div>
       {showPending && (
-        <span className="absolute -bottom-2 start-1/2 -translate-x-1/2 rtl:translate-x-1/2 whitespace-nowrap rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-muted shadow ring-1 ring-line">
+        <span className="absolute -bottom-2 start-1/2 -translate-x-1/2 rtl:translate-x-1/2 whitespace-nowrap rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-muted shadow ring-1 ring-line">
           {t('placeholder.photo')}
         </span>
       )}
@@ -109,7 +109,22 @@ export function BottomSheet({ open, onClose, title, children, footer }: { open: 
     if (!open) return
     const prev = document.activeElement as HTMLElement | null
     ref.current?.focus()
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') return onClose()
+      if (e.key !== 'Tab' || !ref.current) return
+      // keep keyboard focus inside the open dialog
+      const items = ref.current.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])')
+      if (!items.length) return
+      const first = items[0]
+      const last = items[items.length - 1]
+      if (e.shiftKey && (document.activeElement === first || document.activeElement === ref.current)) {
+        e.preventDefault()
+        last.focus()
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault()
+        first.focus()
+      }
+    }
     document.addEventListener('keydown', onKey)
     document.body.style.overflow = 'hidden'
     return () => {
