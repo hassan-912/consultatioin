@@ -41,7 +41,7 @@ export function DirectoryPage() {
             <h1 className="max-w-[14ch] text-[2.6rem] font-semibold leading-[1.05] sm:text-6xl">{t('directory.title')}</h1>
             <p className="mt-5 max-w-[52ch] text-base leading-relaxed text-mist sm:text-lg">{t('directory.subtitle')}</p>
           </motion.div>
-          <FlightPaths className="pointer-events-none -mx-4 h-auto w-[calc(100%+2rem)] opacity-90 sm:mx-0 sm:w-full" />
+          <FlightPaths className="pointer-events-none mx-auto -mt-2 h-52 w-full opacity-90 sm:h-auto lg:mt-0" />
         </div>
       </div>
 

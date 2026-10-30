@@ -17,14 +17,18 @@ export default function App() {
   const lang = useAppStore(s => s.lang)
   const { pathname } = useLocation()
 
-  useEffect(() => applyDocumentLang(lang), [lang])
+  useEffect(() => {
+    applyDocumentLang(lang)
+  }, [lang])
   useEffect(() => {
     seedIfNeeded()
     expireDue()
     const id = setInterval(expireDue, 5000)
     return () => clearInterval(id)
   }, [])
-  useEffect(() => window.scrollTo({ top: 0 }), [pathname])
+  useEffect(() => {
+    window.scrollTo({ top: 0 })
+  }, [pathname])
 
   return (
     <MotionConfig reducedMotion="user">
