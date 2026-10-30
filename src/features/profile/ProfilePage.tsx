@@ -54,15 +54,17 @@ function Profile({ c, t, l, lang, minSample }: { c: ReturnType<typeof getConsult
                 {l(branch.name)}, {l(branch.city)}
               </p>
             </div>
-            <Button variant="gold" size="lg" className="hidden sm:inline-flex" onClick={() => startBooking(c.id)}>
-              {t('common.book')}
-            </Button>
+            <div className="hidden sm:block">
+              <Button variant="gold" size="lg" onClick={() => startBooking(c.id)}>
+                {t('common.book')}
+              </Button>
+            </div>
           </div>
         </div>
       </div>
 
-      <main id="main" className="mx-auto grid max-w-6xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,1fr)_380px]">
-        <div className="grid min-w-0 gap-6">
+      <main id="main" className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)] gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6">
           <section aria-labelledby="about" className="rounded-3xl bg-white p-5 ring-1 ring-line sm:p-6">
             <h2 id="about" className="mb-3 text-lg font-semibold text-ink">{t('profile.about')}</h2>
             {c.bio ? <p className="leading-relaxed text-slate">{l(c.bio)}</p> : <Placeholder kind="bio" hint={t('placeholder.bioHint')} />}
@@ -86,7 +88,7 @@ function Profile({ c, t, l, lang, minSample }: { c: ReturnType<typeof getConsult
                 const ct = countryById(code)
                 return (
                   <li key={code} className="inline-flex items-center gap-2 rounded-full bg-paper px-3 py-1.5 text-sm text-slate ring-1 ring-line">
-                    <span aria-hidden>{ct.flag}</span>
+                    <Icon name="plane" size={14} className="text-gold-deep" />
                     {l(ct.name)}
                   </li>
                 )

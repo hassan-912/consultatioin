@@ -25,7 +25,7 @@ export function ReviewStep({ consultant, branch, format, durationMin, slotStartI
     </section>
   )
   return (
-    <div className="grid gap-4">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-4">
       <div>
         <h2 className="text-2xl font-semibold text-ink">{t('booking.reviewTitle')}</h2>
         <p className="mt-1 text-sm text-muted">{t('booking.reviewHint')}</p>

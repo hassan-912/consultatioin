@@ -28,7 +28,7 @@ export function SlotStep({ consultantId, branch, format, durationMin, slotStartI
   )
 
   return (
-    <div className="grid gap-6">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
       <div className="flex items-start justify-between gap-3">
         <h2 className="text-2xl font-semibold text-ink">{t('booking.chooseTime')}</h2>
         <DemoBadge />

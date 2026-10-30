@@ -10,7 +10,7 @@ const rel = (n: number) => addDays(todayIn('Africa/Cairo'), n)
 
 const egyptWeek = (sat = false): ScheduleRules['weekly'] => ({
   0: day(h(10), h(18)), 1: day(h(10), h(18)), 2: day(h(10), h(18)), 3: day(h(10), h(18)), 4: day(h(10), h(18)),
-  5: [], 6: sat ? day(h(11), h(15)) : [],
+  5: [], 6: sat ? day(h(10), h(16)) : [],
 })
 const dubaiWeek: ScheduleRules['weekly'] = {
   0: [], 1: day(h(10), h(18)), 2: day(h(10), h(18)), 3: day(h(10), h(18)), 4: day(h(10), h(18)), 5: day(h(10), h(13)), 6: [],

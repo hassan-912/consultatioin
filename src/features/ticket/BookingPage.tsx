@@ -74,7 +74,7 @@ function Manage({ b }: { b: Booking }) {
   return (
     <>
       <Header />
-      <main id="main" className="mx-auto grid max-w-6xl gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[440px_minmax(0,1fr)]">
+      <main id="main" className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)] gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[440px_minmax(0,1fr)]">
         <div>
           <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
             <h1 className="text-2xl font-semibold text-ink">{t('ticket.title')}</h1>
@@ -83,7 +83,7 @@ function Manage({ b }: { b: Booking }) {
           <BoardingPass ref={passRef} booking={b} />
         </div>
 
-        <div className="grid content-start gap-4">
+        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] content-start gap-4">
           <Notice tone={tone}>
             <p className="font-semibold">{t(`status.${b.status}`)}</p>
             <p className="mt-0.5">{help}</p>

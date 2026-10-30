@@ -28,19 +28,19 @@ const control = (error?: string) =>
     error ? 'border-bad focus:ring-bad/15' : 'border-line focus:border-slate focus:ring-slate/10'
   }`
 
-export function TextField({ label, hint, error, ...rest }: Omit<InputHTMLAttributes<HTMLInputElement>, 'id'> & { label: string; hint?: string; error?: string }) {
+export function TextField({ label, hint, error, className = '', ...rest }: Omit<InputHTMLAttributes<HTMLInputElement>, 'id'> & { label: string; hint?: string; error?: string }) {
   return (
     <Shell label={label} hint={hint} error={error}>
-      {({ id, describedBy }) => <input id={id} aria-invalid={!!error} aria-describedby={describedBy} className={control(error)} {...rest} />}
+      {({ id, describedBy }) => <input id={id} aria-invalid={!!error} aria-describedby={describedBy} className={`${control(error)} ${className}`} {...rest} />}
     </Shell>
   )
 }
 
-export function TextArea({ label, hint, error, ...rest }: Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, 'id'> & { label: string; hint?: string; error?: string }) {
+export function TextArea({ label, hint, error, className = '', ...rest }: Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, 'id'> & { label: string; hint?: string; error?: string }) {
   return (
     <Shell label={label} hint={hint} error={error}>
       {({ id, describedBy }) => (
-        <textarea id={id} aria-invalid={!!error} aria-describedby={describedBy} className={`${control(error)} py-3`} rows={3} {...rest} />
+        <textarea id={id} aria-invalid={!!error} aria-describedby={describedBy} className={`${control(error)} py-3 ${className}`} rows={3} {...rest} />
       )}
     </Shell>
   )

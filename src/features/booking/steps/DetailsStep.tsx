@@ -9,7 +9,7 @@ export function DetailsStep({ value, onChange, errors, showSummary }: { value: C
   const { t, l } = useT()
   const err = (k: keyof DetailErrors) => (errors[k] ? t(errors[k]!) : undefined)
   return (
-    <div className="grid gap-5">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-5">
       <div>
         <h2 className="text-2xl font-semibold text-ink">{t('booking.detailsTitle')}</h2>
         <p className="mt-1 text-sm text-muted">{t('booking.detailsHint')}</p>

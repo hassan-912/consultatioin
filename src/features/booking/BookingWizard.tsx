@@ -109,7 +109,7 @@ function Wizard({ id }: { id: string }) {
         </div>
       </div>
 
-      <main id="main" className="mx-auto grid max-w-6xl gap-8 px-4 py-6 pb-32 sm:px-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:pb-12">
+      <main id="main" className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)] gap-8 px-4 py-6 pb-32 sm:px-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:pb-12">
         <AnimatePresence mode="wait">
           <motion.div
             key={step}

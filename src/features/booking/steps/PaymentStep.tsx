@@ -44,7 +44,7 @@ export function PaymentStep({ booking, onSubmit, onExpiredRestart }: {
   }
 
   return (
-    <form onSubmit={submit} noValidate className="grid gap-5">
+    <form onSubmit={submit} noValidate className="grid grid-cols-[minmax(0,1fr)] gap-5">
       <div className="rounded-3xl bg-slate-deep p-5 text-white sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
