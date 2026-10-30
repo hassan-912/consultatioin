@@ -65,7 +65,7 @@ export function StaffLogin() {
                 aria-pressed={show}
                 className="absolute end-1 top-[30px] inline-flex size-11 items-center justify-center rounded-lg text-muted hover:text-ink"
               >
-                <Icon name={show ? 'x' : 'search'} size={16} />
+                <Icon name={show ? 'eyeOff' : 'eye'} size={17} />
               </button>
             </div>
             <Button type="submit" size="lg" disabled={busy || !username || !password}>
