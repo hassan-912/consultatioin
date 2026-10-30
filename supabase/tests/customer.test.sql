@@ -116,7 +116,7 @@ select throws_ok($$select cancel_booking(pg_temp.tok('MG-REJE-CTD2'))$$, 'P0001'
 select is(((reschedule_booking((select j->>'manage_token' from r1), pg_temp.at(14, '16:00')))->>'starts_at')::timestamptz, pg_temp.at(14, '16:00'), 'reschedule: moved to open slot');
 select throws_ok($$select reschedule_booking((select j->>'manage_token' from r1), pg_temp.at(22, '10:15'))$$, 'P0001', 'SLOT_TAKEN', 'reschedule: taken slot -> SLOT_TAKEN');
 
--- review round 1: expired (cron-flipped) holds answer HOLD_EXPIRED; find limit per reference; stale windows purged
+-- review round 1: expired (cron-flipped) holds answer HOLD_EXPIRED; find limit per reference; stale windows retained (0011)
 select pg_temp.mk('MG-EXPI-RED1', pg_temp.at(27, '10:00'), 'expired');
 select throws_ok($$select submit_payment(pg_temp.tok('MG-EXPI-RED1'), 'instapay', 'TX6')$$, 'P0001', 'HOLD_EXPIRED', 'submit: expired status -> HOLD_EXPIRED');
 select throws_ok($$select reschedule_booking(pg_temp.tok('MG-EXPI-RED1'), pg_temp.at(27, '11:00'))$$, 'P0001', 'HOLD_EXPIRED', 'reschedule: expired status -> HOLD_EXPIRED');
@@ -124,7 +124,7 @@ insert into rate_limits (key, window_start, count) values ('find-ref:MG-OLD0-OLD
 select is((select count(*)::int from generate_series(1, 10) i
            where find_booking('MG-RATE-LIM1', '+2010000000' || lpad(i::text, 2, '0')) is null), 10, 'find: 10 wrong phones on one reference -> null');
 select throws_ok($$select find_booking('MG-RATE-LIM1', '+201000000011')$$, 'P0001', 'RATE_LIMITED', 'find: 11th phone on same reference -> RATE_LIMITED');
-select ok(not exists (select 1 from rate_limits where key = 'find-ref:MG-OLD0-OLD0'), 'stale rate_limits rows purged');
+select ok(exists (select 1 from rate_limits where key = 'find-ref:MG-OLD0-OLD0'), 'stale rate_limits rows retained without deletion');
 select is(find_booking('mg- abcd -efgh', '+201001234567'), pg_temp.tok('MG-ABCD-EFGH'), 'find: inner spaces in reference ignored');
 
 -- privileges
