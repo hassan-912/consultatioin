@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware'
 import type {
   AuditEntry, Booking, BranchId, Consultant, CustomerDetails, Format, Lang, ProgramId, StaffRole,
 } from '../domain/types'
+import type { ScheduleRules } from '../domain/availability'
 
 export interface Filters {
   branch: BranchId | 'all'
@@ -24,11 +25,6 @@ export interface BookingDraft {
 export type Outcome = 'none' | 'pending' | 'approved' | 'refused' | 'withdrawn'
 export interface ConsultationRecord { notes: string; outcome: Outcome }
 
-export interface ScheduleOverride {
-  formats?: Format[]
-  leave?: { from: string; to: string }[]
-  maxPerDay?: number
-}
 
 export const todayIn = (tz: string, ms = Date.now()) =>
   new Date(ms).toLocaleDateString('en-CA', { timeZone: tz })
@@ -74,7 +70,7 @@ export interface AppState {
   lastCustomerBookingId: string | null
   records: Record<string, ConsultationRecord>
   consultantOverrides: Record<string, Partial<Consultant>>
-  scheduleOverrides: Record<string, ScheduleOverride>
+  scheduleOverrides: Record<string, Partial<ScheduleRules>>
   kpiOverrides: Record<string, number>
   approvalMinSample: number | null
   seeded: boolean
