@@ -129,8 +129,12 @@ export function PaymentQueue() {
   const { t } = useT()
   const all = Object.values(useAppStore(s => s.bookings))
   const [tab, setTab] = useState<'review' | 'sent' | 'history'>('review')
-  const review = all.filter(b => REVIEW.includes(b.status)).sort((a, b) => (a.payment?.submittedAt ?? 0) - (b.payment?.submittedAt ?? 0))
-  const toSend = all.filter(b => b.status === 'confirmed' && !b.ticketSentAt)
+  const review = all.filter(b => REVIEW.includes(b.status))
+    // Newest submissions first.
+    .sort((a, b) => (b.payment?.submittedAt ?? b.createdAt) - (a.payment?.submittedAt ?? a.createdAt))
+  const toSend = all
+    .filter(b => b.status === 'confirmed' && !b.ticketSentAt)
+    .sort((a, b) => (b.payment?.submittedAt ?? b.createdAt) - (a.payment?.submittedAt ?? a.createdAt))
   const history = all.filter(b => b.ticketSentAt).sort((a, b) => (b.ticketSentAt ?? 0) - (a.ticketSentAt ?? 0)).slice(0, 15)
 
   return (

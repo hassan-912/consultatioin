@@ -84,3 +84,16 @@ test('signed-out visitors see the sign-in form, not staff data', () => {
   expect(screen.getByRole('heading', { name: /staff sign-in/i })).toBeInTheDocument()
   expect(screen.queryByText(/MG-TEST-A/)).toBeNull()
 })
+
+test('payment review lists the newest submission first', () => {
+  useAppStore.setState({
+    bookings: {
+      old: mk('old', { payment: { method: 'instapay', txnRef: 'T-OLD', submittedAt: 1000 } }),
+      new: mk('new', { payment: { method: 'instapay', txnRef: 'T-NEW', submittedAt: 9000 } }),
+    },
+  })
+  loginAs('finance')
+  openStaff('/staff/payments')
+  const refs = screen.getAllByRole('article').map(a => a.getAttribute('aria-label'))
+  expect(refs[0]).toMatch(/MG-TEST-NEW/)
+})
