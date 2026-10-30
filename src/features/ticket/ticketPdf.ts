@@ -1,4 +1,4 @@
-import { toPng } from 'html-to-image'
+import { toJpeg } from 'html-to-image'
 import { jsPDF } from 'jspdf'
 
 type Downloads = { save: (r: { filename: string; data: Blob }) => Promise<unknown> }
@@ -29,12 +29,12 @@ export async function getSaver(): Promise<((filename: string, data: Blob) => Pro
 
 /** Renders the boarding-pass element into a single-page PDF sized to the ticket. */
 export async function ticketPdf(node: HTMLElement): Promise<Blob> {
-  const png = await toPng(node, { pixelRatio: 2, backgroundColor: '#F6F7F9', skipFonts: true })
+  const jpg = await toJpeg(node, { pixelRatio: 2, quality: 0.88, backgroundColor: '#F6F7F9', skipFonts: true })
   const { width, height } = node.getBoundingClientRect()
   const margin = 24
   const pdf = new jsPDF({ unit: 'pt', format: [width + margin * 2, height + margin * 2], orientation: 'portrait' })
   pdf.setFillColor(246, 247, 249)
   pdf.rect(0, 0, width + margin * 2, height + margin * 2, 'F')
-  pdf.addImage(png, 'PNG', margin, margin, width, height)
+  pdf.addImage(jpg, 'JPEG', margin, margin, width, height)
   return pdf.output('blob')
 }
