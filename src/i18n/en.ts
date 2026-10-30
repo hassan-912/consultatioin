@@ -61,7 +61,10 @@ export const en = {
   },
   directory: {
     eyebrow: 'MG International · Visa Consultancy',
+    heroTitle: 'Book your consultation',
     title: 'Choose your consultant',
+    fromEveryBranch: 'From every branch to',
+    ourBranches: 'Our branches',
     subtitle: 'Compare experience, specializations and real availability, then book in minutes — online or at our branches in Cairo, Sheikh Zayed and Dubai.',
     filters: 'Filters',
     filterBranch: 'Branch',

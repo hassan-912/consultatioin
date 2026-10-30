@@ -12,6 +12,7 @@ import { FindBookingPage } from './features/ticket/FindBookingPage'
 import { MeetPage } from './features/ticket/MeetPage'
 import { StaffApp } from './features/staff/StaffApp'
 import { DemoPanel } from './features/demo/DemoPanel'
+import { CountryBackdrop } from './components/CountryBackdrop'
 
 export default function App() {
   const lang = useAppStore(s => s.lang)
@@ -32,6 +33,7 @@ export default function App() {
 
   return (
     <MotionConfig reducedMotion="user">
+      <CountryBackdrop />
       <Routes>
         <Route path="/" element={<DirectoryPage />} />
         <Route path="/consultant/:id" element={<ProfilePage />} />
