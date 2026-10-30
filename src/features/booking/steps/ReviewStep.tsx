@@ -4,7 +4,7 @@ import type { Branch, Consultant, CustomerDetails, Format } from '../../../domai
 import { programName } from '../../../config/programs'
 import { formatMoney, priceFor } from '../../../domain/pricing'
 import { cleanPhone } from '../../../domain/phone'
-import { Button, Ltr, Notice } from '../../../components/ui'
+import { Button, Ltr } from '../../../components/ui'
 import { MapCard, TimeWithZone } from '../shared'
 
 export function ReviewStep({ consultant, branch, format, durationMin, slotStartIso, details, onEdit, onContinue }: {
@@ -51,13 +51,11 @@ export function ReviewStep({ consultant, branch, format, durationMin, slotStartI
           {details.note && <div className="text-muted">“{details.note}”</div>}
         </dl>
       ))}
-      {format === 'in-person' ? (
+      {format === 'in-person' && (
         <div>
           <h3 className="mb-2 text-sm font-semibold text-muted">{t('booking.branchAddress')}</h3>
           <MapCard branch={branch} />
         </div>
-      ) : (
-        <Notice tone="info">{t('booking.meetingLinkNote')}</Notice>
       )}
       <div className="flex items-center justify-between rounded-2xl bg-slate-deep px-5 py-4 text-white">
         <div>
