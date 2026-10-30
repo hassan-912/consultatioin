@@ -66,6 +66,16 @@ export const BoardingPass = forwardRef<HTMLDivElement, { booking: Booking; lang?
         {t(`status.${b.status}`)}
       </div>
 
+      {onHold && (
+        <div role="note" className="mx-5 mt-4 flex gap-3 rounded-2xl border border-warn/30 bg-warn-soft px-4 py-3 text-warn">
+          <Icon name="alert" size={20} className="mt-0.5" />
+          <div>
+            <p className="font-semibold">{t('ticket.onHoldTitle')}</p>
+            <p className="mt-0.5 text-sm">{t('ticket.onHoldBody')}</p>
+          </div>
+        </div>
+      )}
+
       {/* Details */}
       <div className="grid grid-cols-2 gap-x-4 gap-y-3.5 px-5 py-5 text-sm">
         {field(t('ticket.passenger'), b.customer.name)}

@@ -21,9 +21,9 @@ test('language switch keeps filters and booking draft through rehydration', asyn
   s.setLang('ar')
 
   // simulate a reload: wipe memory state (which also overwrites storage), then restore the saved snapshot
-  const saved = sessionStorage.getItem('mg-proto-v1')!
+  const saved = localStorage.getItem('mg-proto-v1')!
   useAppStore.setState({ filters: { ...s.filters, branch: 'all' }, draft: { ...s.draft, step: 0 } })
-  sessionStorage.setItem('mg-proto-v1', saved)
+  localStorage.setItem('mg-proto-v1', saved)
   await useAppStore.persist.rehydrate()
 
   const r = useAppStore.getState()

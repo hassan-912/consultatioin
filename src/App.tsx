@@ -22,6 +22,14 @@ export default function App() {
   useEffect(() => {
     applyDocumentLang(lang)
   }, [lang])
+  // Keep open tabs in step: a booking made or verified in one tab appears in the others.
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'mg-proto-v1') useAppStore.persist.rehydrate()
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [])
   useEffect(() => {
     seedIfNeeded()
     expireDue()

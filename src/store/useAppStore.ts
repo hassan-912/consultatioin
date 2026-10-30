@@ -125,7 +125,8 @@ export const useAppStore = create<AppState>()(
     }),
     {
       name: 'mg-proto-v1',
-      storage: createJSONStorage(() => sessionStorage),
+      // localStorage so a booking link opens in any tab or window of the same browser.
+      storage: createJSONStorage(() => localStorage),
       partialize: ({ setLang: _a, now: _b, ...rest }) => rest,
       onRehydrateStorage: () => state => {
         if (state) applyDocumentLang(state.lang)

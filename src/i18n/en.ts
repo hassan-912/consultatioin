@@ -265,6 +265,9 @@ export const en = {
     findHint: 'Enter your booking reference and the phone number you booked with.',
     findSubmit: 'Find booking',
     notFound: 'No booking found with these details.',
+    notFoundHere: 'This prototype saves bookings only in the browser where they were made. Open the link in that same browser, or find the booking with its reference and phone number.',
+    onHoldTitle: 'You can’t enter with this ticket yet',
+    onHoldBody: 'It becomes valid once our finance team confirms your payment. Your confirmed ticket will then be sent to you.',
     resubmit: 'Submit payment again',
   },
   team: {

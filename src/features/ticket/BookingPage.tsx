@@ -25,6 +25,7 @@ export function NotFound() {
       <main id="main" className="mx-auto max-w-lg px-4 py-16 text-center">
         <Icon name="search" size={32} className="mx-auto text-mist" />
         <p className="mt-4 text-lg font-semibold text-ink">{t('ticket.notFound')}</p>
+        <p className="mx-auto mt-2 max-w-[48ch] text-sm text-muted">{t('ticket.notFoundHere')}</p>
         <ButtonLink to="/find" className="mt-6">{t('ticket.findTitle')}</ButtonLink>
       </main>
     </>

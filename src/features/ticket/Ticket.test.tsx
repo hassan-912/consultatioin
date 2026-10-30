@@ -76,3 +76,15 @@ test('unknown token shows not found', () => {
   open('/booking/nope')
   expect(screen.getByText('No booking found with these details.')).toBeInTheDocument()
 })
+
+test('on-hold ticket carries a clear "can’t enter yet" warning', () => {
+  put({ status: 'on-hold' })
+  open(`/ticket/${base.manageToken}`)
+  expect(screen.getByRole('note')).toHaveTextContent(/can’t enter with this ticket yet/i)
+})
+
+test('a missing booking explains that bookings live in the browser they were made in', () => {
+  useAppStore.setState({ bookings: {}, seeded: true })
+  open('/booking/elsewhere')
+  expect(screen.getByText(/saves bookings only in the browser/i)).toBeInTheDocument()
+})
