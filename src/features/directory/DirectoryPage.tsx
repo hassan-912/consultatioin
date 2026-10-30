@@ -33,16 +33,16 @@ export function DirectoryPage() {
 
   return (
     <>
-      <div className="relative overflow-hidden bg-slate-deep pb-24 text-white">
+      <div className="relative overflow-hidden bg-slate-deep pb-20 text-white">
         <div className="grain absolute inset-0" aria-hidden />
         <div className="absolute -end-40 -top-40 size-[520px] rounded-full bg-navy/60 blur-3xl" aria-hidden />
         <Header variant="overlay" />
-        <section aria-labelledby="hero-title" className="relative mx-auto grid max-w-6xl items-center gap-4 px-4 pt-24 sm:px-6 sm:pt-28 lg:grid-cols-[1fr_1.1fr] lg:gap-8">
+        <section aria-labelledby="hero-title" className="relative mx-auto grid max-w-6xl items-center gap-2 px-4 pt-20 sm:px-6 sm:pt-20 md:grid-cols-[0.9fr_1.1fr] md:gap-6">
           <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: [0.2, 0.8, 0.2, 1] }}>
-            <h1 id="hero-title" className="text-[2.6rem] font-semibold leading-[1.05] sm:text-6xl">{t('directory.heroTitle')}</h1>
-            <p className="mt-5 max-w-[52ch] text-base leading-relaxed text-mist sm:text-lg">{t('directory.subtitle')}</p>
+            <h1 id="hero-title" className="text-4xl font-semibold leading-[1.05] lg:text-5xl">{t('directory.heroTitle')}</h1>
+            <p className="mt-3 max-w-[48ch] text-[15px] leading-relaxed text-mist lg:text-base">{t('directory.subtitle')}</p>
           </motion.div>
-          <WorldRoutes phase={phase} cycle={cycle} className="mx-auto h-auto w-full max-w-[560px]" />
+          <WorldRoutes phase={phase} cycle={cycle} className="mx-auto h-auto max-h-[300px] w-full" />
         </section>
       </div>
 
