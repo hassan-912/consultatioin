@@ -1,6 +1,6 @@
 begin;
 set local search_path = public, extensions;
-select plan(22);
+select plan(24);
 
 select has_table('public', t, t || ' exists') from unnest(array[
   'staff_profiles','schedules','schedule_exceptions','bookings','payments','audit_log','consultation_records']) t;
@@ -20,7 +20,7 @@ $$;
 select lives_ok($$select pg_temp.mk('c1','2030-01-01 10:00+00','2030-01-01 10:30+00','confirmed','R1')$$, 'insert first booking');
 select throws_ok($$select pg_temp.mk('c1','2030-01-01 10:15+00','2030-01-01 10:45+00','reserved','R2')$$, '23P01', null, 'overlap rejected');
 select throws_ok($$select pg_temp.mk('c1','2030-01-01 10:35+00','2030-01-01 11:05+00','reserved','R3')$$, '23P01', null, 'inside 10-min buffer rejected');
-select lives_ok($$select pg_temp.mk('c1','2030-01-01 10:50+00','2030-01-01 11:20+00','reserved','R4')$$, '20 min apart (2x buffer) allowed');
+select lives_ok($$select pg_temp.mk('c1','2030-01-01 10:40+00','2030-01-01 11:10+00','reserved','R4')$$, 'starts exactly 10 min after previous ends: allowed');
 select lives_ok($$select pg_temp.mk('c2','2030-01-01 10:00+00','2030-01-01 10:30+00','confirmed','R5')$$, 'other consultant allowed');
 select lives_ok($$select pg_temp.mk('c1','2030-01-01 10:00+00','2030-01-01 10:30+00','expired','R6')$$, 'overlap allowed when new row expired');
 select lives_ok($$select pg_temp.mk('c1','2030-01-01 10:00+00','2030-01-01 10:30+00','cancelled','R7')$$, 'overlap allowed when new row cancelled');
@@ -31,6 +31,11 @@ select throws_ok($$select pg_temp.mk('c3','2030-02-01 10:30+00','2030-02-01 10:0
 select throws_ok($$select pg_temp.mk('c3','2030-02-01 10:00+00','2030-02-01 10:30+00','reserved','R10', repeat('x',301))$$, '23514', null, 'note <= 300');
 select throws_ok($$select pg_temp.mk('c3','2030-02-01 10:00+00','2030-02-01 10:30+00','reserved','R11', null, 'sms')$$, '23514', null, 'channel enum');
 select throws_ok($$select pg_temp.mk('c3','2030-02-01 10:00+00','2030-02-01 10:30+00','reserved','R12', null, 'email', 'fr')$$, '23514', null, 'lang enum');
+
+create table public.zz_probe(id int);
+create function public.zz_probe_fn() returns int language sql as $$ select 1 $$;
+select ok(not has_table_privilege('anon', 'public.zz_probe', 'select'), 'anon has no default privilege on new tables');
+select ok(not has_function_privilege('anon', 'public.zz_probe_fn()', 'execute'), 'anon has no default EXECUTE on new functions');
 
 select * from finish();
 rollback;
