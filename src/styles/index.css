@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+@theme {
+  --color-slate: #2D3845;
+  --color-slate-deep: #222D35;
+  --color-ink: #17202A;
+  --color-mist: #9FAEBE;
+  --color-mist-soft: #E7ECF1;
+  --color-paper: #F6F7F9;
+  --color-line: #DCE2E8;
+  --color-navy: #0C2B59;
+  --color-gold: #C9A86A;
+  --color-gold-deep: #8A6A2E;
+  --color-gold-soft: #F4ECDD;
+  --color-ok: #1E7A4F;
+  --color-ok-soft: #E3F3EA;
+  --color-warn: #9A5B00;
+  --color-warn-soft: #FDF1DC;
+  --color-bad: #B42318;
+  --color-bad-soft: #FDE7E5;
+  --color-muted: #5B6773;
+
+  --font-display: "Changa", "IBM Plex Sans Arabic", system-ui, sans-serif;
+  --font-body: "Mulish", system-ui, sans-serif;
+  --font-arabic: "IBM Plex Sans Arabic", "Changa", system-ui, sans-serif;
+
+  --radius-card: 1.25rem;
+  --shadow-card: 0 1px 2px rgb(23 32 42 / 0.06), 0 8px 24px -12px rgb(23 32 42 / 0.18);
+  --shadow-lift: 0 2px 4px rgb(23 32 42 / 0.06), 0 22px 40px -18px rgb(23 32 42 / 0.32);
+}
+
+@layer base {
+  html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+  body {
+    @apply bg-paper text-ink antialiased;
+    font-family: var(--font-body);
+    min-height: 100dvh;
+  }
+  :lang(ar) body, body:lang(ar) { font-family: var(--font-arabic); }
+  h1, h2, h3, h4 { font-family: var(--font-display); letter-spacing: -0.01em; }
+  :lang(ar) h1, :lang(ar) h2, :lang(ar) h3, :lang(ar) h4 { letter-spacing: 0; }
+  :focus-visible { outline: 3px solid var(--color-gold); outline-offset: 2px; border-radius: 6px; }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  }
+}
+
+@layer utilities {
+  .tabular { font-variant-numeric: tabular-nums; }
+  .grain {
+    background-image: radial-gradient(rgb(255 255 255 / 0.06) 1px, transparent 1px);
+    background-size: 22px 22px;
+  }
+  .perforation {
+    background-image: radial-gradient(circle, var(--color-paper) 5px, transparent 5.5px);
+    background-size: 18px 18px;
+    background-position: center;
+    background-repeat: repeat-x;
+  }
+  .safe-bottom { padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { scrollbar-width: none; }
+}
