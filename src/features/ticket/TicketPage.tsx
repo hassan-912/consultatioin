@@ -1,3 +1,1 @@
-export function TicketPage() {
-  return null
-}
+export { BookingPage as TicketPage } from './BookingPage'
