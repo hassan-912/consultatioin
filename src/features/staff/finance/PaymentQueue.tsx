@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useT, translate } from '../../../i18n'
+import { useT } from '../../../i18n'
 import { useAppStore } from '../../../store/useAppStore'
 import { applyEvent, SlotTaken } from '../../../store/actions'
 import type { Booking } from '../../../domain/types'
@@ -10,7 +10,7 @@ import { Button, Ltr, Notice } from '../../../components/ui'
 import { TextField } from '../../../components/fields'
 import { Icon } from '../../../components/Icon'
 import { BottomSheet } from '../../../components/widgets'
-import { manageUrl } from '../../ticket/BoardingPass'
+import { WhatsAppSender } from './WhatsAppSender'
 import { ScreenTitle } from '../StaffApp'
 import { BookingMeta, Empty, Tabs } from '../common'
 
@@ -99,11 +99,7 @@ function ReviewItem({ b }: { b: Booking }) {
 }
 
 function SendItem({ b }: { b: Booking }) {
-  const { t, lang } = useT()
-  const msgLang = b.customer.consultationLang
-  const link = manageUrl(b)
-  const text = translate(msgLang, 'staff.finance.waMessage', { name: b.customer.name, ref: b.reference, link })
-  const wa = `https://wa.me/${b.customer.phone.replace('+', '')}?text=${encodeURIComponent(text)}`
+  const { t } = useT()
   const via = b.customer.channel
   return (
     <article aria-label={b.reference} className="rounded-2xl bg-white p-4 ring-1 ring-line sm:p-5">
@@ -112,24 +108,19 @@ function SendItem({ b }: { b: Booking }) {
         <p className="text-xs text-muted">{t('booking.channel')}: <span className="font-semibold text-ink">{t(via === 'email' ? 'booking.channelEmail' : 'booking.channelWhatsapp')}</span></p>
         <p className="mt-1"><Ltr>{via === 'email' ? b.customer.email : b.customer.phone}</Ltr></p>
       </div>
-      <div className="mt-4 flex flex-wrap gap-2">
-        {via === 'email' ? (
-          <Button onClick={() => applyEvent(b.id, { type: 'mark-sent', via: 'email' }, 'finance')}>
-            <Icon name="mail" size={16} />
-            {t('staff.finance.sendEmail')}
-          </Button>
-        ) : (
-          <>
-            <a href={wa} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[#1E7A4F] px-5 text-[15px] font-semibold text-white hover:brightness-110">
-              <Icon name="chat" size={16} />
-              {t('staff.finance.sendWhatsapp')}
-            </a>
-            <Button variant="ghost" onClick={() => applyEvent(b.id, { type: 'mark-sent', via: 'whatsapp' }, 'finance')}>{t('staff.finance.markSent')}</Button>
-          </>
-        )}
-      </div>
-      {via === 'email' && <p className="mt-2 text-xs text-muted">{t('staff.finance.emailSimulated')}</p>}
-      <p className="sr-only" lang={lang}>{text}</p>
+      {via === 'email' ? (
+        <>
+          <div className="mt-4">
+            <Button onClick={() => applyEvent(b.id, { type: 'mark-sent', via: 'email' }, 'finance')}>
+              <Icon name="mail" size={16} />
+              {t('staff.finance.sendEmail')}
+            </Button>
+          </div>
+          <p className="mt-2 text-xs text-muted">{t('staff.finance.emailSimulated')}</p>
+        </>
+      ) : (
+        <WhatsAppSender b={b} />
+      )}
     </article>
   )
 }

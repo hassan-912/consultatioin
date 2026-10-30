@@ -1,7 +1,7 @@
 import { forwardRef } from 'react'
 import { bookingConfig } from '../../config/booking'
-import { useT } from '../../i18n'
-import type { Booking } from '../../domain/types'
+import { translate, useT, type TKey, type Vars } from '../../i18n'
+import type { Booking, L10n, Lang } from '../../domain/types'
 import { branchById } from '../../config/branches'
 import { contact } from '../../config/contact'
 import { getConsultant } from '../../store/actions'
@@ -16,8 +16,12 @@ const VALID = ['confirmed', 'checked-in', 'completed']
 export const manageUrl = (b: Booking) => `${location.origin}${location.pathname}#/booking/${b.manageToken}`
 
 /** The entry ticket, styled as a boarding pass. */
-export const BoardingPass = forwardRef<HTMLDivElement, { booking: Booking }>(({ booking: b }, ref) => {
-  const { t, l, lang } = useT()
+export const BoardingPass = forwardRef<HTMLDivElement, { booking: Booking; lang?: Lang }>(({ booking: b, lang: forced }, ref) => {
+  // `lang` renders the ticket in a language other than the page's (e.g. for a WhatsApp attachment).
+  const ui = useT()
+  const lang = forced ?? ui.lang
+  const t = (k: TKey, v?: Vars) => translate(lang, k, v)
+  const l = (v: L10n) => v[lang]
   const consultant = getConsultant(b.consultantId)
   const branch = branchById(b.branchId)
   const valid = VALID.includes(b.status)
@@ -31,7 +35,7 @@ export const BoardingPass = forwardRef<HTMLDivElement, { booking: Booking }>(({ 
   )
 
   return (
-    <div ref={ref} className="relative mx-auto w-full max-w-[420px] overflow-hidden rounded-[28px] bg-white shadow-[var(--shadow-lift)] ring-1 ring-line">
+    <div ref={ref} dir={lang === 'ar' ? 'rtl' : 'ltr'} lang={lang} className="relative mx-auto w-full max-w-[420px] overflow-hidden rounded-[28px] bg-white shadow-[var(--shadow-lift)] ring-1 ring-line">
       {/* Header band */}
       <div className="relative overflow-hidden bg-slate-deep px-5 pb-5 pt-4 text-white">
         <div className="grain absolute inset-0" aria-hidden />

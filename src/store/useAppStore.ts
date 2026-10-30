@@ -63,6 +63,8 @@ export interface AppState {
   role: StaffRole
   setRole: (r: StaffRole) => void
   staffSession: { username: string; role: StaffRole; consultantId: string | null } | null
+  /** Name finance staff sign WhatsApp confirmations with. */
+  senderName: string
   staffConsultantId: string
   setStaffConsultantId: (id: string) => void
 
@@ -103,6 +105,7 @@ export const useAppStore = create<AppState>()(
       role: 'finance',
       setRole: role => set({ role }),
       staffSession: null,
+      senderName: '',
       staffConsultantId: 'mohamed-gamal',
       setStaffConsultantId: staffConsultantId => set({ staffConsultantId }),
 
