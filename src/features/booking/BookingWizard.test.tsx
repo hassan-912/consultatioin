@@ -93,3 +93,14 @@ test('expired reservation disables submit', async () => {
   expect(screen.queryByRole('button', { name: /submit payment details/i })).toBeNull()
   vi.useRealTimers()
 })
+
+test('submitting after the hold silently expired (throttled tab) shows the expired screen', () => {
+  useAppStore.getState().updateDraft({ step: 4, format: 'online', durationMin: 30, slotStartIso: firstSlot('online', 30) })
+  useAppStore.getState().updateDetails(goodDetails)
+  renderWizard()
+  fireEvent.change(screen.getByLabelText(/transaction reference/i), { target: { value: 'TX-1234' } })
+  useAppStore.setState({ timeOffsetMs: 31 * 60000 }) // no timer tick yet
+  fireEvent.click(screen.getByRole('button', { name: /submit payment details/i }))
+  expect(screen.getByText(/reservation expired/i)).toBeInTheDocument()
+  expect(Object.values(useAppStore.getState().bookings)[0].status).toBe('expired')
+})

@@ -2,13 +2,13 @@ import { useAppStore } from './useAppStore'
 import { transition, type BookingEvent } from '../domain/bookingStatus'
 import { makeReference, makeToken } from '../domain/ids'
 import { priceFor } from '../domain/pricing'
-import { cleanPhone } from '../domain/phone'
+import { cleanPhone, normalizeDigits } from '../domain/phone'
 import { bookingConfig } from '../config/booking'
 import { consultants as baseConsultants } from '../config/consultants'
 import { branchById } from '../config/branches'
 import { buildScheduleRules } from '../demo/schedule'
 import { buildSeed } from '../demo/seed'
-import type { ScheduleRules } from '../domain/availability'
+import { isBlocking, type ScheduleRules } from '../domain/availability'
 import type { Actor, Booking, Consultant, PaymentMethodId } from '../domain/types'
 
 const get = () => useAppStore.getState()
@@ -28,7 +28,7 @@ function save(b: Booking) {
 export function createReservation(): Booking {
   const { draft, bookings, now } = get()
   const existing = draft.bookingId ? bookings[draft.bookingId] : undefined
-  if (existing && existing.startIso === draft.slotStartIso && existing.format === draft.format && existing.durationMin === draft.durationMin)
+  if (existing?.status === 'reserved' && existing.startIso === draft.slotStartIso && existing.format === draft.format && existing.durationMin === draft.durationMin)
     return existing
 
   if (!draft.consultantId || !draft.format || !draft.durationMin || !draft.slotStartIso) throw new Error('Incomplete draft')
@@ -37,11 +37,7 @@ export function createReservation(): Booking {
   const start = Date.parse(draft.slotStartIso)
   const end = start + draft.durationMin * 60000
 
-  const clash = Object.values(bookings).some(
-    b => b.consultantId === consultant.id && b.id !== existing?.id && blocks(b, now()) &&
-      start < Date.parse(b.endIso) && end > Date.parse(b.startIso),
-  )
-  if (clash) throw new SlotTaken()
+  if (start < now() || clashes(consultant.id, start, end, existing?.id)) throw new SlotTaken()
 
   // Release a previous hold from this same draft if the customer changed their slot.
   if (existing?.status === 'reserved') save({ ...existing, status: 'cancelled' })
@@ -70,15 +66,24 @@ export function createReservation(): Booking {
   return b
 }
 
-function blocks(b: Booking, nowMs: number) {
-  return ['on-hold', 'confirmed', 'checked-in', 'wrong-amount', 'duplicate'].includes(b.status) ||
-    (b.status === 'reserved' && b.holdExpiresAt > nowMs)
+/** True when another booking already occupies [start, end) on this consultant's single timeline. */
+function clashes(consultantId: string, start: number, end: number, excludeId?: string) {
+  const { bookings, now } = get()
+  return Object.values(bookings).some(
+    b => b.consultantId === consultantId && b.id !== excludeId && isBlocking(b, now()) &&
+      start < Date.parse(b.endIso) && end > Date.parse(b.startIso),
+  )
 }
+
+const ownSlotClashes = (b: Booking) => clashes(b.consultantId, Date.parse(b.startIso), Date.parse(b.endIso), b.id)
 
 export function submitPayment(id: string, p: { method: PaymentMethodId; txnRef: string; receiptName?: string }): Booking {
   const b = get().bookings[id]
   if (b.status === 'on-hold') return b // double submit: already received
-  const next = transition(b, { type: 'submit-payment', payment: { ...p, txnRef: p.txnRef.trim(), submittedAt: get().now() } }, get().now())
+  // A rejected booking released its slot; make sure nobody took it meanwhile.
+  if (b.status === 'rejected' && ownSlotClashes(b)) throw new SlotTaken()
+  const txnRef = normalizeDigits(p.txnRef).trim()
+  const next = transition(b, { type: 'submit-payment', payment: { ...p, txnRef, submittedAt: get().now() } }, get().now())
   save(next)
   audit('customer', 'submitted', next, b.status, next.status)
   return next
@@ -86,6 +91,8 @@ export function submitPayment(id: string, p: { method: PaymentMethodId; txnRef: 
 
 export function applyEvent(id: string, e: BookingEvent, actor: Actor): Booking {
   const b = get().bookings[id]
+  // Released slots (late transfers) may have been re-booked before finance confirms.
+  if (e.type === 'verify' && !isBlocking(b, get().now()) && ownSlotClashes(b)) throw new SlotTaken()
   const next = transition(b, e, get().now())
   save(next)
   const action = e.type === 'mark-sent' ? 'sent' : e.type === 'check-in' ? 'checkin' : 'transition'
@@ -117,6 +124,7 @@ export function cancelBooking(id: string, actor: Actor) {
 export function rescheduleBooking(id: string, startIso: string, actor: Actor): Booking {
   const b = get().bookings[id]
   const start = Date.parse(startIso)
+  if (start < get().now() || clashes(b.consultantId, start, start + b.durationMin * 60000, b.id)) throw new SlotTaken()
   const next = { ...b, startIso: new Date(start).toISOString(), endIso: new Date(start + b.durationMin * 60000).toISOString() }
   save(next)
   audit(actor, 'transition', next, b.startIso, next.startIso)

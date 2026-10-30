@@ -51,11 +51,12 @@ function Manage({ b }: { b: Booking }) {
   const [downloading, setDownloading] = useState(false)
   const [reschedOpen, setReschedOpen] = useState(false)
   const [newSlot, setNewSlot] = useState<string | null>(null)
+  const [reschedError, setReschedError] = useState<string | null>(null)
   const startBooking = useStartBooking()
   const consultant = getConsultant(b.consultantId)
   const branch = branchById(b.branchId)
   const channel = t(b.customer.channel === 'email' ? 'booking.channelEmail' : 'booking.channelWhatsapp')
-  const canPay = (b.status === 'reserved' || b.status === 'rejected') && b.holdExpiresAt > now()
+  const canPay = (b.status === 'reserved' && b.holdExpiresAt > now()) || b.status === 'rejected'
 
   const download = async () => {
     if (!passRef.current) return
@@ -155,8 +156,13 @@ function Manage({ b }: { b: Booking }) {
             size="lg"
             disabled={!newSlot}
             onClick={() => {
-              rescheduleBooking(b.id, newSlot!, 'customer')
-              setReschedOpen(false)
+              try {
+                rescheduleBooking(b.id, newSlot!, 'customer')
+                setReschedOpen(false)
+                setReschedError(null)
+              } catch {
+                setReschedError(t('payment.slotTaken'))
+              }
               setNewSlot(null)
             }}
           >
@@ -171,6 +177,7 @@ function Manage({ b }: { b: Booking }) {
           format={b.format}
           durationMin={b.durationMin}
           slotStartIso={newSlot}
+          error={reschedError}
           excludeBookingId={b.id}
           onChange={p => p.slotStartIso !== undefined && setNewSlot(p.slotStartIso)}
         />

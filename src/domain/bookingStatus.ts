@@ -61,7 +61,8 @@ export function transition(b: Booking, e: BookingEvent, nowMs: number): Booking 
   if (!canApply(b, e.type)) throw new InvalidTransition(b.status, e.type)
   switch (e.type) {
     case 'submit-payment':
-      if (nowMs > b.holdExpiresAt) throw new InvalidTransition('expired', e.type)
+      // An unpaid hold expires; a rejected payment may be resubmitted (slot is re-checked by the caller).
+      if (b.status === 'reserved' && nowMs > b.holdExpiresAt) throw new InvalidTransition('expired', e.type)
       return { ...b, status: 'on-hold', payment: e.payment, rejectReason: undefined }
     case 'verify':
       return {

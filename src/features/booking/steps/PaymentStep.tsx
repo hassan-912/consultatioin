@@ -3,7 +3,7 @@ import { useT } from '../../../i18n'
 import type { Booking, PaymentMethodId } from '../../../domain/types'
 import { paymentConfig } from '../../../config/payments'
 import { useAppStore } from '../../../store/useAppStore'
-import { expireDue } from '../../../store/actions'
+import { expireDue, SlotTaken } from '../../../store/actions'
 import { formatMoney } from '../../../domain/pricing'
 import { CopyField } from '../../../components/CopyField'
 import { Countdown } from '../../../components/widgets'
@@ -23,7 +23,7 @@ export function PaymentStep({ booking, onSubmit, onExpiredRestart }: {
   const [receipt, setReceipt] = useState<string>()
   const [error, setError] = useState<string>()
   const m = paymentConfig.methods.find(x => x.id === method)!
-  const expired = booking.status === 'expired' || booking.holdExpiresAt <= now()
+  const expired = booking.status === 'expired' || (booking.status === 'reserved' && booking.holdExpiresAt <= now())
   const amount = formatMoney(booking.price, lang)
 
   if (expired)
@@ -40,7 +40,14 @@ export function PaymentStep({ booking, onSubmit, onExpiredRestart }: {
   const submit = (e: FormEvent) => {
     e.preventDefault()
     if (txnRef.trim().length < 4) return setError(t('validation.txnRef'))
-    onSubmit({ method, txnRef, receiptName: receipt })
+    // Timers are throttled in background tabs, so re-check the deadline at submit time.
+    if (booking.status === 'reserved' && booking.holdExpiresAt <= now()) return void expireDue()
+    try {
+      onSubmit({ method, txnRef, receiptName: receipt })
+    } catch (err) {
+      if (err instanceof SlotTaken) return setError(t('payment.slotTaken'))
+      expireDue()
+    }
   }
 
   return (

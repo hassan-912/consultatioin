@@ -201,6 +201,7 @@ export const en = {
     expiredBody: 'The time to submit payment ran out and the appointment was released. If you already transferred, contact us with your reference — we will help.',
     chooseAnother: 'Choose another time',
     underReview: 'Payment under review',
+    slotTaken: 'This time has just been taken. Please choose another time.',
   },
   status: {
     reserved: 'Awaiting payment',
@@ -309,6 +310,7 @@ export const en = {
       sentTo: 'Ticket sent to {to}',
       emailSimulated: 'Prototype: email sending is simulated.',
       waMessage: 'Hello {name}, your MG International consultation is confirmed. Reference: {ref}. Ticket: {link}',
+      slotTaken: 'The original time is no longer free. Reschedule this booking before confirming it.',
       verifiedBy: 'Only finance verification confirms a booking. Receipts never auto-confirm.',
       tabs: { review: 'To review', sent: 'To send', history: 'Recent' },
     },

@@ -75,10 +75,14 @@ export function nextAvailable(q: Omit<SlotQuery, 'date'> & { fromDate: string; h
 
 const BLOCKING: BookingStatus[] = ['on-hold', 'confirmed', 'checked-in', 'completed', 'wrong-amount', 'duplicate']
 
+/** Whether a booking occupies its consultant's time (an unpaid hold only until its deadline). */
+export const isBlocking = (b: Booking, nowMs: number) =>
+  BLOCKING.includes(b.status) || (b.status === 'reserved' && b.holdExpiresAt > nowMs)
+
 /** Bookings that occupy the consultant's single timeline, across both formats. */
 export function busyFromBookings(bookings: Booking[], consultantId: string, nowMs: number): Busy[] {
   return bookings
     .filter(b => b.consultantId === consultantId)
-    .filter(b => BLOCKING.includes(b.status) || (b.status === 'reserved' && b.holdExpiresAt > nowMs))
+    .filter(b => isBlocking(b, nowMs))
     .map(b => ({ startIso: b.startIso, endIso: b.endIso }))
 }

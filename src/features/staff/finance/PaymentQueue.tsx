@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useT, translate } from '../../../i18n'
 import { useAppStore } from '../../../store/useAppStore'
-import { applyEvent } from '../../../store/actions'
+import { applyEvent, SlotTaken } from '../../../store/actions'
 import type { Booking } from '../../../domain/types'
 import { formatInZone } from '../../../domain/time'
 import { formatMoney } from '../../../domain/pricing'
@@ -21,7 +21,15 @@ function ReviewItem({ b }: { b: Booking }) {
   const [reason, setReason] = useState('')
   const [err, setErr] = useState<string>()
   const method = paymentConfig.methods.find(m => m.id === b.payment?.method)
-  const act = (e: Parameters<typeof applyEvent>[1]) => applyEvent(b.id, e, 'finance')
+  const [slotTaken, setSlotTaken] = useState(false)
+  const act = (e: Parameters<typeof applyEvent>[1]) => {
+    try {
+      applyEvent(b.id, e, 'finance')
+    } catch (err) {
+      if (err instanceof SlotTaken) setSlotTaken(true)
+      else throw err
+    }
+  }
   const onHold = b.status === 'on-hold'
 
   return (
@@ -42,6 +50,7 @@ function ReviewItem({ b }: { b: Booking }) {
         )}
       </dl>
 
+      {slotTaken && <Notice tone="bad" className="mt-4">{t('staff.finance.slotTaken')}</Notice>}
       {rejecting ? (
         <div className="mt-4 grid gap-3">
           <TextField label={t('staff.finance.reason')} value={reason} onChange={e => { setReason(e.target.value); setErr(undefined) }} error={err} />
