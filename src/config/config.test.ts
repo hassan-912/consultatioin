@@ -29,10 +29,9 @@ describe('consultants', () => {
     const count = (id: string) => consultants.filter(c => c.branchId === id).length
     expect([count('nasr-city'), count('sheikh-zayed'), count('dubai')]).toEqual([4, 2, 1])
   })
-  test('only Mohamed Gamal has a title; no bios', () => {
-    const titled = consultants.filter(c => c.title)
-    expect(titled.map(c => c.id)).toEqual(['mohamed-gamal'])
-    expect(titled[0].title!.en).toBe('Senior Immigration Specialist & Contract Manager')
+  test('titles from the brief and mg-visa.com; no bios', () => {
+    expect(consultants.find(c => c.id === 'mohamed-gamal')!.title!.en).toBe('Senior Immigration Specialist & Contract Manager')
+    expect(consultants.filter(c => c.id !== 'mohamed-gamal').every(c => c.title?.en === 'Immigration Specialist')).toBe(true)
     expect(consultants.every(c => c.bio === null)).toBe(true)
   })
   test('Esmail spelling flagged', () => {

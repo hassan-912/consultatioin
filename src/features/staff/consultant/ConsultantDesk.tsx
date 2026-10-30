@@ -11,8 +11,11 @@ import { BookingMeta, Empty, Tabs } from '../common'
 
 function ConsultantPicker() {
   const { t, l } = useT()
+  const role = useAppStore(s => s.role)
   const id = useAppStore(s => s.staffConsultantId)
   const set = useAppStore(s => s.setStaffConsultantId)
+  // A signed-in consultant only ever sees their own work.
+  if (role === 'consultant') return null
   return (
     <div className="w-64">
       <SelectField label={t('staff.consultant.pickConsultant')} value={id} onChange={e => set(e.target.value)}>

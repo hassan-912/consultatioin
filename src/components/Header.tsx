@@ -14,7 +14,7 @@ export function Header({ variant = 'solid' }: { variant?: 'solid' | 'overlay' })
   const links = [
     { to: '/', label: t('nav.consultants'), end: true },
     { to: '/find', label: t('nav.find') },
-    { to: '/staff', label: t('nav.staff') },
+    { to: '/team', label: t('nav.staff') },
   ]
   return (
     <header className={`${variant === 'overlay' ? 'absolute inset-x-0 top-0 z-30' : 'sticky top-0 z-30 bg-slate-deep/95 backdrop-blur'} text-white`}>

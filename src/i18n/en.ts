@@ -1,6 +1,6 @@
 export const en = {
   meta: { brand: 'MG International', tagline: 'Visa Consultancy', switchTo: 'العربية', switchLabel: 'Switch to Arabic' },
-  nav: { consultants: 'Consultants', find: 'Find my booking', staff: 'Staff', menu: 'Menu', close: 'Close', home: 'Home', skip: 'Skip to content' },
+  nav: { consultants: 'Consultants', find: 'Find my booking', staff: 'Our team', staffSignIn: 'Staff sign-in', menu: 'Menu', close: 'Close', home: 'Home', skip: 'Skip to content' },
   common: {
     demo: 'Demo data',
     viewProfile: 'View profile',
@@ -266,7 +266,27 @@ export const en = {
     notFound: 'No booking found with these details.',
     resubmit: 'Submit payment again',
   },
+  team: {
+    title: 'Meet our team',
+    subtitle: 'The people behind MG International at our branches in Nasr City, Sheikh Zayed and Dubai.',
+    sourceNote: 'Team members and photos as published on mg-visa.com.',
+  },
   staff: {
+    login: {
+      title: 'Staff sign-in',
+      hint: 'For MG International staff. Each account opens only the screens its role needs.',
+      username: 'Username',
+      password: 'Password',
+      show: 'Show password',
+      hide: 'Hide password',
+      submit: 'Sign in',
+      checking: 'Signing in…',
+      error: 'Incorrect username or password.',
+      signedInAs: 'Signed in as {name}',
+      signOut: 'Sign out',
+      backToSite: 'Back to the website',
+      prototype: 'Prototype accounts: sign-in happens in the browser and is not real security.',
+    },
     title: 'Staff workspace',
     demoAccess: 'Demo access — no real login. Choose a role to preview its permissions.',
     role: 'Role',
@@ -420,6 +440,7 @@ export const en = {
     edited: 'Settings edited',
     sent: 'Ticket sent',
     checkin: 'Checked in',
+    signin: 'Signed in',
   },
 }
 

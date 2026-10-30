@@ -3,7 +3,6 @@ import { useT } from '../../i18n'
 import { useAppStore, todayIn } from '../../store/useAppStore'
 import { dateInZone } from '../../domain/time'
 import { pendingDecisions } from '../../config/pendingDecisions'
-import { Notice } from '../../components/ui'
 import { can } from './permissions'
 import { ScreenTitle } from './StaffApp'
 
@@ -22,7 +21,6 @@ export function Overview() {
   return (
     <>
       <ScreenTitle title={t('staff.screens.overview')} />
-      <Notice tone="info" className="mb-6">{t('staff.demoAccess')}</Notice>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {tiles.map(tile => {
           const body = (

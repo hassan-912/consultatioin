@@ -4,6 +4,7 @@ import QRCode from 'qrcode'
 import type { Consultant } from '../domain/types'
 import { useT } from '../i18n'
 import { Icon } from './Icon'
+import { consultantPhoto } from '../features/team/photos'
 
 const initials = (name: string) =>
   name.split(/\s+/).filter(Boolean).slice(0, 2).map(p => p[0]).join('')
@@ -12,8 +13,9 @@ const initials = (name: string) =>
 export function Avatar({ consultant, size = 'md', showPending = false }: { consultant: Consultant; size?: 'sm' | 'md' | 'lg' | 'xl'; showPending?: boolean }) {
   const { t, l } = useT()
   const dims = { sm: 'size-12 text-base', md: 'size-20 text-2xl', lg: 'size-28 text-4xl', xl: 'size-36 text-5xl' }[size]
-  if (consultant.photo)
-    return <img src={consultant.photo} alt={l(consultant.name)} className={`${dims} rounded-2xl object-cover`} />
+  const photo = consultant.photo ?? consultantPhoto(consultant.id)
+  if (photo)
+    return <img src={photo} alt={l(consultant.name)} className={`${dims} shrink-0 rounded-2xl bg-mist-soft object-cover object-top`} />
   return (
     <div className="relative shrink-0">
       <div

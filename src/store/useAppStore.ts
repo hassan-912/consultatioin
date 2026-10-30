@@ -62,6 +62,7 @@ export interface AppState {
 
   role: StaffRole
   setRole: (r: StaffRole) => void
+  staffSession: { username: string; role: StaffRole; consultantId: string | null } | null
   staffConsultantId: string
   setStaffConsultantId: (id: string) => void
 
@@ -101,6 +102,7 @@ export const useAppStore = create<AppState>()(
 
       role: 'finance',
       setRole: role => set({ role }),
+      staffSession: null,
       staffConsultantId: 'mohamed-gamal',
       setStaffConsultantId: staffConsultantId => set({ staffConsultantId }),
 

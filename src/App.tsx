@@ -13,6 +13,7 @@ import { MeetPage } from './features/ticket/MeetPage'
 import { StaffApp } from './features/staff/StaffApp'
 import { DemoPanel } from './features/demo/DemoPanel'
 import { CountryBackdrop } from './components/CountryBackdrop'
+import { TeamPage } from './features/team/TeamPage'
 
 export default function App() {
   const lang = useAppStore(s => s.lang)
@@ -42,6 +43,7 @@ export default function App() {
         <Route path="/booking/:token" element={<BookingPage />} />
         <Route path="/find" element={<FindBookingPage />} />
         <Route path="/meet/:token" element={<MeetPage />} />
+        <Route path="/team" element={<TeamPage />} />
         <Route path="/staff/*" element={<StaffApp />} />
         <Route path="*" element={<DirectoryPage />} />
       </Routes>

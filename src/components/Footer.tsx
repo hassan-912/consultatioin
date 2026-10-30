@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useT } from '../i18n'
 import { branches } from '../config/branches'
 import { contact } from '../config/contact'
@@ -41,7 +42,11 @@ export function Footer() {
               <Ltr>{contact.email}</Ltr>
             </a>
           </div>
-          <p className="mt-6 mb-3 text-sm font-semibold text-white">{t('footer.follow')}</p>
+          <Link to="/staff" className="mt-4 inline-flex min-h-11 items-center gap-2 text-sm text-mist hover:text-white">
+            <Icon name="user" size={16} />
+            {t('nav.staffSignIn')}
+          </Link>
+          <p className="mt-4 mb-3 text-sm font-semibold text-white">{t('footer.follow')}</p>
           <div className="flex gap-2">
             {socials.map(s => (
               <a

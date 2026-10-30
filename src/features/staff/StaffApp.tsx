@@ -2,13 +2,14 @@ import { useState, type ReactNode } from 'react'
 import { Link, NavLink, Navigate, Route, Routes } from 'react-router-dom'
 import { useT } from '../../i18n'
 import { useAppStore } from '../../store/useAppStore'
-import type { StaffRole } from '../../domain/types'
 import { Logo } from '../../components/Logo'
 import { LangSwitch } from '../../components/LangSwitch'
 import { BottomSheet } from '../../components/widgets'
 import { Icon } from '../../components/Icon'
-import { can, permissions, screens, type StaffScreen } from './permissions'
+import { can, screens, type StaffScreen } from './permissions'
 import { Overview } from './Overview'
+import { StaffLogin } from './StaffLogin'
+import { signOut } from '../../store/auth'
 import { PaymentQueue } from './finance/PaymentQueue'
 import { CheckIn } from './reception/CheckIn'
 import { Arrivals } from './reception/Arrivals'
@@ -37,21 +38,23 @@ const views: Record<StaffScreen, () => ReactNode> = {
   decisions: () => <PendingDecisions />,
 }
 
-function RoleSwitcher({ dark = true }: { dark?: boolean }) {
+function SessionCard({ dark = true }: { dark?: boolean }) {
   const { t } = useT()
-  const role = useAppStore(s => s.role)
-  const setRole = useAppStore(s => s.setRole)
+  const session = useAppStore(s => s.staffSession)!
   return (
-    <label className="block">
-      <span className={`mb-1.5 block text-xs ${dark ? 'text-mist' : 'text-muted'}`}>{t('staff.viewingAs')}</span>
-      <select
-        value={role}
-        onChange={e => setRole(e.target.value as StaffRole)}
-        className={`min-h-11 w-full rounded-xl px-3 text-sm font-semibold ${dark ? 'bg-white/10 text-white ring-1 ring-white/20 [&>option]:text-ink' : 'bg-white text-ink ring-1 ring-line'}`}
+    <div className={`rounded-xl p-3 ${dark ? 'bg-white/5 ring-1 ring-white/10' : 'bg-paper'}`}>
+      <p className={`text-xs ${dark ? 'text-mist' : 'text-muted'}`}>{t('staff.login.signedInAs', { name: '' }).trim()}</p>
+      <p dir="ltr" className={`truncate text-start font-semibold rtl:text-end ${dark ? 'text-white' : 'text-ink'}`}>{session.username}</p>
+      <p className={`text-xs ${dark ? 'text-gold' : 'text-gold-deep'}`}>{t(`staff.roles.${session.role}`)}</p>
+      <button
+        type="button"
+        onClick={signOut}
+        className={`mt-2 inline-flex min-h-10 items-center gap-2 text-sm font-semibold ${dark ? 'text-mist hover:text-white' : 'text-slate hover:text-ink'}`}
       >
-        {(Object.keys(permissions) as StaffRole[]).map(r => <option key={r} value={r}>{t(`staff.roles.${r}`)}</option>)}
-      </select>
-    </label>
+        <Icon name="x" size={15} />
+        {t('staff.login.signOut')}
+      </button>
+    </div>
   )
 }
 
@@ -81,15 +84,16 @@ function Nav({ onNavigate }: { onNavigate?: () => void }) {
 export function StaffApp() {
   const { t } = useT()
   const role = useAppStore(s => s.role)
+  const session = useAppStore(s => s.staffSession)
   const [open, setOpen] = useState(false)
+  if (!session) return <StaffLogin />
 
   return (
     <div className="min-h-dvh bg-paper lg:grid lg:grid-cols-[260px_minmax(0,1fr)]">
       <aside className="sticky top-0 hidden h-dvh flex-col gap-6 overflow-y-auto bg-slate-deep p-5 lg:flex">
         <Link to="/" aria-label={t('nav.home')}><Logo className="h-9" /></Link>
-        <RoleSwitcher />
+        <SessionCard />
         <Nav />
-        <p className="mt-auto text-xs leading-relaxed text-mist/80">{t('staff.demoAccess')}</p>
       </aside>
 
       <div className="min-w-0">
@@ -119,9 +123,8 @@ export function StaffApp() {
 
       <BottomSheet open={open} onClose={() => setOpen(false)} title={t('staff.title')}>
         <div className="grid gap-4 rounded-2xl bg-slate-deep p-4 pb-5">
-          <RoleSwitcher />
+          <SessionCard />
           <Nav onNavigate={() => setOpen(false)} />
-          <p className="text-xs text-mist/80">{t('staff.demoAccess')}</p>
         </div>
       </BottomSheet>
     </div>

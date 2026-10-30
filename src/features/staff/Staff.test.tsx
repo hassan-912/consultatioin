@@ -2,6 +2,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { StaffApp } from './StaffApp'
 import { useAppStore } from '../../store/useAppStore'
+import { loginAs } from '../../test/loginAs'
 import { zonedDateTimeToIso } from '../../domain/time'
 import { todayIn } from '../../store/useAppStore'
 import type { Booking } from '../../domain/types'
@@ -29,14 +30,14 @@ beforeEach(() => {
 })
 
 test('reception cannot see payment review', () => {
-  useAppStore.getState().setRole('reception')
+  loginAs('reception')
   openStaff('/staff')
   expect(screen.queryByRole('link', { name: /payment review/i })).toBeNull()
   expect(screen.getAllByRole('link', { name: /check-in/i }).length).toBeGreaterThan(0)
 })
 
 test('finance verifies a payment: booking confirmed and audited', () => {
-  useAppStore.getState().setRole('finance')
+  loginAs('finance')
   openStaff('/staff/payments')
   const item = screen.getByRole('article', { name: /MG-TEST-A/ })
   fireEvent.click(within(item).getByRole('button', { name: /verify payment/i }))
@@ -46,7 +47,7 @@ test('finance verifies a payment: booking confirmed and audited', () => {
 })
 
 test('reject requires a reason', () => {
-  useAppStore.getState().setRole('finance')
+  loginAs('finance')
   openStaff('/staff/payments')
   const item = screen.getByRole('article', { name: /MG-TEST-A/ })
   fireEvent.click(within(item).getByRole('button', { name: /^reject$/i }))
@@ -56,7 +57,7 @@ test('reject requires a reason', () => {
 })
 
 test('reception: check-in once, second scan flagged as already used', () => {
-  useAppStore.getState().setRole('reception')
+  loginAs('reception')
   openStaff('/staff/checkin')
   const input = screen.getByLabelText(/booking reference or ticket code/i)
   fireEvent.change(input, { target: { value: 'b'.padEnd(32, '1') } })
@@ -70,9 +71,16 @@ test('reception: check-in once, second scan flagged as already used', () => {
 })
 
 test('reception: on-hold ticket is not valid for entry', () => {
-  useAppStore.getState().setRole('reception')
+  loginAs('reception')
   openStaff('/staff/checkin')
   fireEvent.change(screen.getByLabelText(/booking reference or ticket code/i), { target: { value: 'MG-TEST-AXXX' } })
   fireEvent.click(screen.getByRole('button', { name: /check ticket/i }))
   expect(screen.getByText(/on hold — not valid for entry/i)).toBeInTheDocument()
+})
+
+test('signed-out visitors see the sign-in form, not staff data', () => {
+  useAppStore.setState({ staffSession: null })
+  openStaff('/staff/payments')
+  expect(screen.getByRole('heading', { name: /staff sign-in/i })).toBeInTheDocument()
+  expect(screen.queryByText(/MG-TEST-A/)).toBeNull()
 })
