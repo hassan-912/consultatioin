@@ -75,3 +75,17 @@ export function useConsultantStats(c: Consultant) {
     return { ...totals, kpi: kpiOverride ?? demo.kpi, outcomes: demo.outcomes }
   }, [bookings, c.id, kpiOverride, now])
 }
+
+/** Demo outcome history plus outcomes recorded by consultants in this session. */
+export function useOutcomes(consultantId: string) {
+  const records = useAppStore(s => s.records)
+  const bookings = useAppStore(s => s.bookings)
+  return useMemo(() => {
+    const o = { ...demoStats[consultantId].outcomes }
+    for (const [bookingId, r] of Object.entries(records)) {
+      if (bookings[bookingId]?.consultantId !== consultantId) continue
+      if (r.outcome === 'approved' || r.outcome === 'refused' || r.outcome === 'pending' || r.outcome === 'withdrawn') o[r.outcome]++
+    }
+    return o
+  }, [records, bookings, consultantId])
+}
