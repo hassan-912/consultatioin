@@ -4,7 +4,7 @@
 -- Assertions themselves run as the test owner, so pgTAP's own temp tables stay untouched by the API roles.
 begin;
 set local search_path = public, extensions;
-select plan(68);
+select plan(82);
 
 create function pg_temp.q(uid uuid, sql text) returns text language plpgsql as $$
 declare r text;
@@ -188,9 +188,27 @@ select is(pg_temp.q(pg_temp.u(1), $$select public.set_staff_role('$$ || pg_temp.
 select is(pg_temp.q(pg_temp.u(4), $$select public.add_exception('mohamed-gamal', 'leave', current_date, current_date)$$),
   'ERR:P0001:FORBIDDEN', 'consultant: cannot add_exception');
 
+-- booking tokens are hidden from every signed-in role (0009); finance/admin get the manage link via staff_manage_token
+select alike(pg_temp.q(pg_temp.u(3), $$select manage_token from public.bookings limit 1$$), 'ERR:42501:%', 'reception: manage_token denied');
+select alike(pg_temp.q(pg_temp.u(3), $$select qr_token from public.bookings limit 1$$), 'ERR:42501:%', 'reception: qr_token denied');
+select alike(pg_temp.q(pg_temp.u(4), $$select manage_token from public.bookings limit 1$$), 'ERR:42501:%', 'consultant: manage_token denied');
+select alike(pg_temp.q(pg_temp.u(4), $$select qr_token from public.bookings limit 1$$), 'ERR:42501:%', 'consultant: qr_token denied');
+select alike(pg_temp.q(pg_temp.u(2), $$select manage_token from public.bookings limit 1$$), 'ERR:42501:%', 'finance: manage_token not selectable directly');
+select is(pg_temp.q(pg_temp.u(3), $$select status::text from public.bookings where id = '$$ || pg_temp.id('RL-H') || $$'$$), 'on-hold', 'reception: other columns still readable');
+select is(pg_temp.q(pg_temp.u(4), $$select id::text from public.bookings where reference = 'RL-H'$$), pg_temp.id('RL-H')::text, 'consultant: other columns still readable');
+select is(pg_temp.q(pg_temp.u(3), $$select (public.staff_transition('$$ || pg_temp.id('RL-W') || $$', 'no-show') ?| array['manage_token','qr_token'])::text$$),
+  'false', 'staff_transition: result omits booking tokens');
+select is(pg_temp.q(pg_temp.u(2), $$select public.staff_manage_token('$$ || pg_temp.id('RL-H') || $$')$$), md5('mRL-H'), 'finance: staff_manage_token');
+select is(pg_temp.q(pg_temp.u(1), $$select public.staff_manage_token('$$ || pg_temp.id('RL-S') || $$')$$), md5('mRL-S'), 'admin: staff_manage_token');
+select is(pg_temp.q(pg_temp.u(3), $$select public.staff_manage_token('$$ || pg_temp.id('RL-H') || $$')$$), 'ERR:P0001:FORBIDDEN', 'reception: staff_manage_token -> FORBIDDEN');
+select is(pg_temp.q(pg_temp.u(4), $$select public.staff_manage_token('$$ || pg_temp.id('RL-H') || $$')$$), 'ERR:P0001:FORBIDDEN', 'consultant: staff_manage_token -> FORBIDDEN');
+select is(pg_temp.q(pg_temp.u(2), $$select public.staff_manage_token(gen_random_uuid())$$), 'ERR:P0001:NOT_FOUND', 'finance: staff_manage_token unknown id -> NOT_FOUND');
+select alike(pg_temp.q(null, $$select public.staff_manage_token(gen_random_uuid())$$), 'ERR:42501:%', 'anon: cannot execute staff_manage_token');
+
 -- every staff transition carries actor_user
-select is((select count(*)::int from audit_log where booking_id in (select id from bookings where reference like 'RL-%') and actor_user is null), 0,
-  'audit: every staff transition has actor_user');
+select is((select array[count(*) filter (where actor_user is null), count(*) filter (where actor_user is not null)]::int[]
+           from audit_log where booking_id in (select id from bookings where reference like 'RL-%')), array[0, 11],
+  'audit: every staff transition has actor_user (11 staff audit rows)');
 
 select * from finish();
 rollback;
