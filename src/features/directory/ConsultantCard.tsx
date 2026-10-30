@@ -44,7 +44,7 @@ export function ConsultantCard({ consultant: c }: { consultant: Consultant }) {
     <article aria-labelledby={nameId} className="group relative grid gap-5 rounded-[1.5rem] bg-white p-4 shadow-[var(--shadow-card)] ring-1 ring-line/60 transition-shadow hover:shadow-[var(--shadow-lift)] sm:p-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] lg:gap-8">
       {/* Identity + numbers */}
       <div className="flex min-w-0 gap-4">
-        <Avatar consultant={c} size="md" />
+        <Avatar consultant={c} size="lg" />
         <div className="min-w-0 flex-1">
           <h3 id={nameId} className="flex flex-wrap items-center gap-2 text-xl font-semibold leading-tight text-ink">
             <Link to={`/consultant/${c.id}`} className="hover:text-navy focus-visible:underline">{l(c.name)}</Link>
