@@ -14,7 +14,7 @@ const initials = (n: string) => n.split(/\s+/).filter(Boolean).slice(0, 2).map(p
 
 function Portrait({ m, size = 'card' }: { m: TeamMember; size?: 'card' | 'hero' }) {
   const src = teamPhoto(m.photoFile)
-  const cls = size === 'hero' ? 'aspect-[4/5] w-full max-w-[280px] rounded-[28px]' : 'aspect-[4/5] w-full rounded-2xl'
+  const cls = size === 'hero' ? 'aspect-[4/5] w-full max-w-[200px] rounded-[24px]' : 'aspect-[4/5] w-full rounded-2xl'
   return src ? (
     <img src={src} alt={m.name} loading="lazy" className={`${cls} bg-mist-soft object-cover object-top`} />
   ) : (
@@ -42,7 +42,7 @@ export function TeamPage() {
       <Header />
       <section aria-labelledby="team-title" className="relative overflow-hidden bg-slate-deep text-white">
         <div className="grain absolute inset-0" aria-hidden />
-        <div className="relative mx-auto grid max-w-6xl items-end gap-8 px-4 pb-12 pt-10 sm:px-6 md:grid-cols-[1fr_280px]">
+        <div className="relative mx-auto grid max-w-6xl items-end gap-8 px-4 pb-10 pt-8 sm:px-6 md:grid-cols-[1fr_200px]">
           <div>
             <h1 id="team-title" className="text-4xl font-semibold leading-tight sm:text-5xl">{t('team.title')}</h1>
             <p className="mt-4 max-w-[52ch] text-mist sm:text-lg">{t('team.subtitle')}</p>
@@ -84,7 +84,7 @@ export function TeamPage() {
           ))}
         </div>
 
-        <ul className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 lg:grid-cols-5">
+        <ul className="grid grid-cols-2 gap-x-4 gap-y-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
           {members.map(m => (
             <li key={m.id} className="group">
               <Portrait m={m} />

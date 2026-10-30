@@ -5,7 +5,8 @@ import { bookingConfig } from '../../../config/booking'
 import { useAppStore } from '../../../store/useAppStore'
 import { dateInZone, formatInZone, zoneLabel } from '../../../domain/time'
 import { Icon } from '../../../components/Icon'
-import { DemoBadge, Notice } from '../../../components/ui'
+import { DemoBadge, Ltr, Notice } from '../../../components/ui'
+import { formatMoney, priceFor } from '../../../domain/pricing'
 import { DateStrip } from '../../directory/Filters'
 import { slotsFor } from '../../shared/availability'
 import { TimeWithZone } from '../shared'
@@ -29,7 +30,12 @@ export function SlotStep({ consultantId, branch, format, durationMin, slotStartI
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
       <div className="flex items-start justify-between gap-3">
-        <h2 className="text-2xl font-semibold text-ink">{t('booking.chooseTime')}</h2>
+        <div>
+          <h2 className="text-2xl font-semibold text-ink">{t('booking.chooseTime')}</h2>
+          <p className="mt-1 text-sm text-slate">
+            {t('common.durationRange', bookingConfig.durationRange)} — <Ltr className="font-semibold">{formatMoney(priceFor(format, duration), lang)}</Ltr>
+          </p>
+        </div>
         <DemoBadge />
       </div>
       {error && <Notice tone="bad">{error}</Notice>}
