@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { useT } from '../../i18n'
+import { useT, pluralCategory } from '../../i18n'
 import { useAppStore } from '../../store/useAppStore'
 import { getConsultants, getRules } from '../../store/actions'
 import { Header } from '../../components/Header'
@@ -51,7 +51,7 @@ export function DirectoryPage() {
         <div className="mt-10 mb-4 flex flex-wrap items-end justify-between gap-3">
           <div>
             <h2 className="text-2xl font-semibold text-ink">
-              {list.length === 1 ? t('directory.resultsOne') : t('directory.results', { n: list.length })}
+              {t(`directory.count.${pluralCategory(lang, list.length)}`, { n: list.length })}
             </h2>
             <p className="mt-1 text-sm text-muted">{t('directory.availableOn', { date: formatDate(filters.date, lang) })}</p>
           </div>

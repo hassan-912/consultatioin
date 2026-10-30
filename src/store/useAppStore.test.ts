@@ -54,3 +54,13 @@ test('spec labels are verbatim', () => {
   expect(ar.placeholder.bio).toBe('النبذة قيد الإعداد')
   expect(ar.common.demo).toBe('بيانات تجريبية')
 })
+
+test('Arabic plural categories for consultant counts', async () => {
+  const { pluralCategory, translate } = await import('../i18n')
+  const ar = (n: number) => translate('ar', `directory.count.${pluralCategory('ar', n)}`, { n })
+  expect(ar(1)).toBe('مستشار واحد')
+  expect(ar(2)).toBe('مستشاران')
+  expect(ar(7)).toBe('7 مستشارين')
+  expect(ar(11)).toBe('11 مستشارًا')
+  expect(translate('en', `directory.count.${pluralCategory('en', 7)}`, { n: 7 })).toBe('7 consultants')
+})

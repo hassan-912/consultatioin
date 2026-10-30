@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useT } from '../../i18n'
+import { useT, pluralCategory } from '../../i18n'
 import { useAppStore, todayIn, type Filters as F } from '../../store/useAppStore'
 import { branches } from '../../config/branches'
 import { programs } from '../../config/programs'
@@ -68,7 +68,7 @@ function FilterControls({ value, onChange }: { value: F; onChange: (p: Partial<F
 }
 
 export function Filters({ resultCount }: { resultCount: number }) {
-  const { t, l } = useT()
+  const { t, l, lang } = useT()
   const filters = useAppStore(s => s.filters)
   const setFilters = useAppStore(s => s.setFilters)
   const resetFilters = useAppStore(s => s.resetFilters)
@@ -132,7 +132,7 @@ export function Filters({ resultCount }: { resultCount: number }) {
           <div className="flex gap-2">
             <Button variant="ghost" className="flex-1" onClick={() => resetFilters()}>{t('directory.clearFilters')}</Button>
             <Button className="flex-[2]" onClick={() => setOpen(false)}>
-              {resultCount === 1 ? t('directory.resultsOne') : t('directory.showResults', { n: resultCount })}
+              {t(`directory.showCount.${pluralCategory(lang, resultCount)}`, { n: resultCount })}
             </Button>
           </div>
         }

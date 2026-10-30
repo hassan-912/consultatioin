@@ -20,6 +20,12 @@ export function translate(lang: Lang, key: TKey, vars?: Vars): string {
   return vars ? node.replace(/\{(\w+)\}/g, (_, k) => String(vars[k] ?? `{${k}}`)) : node
 }
 
+const pluralRules: Record<Lang, Intl.PluralRules> = { en: new Intl.PluralRules('en'), ar: new Intl.PluralRules('ar') }
+
+/** CLDR plural category for n (Arabic distinguishes zero, one, two, few, many, other). */
+export const pluralCategory = (lang: Lang, n: number) =>
+  (n === 0 ? 'zero' : pluralRules[lang].select(n)) as 'zero' | 'one' | 'two' | 'few' | 'many' | 'other'
+
 export function useT() {
   const lang = useAppStore(s => s.lang)
   const t = useCallback((key: TKey, vars?: Vars) => translate(lang, key, vars), [lang])
