@@ -28,10 +28,11 @@ Deno.serve(inviteHandler({
     if (error || !data.user) throw new Error(error?.status === 422 || /already|registered/i.test(error?.message ?? '') ? 'ALREADY_EXISTS' : 'INVITE_UNAVAILABLE')
     return data.user.id
   },
-  async upsertProfile(userId, request) {
-    const { error } = await admin.from('staff_profiles').upsert({
-      user_id: userId, display_name: request.displayName, role: request.role, consultant_id: request.consultantId, active: true,
-    }, { onConflict: 'user_id' })
-    if (error) throw new Error('INVITE_UNAVAILABLE')
+  async grantProfile(actorId, userId, request) {
+    // One transaction: insert-only profile + audit_log row. Existing profiles are refused, never overwritten.
+    const { error } = await admin.rpc('invite_staff_profile', {
+      p_actor: actorId, p_user_id: userId, p_display_name: request.displayName, p_role: request.role, p_consultant_id: request.consultantId,
+    })
+    if (error) throw new Error(error.message === 'ALREADY_EXISTS' ? 'ALREADY_EXISTS' : 'INVITE_UNAVAILABLE')
   },
 }))

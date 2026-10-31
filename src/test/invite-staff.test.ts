@@ -23,7 +23,7 @@ function setup(over: Partial<Dependencies> = {}) {
     callerProfile: vi.fn().mockResolvedValue({ role: 'admin', active: true }),
     consultantExists: vi.fn().mockResolvedValue(true),
     invite: vi.fn().mockResolvedValue('new-id'),
-    upsertProfile: vi.fn().mockResolvedValue(undefined),
+    grantProfile: vi.fn().mockResolvedValue(undefined),
     ...over,
   } satisfies Dependencies
   const call = (init: { headers?: Record<string, string>; body?: unknown; method?: string } = {}) =>
@@ -41,7 +41,7 @@ test('active admin invites: redirect goes to the reset screen and the profile is
   expect(res.status).toBe(200)
   expect(await res.json()).toEqual({ userId: 'new-id' })
   expect(deps.invite).toHaveBeenCalledWith('new@example.com', 'https://mg.example.com/#/staff/reset')
-  expect(deps.upsertProfile).toHaveBeenCalledWith('new-id', { email: 'new@example.com', displayName: 'Nora', role: 'reception', consultantId: null })
+  expect(deps.grantProfile).toHaveBeenCalledWith('admin-id', 'new-id', { email: 'new@example.com', displayName: 'Nora', role: 'reception', consultantId: null })
 })
 
 test('missing or invalid JWT is 401 and nothing is invited', async () => {
@@ -56,7 +56,7 @@ test('non-admin, inactive admin and unknown caller are 403', async () => {
     const { deps, call } = setup({ callerProfile: vi.fn().mockResolvedValue(profile) })
     expect((await call()).status).toBe(403)
     expect(deps.invite).not.toHaveBeenCalled()
-    expect(deps.upsertProfile).not.toHaveBeenCalled()
+    expect(deps.grantProfile).not.toHaveBeenCalled()
   }
 })
 
@@ -69,11 +69,19 @@ test('invalid input, unknown consultant, existing account and provider failure m
   const dup = setup({ invite: vi.fn().mockRejectedValue(new Error('ALREADY_EXISTS')) })
   const res = await dup.call()
   expect(res.status).toBe(409)
-  expect(dup.deps.upsertProfile).not.toHaveBeenCalled()
+  expect(dup.deps.grantProfile).not.toHaveBeenCalled()
   const broken = setup({ invite: vi.fn().mockRejectedValue(new Error('boom: secret detail')) })
   const failed = await broken.call()
   expect(failed.status).toBe(500)
   expect(await failed.json()).toEqual({ error: 'INVITE_UNAVAILABLE' })
+})
+
+test('an existing staff profile (pending or not) is a 409 and the grant is not retried or overwritten', async () => {
+  const { deps, call } = setup({ grantProfile: vi.fn().mockRejectedValue(new Error('ALREADY_EXISTS')) })
+  const res = await call()
+  expect(res.status).toBe(409)
+  expect(await res.json()).toEqual({ error: 'ALREADY_EXISTS' })
+  expect(deps.grantProfile).toHaveBeenCalledOnce()
 })
 
 test('foreign origins and non-POST methods are refused', async () => {

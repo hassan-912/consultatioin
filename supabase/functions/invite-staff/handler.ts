@@ -10,7 +10,8 @@ export type Dependencies = {
   consultantExists: (consultantId: string) => Promise<boolean>
   /** auth.admin.inviteUserByEmail; throws Error('ALREADY_EXISTS') when the address is already registered. */
   invite: (email: string, redirectTo: string) => Promise<string>
-  upsertProfile: (userId: string, request: InviteRequest) => Promise<void>
+  /** Calls the insert-only, audited SQL function; throws Error('ALREADY_EXISTS') when a profile exists. Never overwrites. */
+  grantProfile: (actorId: string, userId: string, request: InviteRequest) => Promise<void>
 }
 
 const statuses: Record<string, number> = { UNAUTHENTICATED: 401, FORBIDDEN: 403, INVALID_INPUT: 400, ALREADY_EXISTS: 409 }
@@ -43,7 +44,7 @@ export function inviteHandler(deps: Dependencies) {
       const { value } = parsed
       if (value.consultantId && !(await deps.consultantExists(value.consultantId))) return fail('INVALID_INPUT', { field: 'consultantId' })
       const invitedId = await deps.invite(value.email, redirectTo)
-      await deps.upsertProfile(invitedId, value)
+      await deps.grantProfile(userId, invitedId, value)
       return reply(200, { userId: invitedId })
     } catch (error) {
       if (error instanceof SyntaxError) return fail('INVALID_INPUT')
