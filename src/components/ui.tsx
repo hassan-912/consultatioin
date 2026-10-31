@@ -3,6 +3,8 @@ import { Link, type LinkProps } from 'react-router-dom'
 import { useT } from '../i18n'
 import type { BookingStatus } from '../domain/types'
 import { Icon } from './Icon'
+import { isLive } from '../data/mode'
+import { reportActionError } from '../data/feedback'
 
 /** Keeps phone numbers, emails, references and prices left-to-right inside Arabic text. */
 export const Ltr = ({ children, className = '' }: { children: ReactNode; className?: string }) => (
@@ -30,9 +32,18 @@ export const btn = (v: Variant = 'primary', s: Size = 'md', extra = '') =>
   `inline-flex items-center justify-center font-semibold transition-colors duration-150 disabled:opacity-45 disabled:pointer-events-none select-none ${variants[v]} ${sizes[s]} ${extra}`
 
 export const Button = forwardRef<HTMLButtonElement, ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; size?: Size }>(
-  ({ variant = 'primary', size = 'md', className = '', type = 'button', ...rest }, ref) => (
-    <button ref={ref} type={type} className={btn(variant, size, className)} {...rest} />
-  ),
+  ({ variant = 'primary', size = 'md', className = '', type = 'button', onClick, disabled, ...rest }, ref) => {
+    const [busy, setBusy] = useState(false)
+    return <button ref={ref} type={type} className={btn(variant, size, className)} {...rest} disabled={disabled || busy} aria-busy={busy || undefined} onClick={e => {
+      try {
+        const pending = onClick?.(e) as unknown
+        if (pending && typeof (pending as Promise<unknown>).then === 'function') {
+          setBusy(true)
+          Promise.resolve(pending).catch(reportActionError).finally(() => setBusy(false))
+        }
+      } catch (error) { reportActionError(error) }
+    }} />
+  },
 )
 
 export const ButtonLink = ({ variant = 'primary', size = 'md', className = '', ...rest }: LinkProps & { variant?: Variant; size?: Size }) => (
@@ -41,6 +52,7 @@ export const ButtonLink = ({ variant = 'primary', size = 'md', className = '', .
 
 export function DemoBadge({ className = '', tone = 'light' }: { className?: string; tone?: 'light' | 'dark' }) {
   const { t } = useT()
+  if (isLive) return null
   return (
     <span
       className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ${
@@ -123,7 +135,7 @@ export function Notice({ tone = 'info', children, className = '' }: { tone?: 'in
 
 /** Two-step in-page confirmation (native confirm() is unavailable in embedded viewers). */
 export function ConfirmButton({ label, confirmText, onConfirm, variant = 'danger', size = 'md', className = '', children }: {
-  label: string; confirmText: string; onConfirm: () => void; variant?: Variant; size?: Size; className?: string; children?: ReactNode
+  label: string; confirmText: string; onConfirm: () => unknown; variant?: Variant; size?: Size; className?: string; children?: ReactNode
 }) {
   const [asking, setAsking] = useState(false)
   const { t } = useT()
@@ -132,7 +144,7 @@ export function ConfirmButton({ label, confirmText, onConfirm, variant = 'danger
   return (
     <div role="group" aria-label={confirmText} className={`col-span-full flex flex-wrap items-center gap-2 rounded-xl bg-bad-soft p-2 ${className}`}>
       <p className="flex-1 px-1 text-sm font-semibold text-bad">{confirmText}</p>
-      <Button size="sm" variant="danger" onClick={() => { setAsking(false); onConfirm() }}>{t('common.confirm')}</Button>
+      <Button size="sm" variant="danger" onClick={() => { setAsking(false); return onConfirm() }}>{t('common.confirm')}</Button>
       <Button size="sm" variant="ghost" onClick={() => setAsking(false)}>{t('common.cancel')}</Button>
     </div>
   )

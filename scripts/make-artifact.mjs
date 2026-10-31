@@ -3,6 +3,7 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 
 const html = readFileSync('dist-artifact/index.html', 'utf8')
+if (/supabase/i.test(html)) throw new Error('Artifact contains remote backend code or configuration')
 const pick = re => [...html.matchAll(re)].map(m => m[0])
 const title = '<title>MG Consultations</title>'
 const links = pick(/<link[^>]+fonts\.(googleapis|gstatic)[^>]*>/g)

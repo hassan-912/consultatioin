@@ -4,7 +4,9 @@ import type { Booking, PaymentMethodId } from '../../../domain/types'
 import { paymentConfig } from '../../../config/payments'
 import { useAppStore } from '../../../store/useAppStore'
 import { expireDue } from '../../../store/actions'
-import { SlotTaken } from '../../../data'
+import { SlotTaken, HoldExpired, type PaymentInput } from '../../../data'
+import { isLive } from '../../../data/mode'
+import { errorKey } from '../../../data/feedback'
 import { compressReceipt } from '../../../domain/receipt'
 import { formatMoney } from '../../../domain/pricing'
 import { CopyField } from '../../../components/CopyField'
@@ -15,7 +17,7 @@ import { Icon } from '../../../components/Icon'
 
 export function PaymentStep({ booking, onSubmit, onExpiredRestart }: {
   booking: Booking
-  onSubmit: (p: { method: PaymentMethodId; txnRef: string; receiptName?: string; receiptImage?: string }) => Promise<unknown>
+  onSubmit: (p: PaymentInput) => Promise<unknown>
   onExpiredRestart: () => void
 }) {
   const { t, l, lang } = useT()
@@ -24,9 +26,13 @@ export function PaymentStep({ booking, onSubmit, onExpiredRestart }: {
   const [txnRef, setTxnRef] = useState('')
   const [receipt, setReceipt] = useState<string>()
   const [receiptImage, setReceiptImage] = useState<string>()
+  const [originalReceipt, setOriginalReceipt] = useState<Blob>()
+  const [busy, setBusy] = useState(false)
+  const [reading, setReading] = useState(false)
+  const [serverExpired, setServerExpired] = useState(false)
   const [error, setError] = useState<string>()
   const m = paymentConfig.methods.find(x => x.id === method)!
-  const expired = booking.status === 'expired' || (booking.status === 'reserved' && booking.holdExpiresAt <= now())
+  const expired = serverExpired || booking.status === 'expired' || (booking.status === 'reserved' && booking.holdExpiresAt <= now())
   const amount = formatMoney(booking.price, lang)
 
   if (expired)
@@ -40,15 +46,19 @@ export function PaymentStep({ booking, onSubmit, onExpiredRestart }: {
       </div>
     )
 
-  const submit = (e: FormEvent) => {
+  const submit = async (e: FormEvent) => {
     e.preventDefault()
     if (txnRef.trim().length < 4) return setError(t('validation.txnRef'))
     // Timers are throttled in background tabs, so re-check the deadline at submit time.
-    if (booking.status === 'reserved' && booking.holdExpiresAt <= now()) return void expireDue()
-    onSubmit({ method, txnRef, receiptName: receipt, receiptImage }).catch(err => {
-      if (err instanceof SlotTaken) return setError(t('payment.slotTaken'))
-      expireDue()
-    })
+    if (busy || reading) return
+    if (booking.status === 'reserved' && booking.holdExpiresAt <= now()) { setServerExpired(true); if (!isLive) expireDue(); return }
+    setBusy(true); setError(undefined)
+    try { await onSubmit({ method, txnRef, receiptName: receipt, receiptImage, receipt: originalReceipt }) }
+    catch (err) {
+      if (err instanceof HoldExpired) setServerExpired(true)
+      else setError(t(err instanceof SlotTaken ? 'payment.slotTaken' : errorKey(err)))
+      if (!isLive) expireDue()
+    } finally { setBusy(false) }
   }
 
   return (
@@ -61,7 +71,7 @@ export function PaymentStep({ booking, onSubmit, onExpiredRestart }: {
           </div>
           <div className="text-end">
             <p className="text-sm text-mist">{t('payment.reservedUntil')}</p>
-            <div className="[&_span]:text-white"><Countdown untilMs={booking.holdExpiresAt} now={now} onDone={expireDue} /></div>
+            <div className="[&_span]:text-white"><Countdown untilMs={booking.holdExpiresAt} now={now} onDone={() => { setServerExpired(true); if (!isLive) expireDue() }} /></div>
           </div>
         </div>
         <p className="mt-3 text-sm text-mist">{t('payment.deadlineNote')}</p>
@@ -133,15 +143,20 @@ export function PaymentStep({ booking, onSubmit, onExpiredRestart }: {
           <span className="truncate">{receipt ? t('payment.receiptChosen', { name: receipt }) : t('payment.receipt')}</span>
           <input type="file" accept="image/*,application/pdf" className="sr-only" onChange={async e => {
               const file = e.target.files?.[0]
-              setReceipt(file?.name)
-              setReceiptImage(file ? await compressReceipt(file) : undefined)
+              setReading(true); setError(undefined); setReceiptImage(undefined); setOriginalReceipt(undefined); setReceipt(undefined)
+              try {
+                if (file && (!['image/jpeg', 'image/png', 'image/webp', 'application/pdf'].includes(file.type) || file.size > 5 * 1024 * 1024)) throw new Error('Invalid receipt')
+                const image = file ? await compressReceipt(file) : undefined
+                setReceiptImage(image); setOriginalReceipt(file); setReceipt(file?.name)
+              } catch { setError(t('data.upload')) } finally { setReading(false) }
             }} />
         </label>
         {receiptImage && <img src={receiptImage} alt={t('payment.receipt')} className="mt-2 max-h-40 rounded-lg ring-1 ring-line" />}
         <p className="mt-1.5 text-xs text-muted">{t('payment.receiptHint')}</p>
       </div>
 
-      <Button type="submit" variant="gold" size="lg" className="w-full">{t('payment.submit')}</Button>
+      {error && <p role="alert" className="text-sm text-bad">{error}</p>}
+      <Button type="submit" variant="gold" size="lg" className="w-full" disabled={busy || reading}>{busy || reading ? t('data.saving') : t('payment.submit')}</Button>
     </form>
   )
 }

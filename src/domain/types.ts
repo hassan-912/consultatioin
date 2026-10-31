@@ -110,6 +110,8 @@ export interface PaymentSubmission {
   receiptName?: string
   /** Compressed image of the uploaded receipt (data URL), when the upload was an image. */
   receiptImage?: string
+  receiptPath?: string
+  hasReceipt?: boolean
   submittedAt: number
 }
 

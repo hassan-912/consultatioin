@@ -1,5 +1,6 @@
+import { useStaffBookings } from '../../../data/hooks'
 import { useT } from '../../../i18n'
-import { useAppStore, todayIn } from '../../../store/useAppStore'
+import { todayIn } from '../../../store/useAppStore'
 import { repo } from '../../../data'
 import { dateInZone } from '../../../domain/time'
 import { Button } from '../../../components/ui'
@@ -8,7 +9,7 @@ import { BookingMeta, Empty } from '../common'
 
 export function Arrivals() {
   const { t } = useT()
-  const all = Object.values(useAppStore(s => s.bookings))
+  const all = Object.values(useStaffBookings())
   const list = all
     .filter(b => b.format === 'in-person' && dateInZone(b.startIso, b.tz) === todayIn(b.tz) && ['confirmed', 'checked-in', 'completed', 'no-show', 'on-hold'].includes(b.status))
     .sort((a, b) => a.startIso.localeCompare(b.startIso))

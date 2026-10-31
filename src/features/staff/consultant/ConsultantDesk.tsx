@@ -1,4 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useStaffBookings, useStaffRecords } from '../../../data/hooks'
+import { useMemo, useRef, useState } from 'react'
+import { reportActionError } from '../../../data/feedback'
+import type { ConsultationRecord } from '../../../store/useAppStore'
 import { useT } from '../../../i18n'
 import { useAppStore, type Outcome } from '../../../store/useAppStore'
 import { getConsultants } from '../../../store/actions'
@@ -28,7 +31,7 @@ function ConsultantPicker() {
 
 function useMine() {
   const id = useAppStore(s => s.staffConsultantId)
-  const bookings = useAppStore(s => s.bookings)
+  const bookings = useStaffBookings()
   return useMemo(() => Object.values(bookings).filter(b => b.consultantId === id), [bookings, id])
 }
 
@@ -78,13 +81,15 @@ export function MyBookings() {
 export function Records() {
   const { t } = useT()
   const mine = useMine().filter(b => ['completed', 'checked-in'].includes(b.status))
-  const records = useAppStore(s => s.records)
-  const addAudit = useAppStore(s => s.addAudit)
+  const records = useStaffRecords()
   const [saved, setSaved] = useState<string | null>(null)
-  const save = (id: string, ref: string, patch: Partial<{ notes: string; outcome: Outcome }>) => {
-    useAppStore.setState(s => ({ records: { ...s.records, [id]: { ...(s.records[id] ?? { notes: '', outcome: 'none' }), ...patch } } }))
-    if (patch.outcome) addAudit({ actor: 'consultant', action: 'edited', bookingRef: ref, to: patch.outcome })
-    setSaved(id)
+  const pending = useRef<Record<string, ConsultationRecord>>({})
+  const queue = useRef<Promise<void>>(Promise.resolve())
+  const save = (id: string, _ref: string, patch: Partial<{ notes: string; outcome: Outcome }>) => {
+    const record = { ...(pending.current[id] ?? records[id] ?? { notes: '', outcome: 'none' }), ...patch }
+    pending.current[id] = record
+    setSaved(null)
+    queue.current = queue.current.then(() => repo.saveRecord(id, record)).then(() => { setSaved(id) }).catch(reportActionError)
   }
   const outcomes: Outcome[] = ['none', 'pending', 'approved', 'refused', 'withdrawn']
   return (
@@ -101,7 +106,7 @@ export function Records() {
                 defaultValue={records[b.id]?.notes ?? ''}
                 onBlur={e => save(b.id, b.reference, { notes: e.target.value })}
               />
-              <SelectField label={t('staff.consultant.outcome')} value={records[b.id]?.outcome ?? 'none'} onChange={e => save(b.id, b.reference, { outcome: e.target.value as Outcome })}>
+              <SelectField label={t('staff.consultant.outcome')} value={pending.current[b.id]?.outcome ?? records[b.id]?.outcome ?? 'none'} onChange={e => save(b.id, b.reference, { outcome: e.target.value as Outcome })}>
                 {outcomes.map(o => <option key={o} value={o}>{t(`staff.consultant.outcomes.${o}`)}</option>)}
               </SelectField>
             </div>

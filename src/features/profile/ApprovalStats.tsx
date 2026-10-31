@@ -3,8 +3,9 @@ import { approvalStats, type Outcomes } from '../../domain/stats'
 import { DemoBadge } from '../../components/ui'
 import { Icon } from '../../components/Icon'
 
-export function ApprovalStats({ outcomes, minSample }: { outcomes: Outcomes; minSample: number }) {
+export function ApprovalStats({ outcomes, minSample }: { outcomes: Outcomes | null; minSample: number }) {
   const { t } = useT()
+  if (!outcomes) return <section className="rounded-3xl bg-white p-5 ring-1 ring-line"><h2 className="text-lg font-semibold text-ink">{t('profile.approvalTitle')}</h2><p className="mt-3 text-sm text-muted">{t('data.unavailable')}</p></section>
   const s = approvalStats(outcomes, minSample)
   const id = 'approval-title'
   return (

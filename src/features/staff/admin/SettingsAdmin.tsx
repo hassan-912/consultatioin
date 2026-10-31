@@ -9,13 +9,14 @@ import { CopyField } from '../../../components/CopyField'
 import { DemoBadge, Notice } from '../../../components/ui'
 import { TextField } from '../../../components/fields'
 import { ScreenTitle } from '../StaffApp'
+import { isLive } from '../../../data/mode'
 
 export function PaymentsAdmin() {
   const { t, l } = useT()
   return (
     <>
       <ScreenTitle title={t('staff.screens.paymentSettings')} />
-      <Notice tone="info" className="mb-4">{t('staff.admin.sharedConfig')}</Notice>
+      <Notice tone="info" className="mb-4">{t(isLive ? 'data.sourceManaged' : 'staff.admin.sharedConfig')}</Notice>
       <div className="grid gap-4 md:grid-cols-2">
         {paymentConfig.methods.map(m => (
           <section key={m.id} className="grid gap-2 rounded-2xl bg-white p-5 ring-1 ring-line">
@@ -44,6 +45,7 @@ export function KpiAdmin() {
   const overrides = useAppStore(s => s.kpiOverrides)
   const minSample = useAppStore(s => s.approvalMinSample) ?? kpiConfig.approvalMinSample
   const addAudit = useAppStore(s => s.addAudit)
+  if (isLive) return <><ScreenTitle title={t('staff.screens.kpi')} /><Notice tone="info">{t('data.sourceManaged')}</Notice><p className="mt-4 text-muted">{t('data.unavailable')}</p></>
   return (
     <>
       <ScreenTitle title={t('staff.screens.kpi')}><DemoBadge /></ScreenTitle>

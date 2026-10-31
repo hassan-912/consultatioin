@@ -20,6 +20,10 @@ import { BookingsAdmin } from './admin/BookingsAdmin'
 import { PaymentsAdmin, KpiAdmin } from './admin/SettingsAdmin'
 import { AuditLog } from './admin/AuditLog'
 import { PendingDecisions } from './admin/PendingDecisions'
+import { useStaffHydration, staffSessionKey } from '../../data/hooks'
+import { useLiveData } from '../../data/liveState'
+import { isLive } from '../../data/mode'
+import { DataStatus } from '../../data/feedback'
 
 const views: Record<StaffScreen, () => ReactNode> = {
   overview: () => <Overview />,
@@ -86,6 +90,11 @@ export function StaffApp() {
   const role = useAppStore(s => s.role)
   const session = useAppStore(s => s.staffSession)
   const [open, setOpen] = useState(false)
+  useStaffHydration()
+  const loading = useLiveData(s => s.loading)
+  const error = useLiveData(s => s.error)
+  const snapshotKey = useLiveData(s => s.staffKey)
+  const staleSnapshot = isLive && snapshotKey !== staffSessionKey(session)
   if (!session) return <StaffLogin />
 
   return (
@@ -111,6 +120,8 @@ export function StaffApp() {
         </header>
 
         <main id="main" className="mx-auto max-w-5xl px-4 py-6 sm:px-6">
+          {isLive && <DataStatus loading={loading || staleSnapshot} error={error} />}
+          {(!isLive || (!loading && !error && !staleSnapshot)) &&
           <Routes>
             {screens.map(s => {
               const element = can(role, s.id) ? <>{views[s.id]()}</> : <Navigate to="/staff" replace />
@@ -118,6 +129,7 @@ export function StaffApp() {
             })}
             <Route path="*" element={<Navigate to="/staff" replace />} />
           </Routes>
+          }
         </main>
       </div>
 

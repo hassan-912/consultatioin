@@ -5,6 +5,7 @@ import { contact } from '../config/contact'
 import { Ltr } from './ui'
 import { Icon } from './Icon'
 import { Logo } from './Logo'
+import { isLive } from '../data/mode'
 
 const SocialIcon = ({ name }: { name: 'facebook' | 'tiktok' | 'instagram' }) => {
   const d = {
@@ -82,7 +83,7 @@ export function Footer() {
       <div className="border-t border-white/10">
         <div className="mx-auto flex max-w-6xl flex-col gap-1 px-4 py-5 text-xs text-mist/80 sm:flex-row sm:justify-between sm:px-6">
           <p>{t('footer.rights', { year: new Date().getFullYear() })}</p>
-          <p>{t('footer.demoNote')} {t('common.prototypeNote')}</p>
+          {!isLive && <p>{t('footer.demoNote')} {t('common.prototypeNote')}</p>}
         </div>
       </div>
     </footer>

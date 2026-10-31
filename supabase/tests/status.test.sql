@@ -50,12 +50,12 @@ select pg_temp.mk(7, 'checked-in');
 select throws_ok($$select apply_transition((select id from bookings where reference='ST-7'), 'check-in', 'reception')$$,
   'P0001', 'INVALID_TRANSITION', 'check-in only once');
 
--- reject keeps reason; online verify creates private meeting link
+-- reject keeps reason; online verify waits for an actual Zoom/Meet URL.
 select is((select reject_reason from apply_transition((select id from bookings where reference='ST-4'), 'reject', 'finance', null, 'No transfer found')),
   'No transfer found', 'reject keeps reason');
 select pg_temp.mk(8, 'on-hold', 'online');
-select matches((select meeting_url from apply_transition((select id from bookings where reference='ST-8'), 'verify', 'finance')),
-  '/meet/[0-9a-f]{32}$', 'online verify creates private meeting link');
+select is((select meeting_url from apply_transition((select id from bookings where reference='ST-8'), 'verify', 'finance')),
+  null::text, 'online verify does not invent a meeting link');
 
 -- checkInVerdict (today = booking local date for the "ok" case)
 select is(check_in_verdict(null, null, null, current_date), 'not-found', 'verdict: not-found');

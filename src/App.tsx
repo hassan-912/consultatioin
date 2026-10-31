@@ -14,6 +14,10 @@ import { StaffApp } from './features/staff/StaffApp'
 import { DemoPanel } from './features/demo/DemoPanel'
 import { CountryBackdrop } from './components/CountryBackdrop'
 import { TeamPage } from './features/team/TeamPage'
+import { isLive, uiStorageKey } from './data/mode'
+import { configurationError } from './data'
+import { ActionFeedback, DataStatus } from './data/feedback'
+import { RepoError } from './data/types'
 
 export default function App() {
   const lang = useAppStore(s => s.lang)
@@ -25,12 +29,13 @@ export default function App() {
   // Keep open tabs in step: a booking made or verified in one tab appears in the others.
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
-      if (e.key === 'mg-proto-v1') useAppStore.persist.rehydrate()
+      if (e.key === uiStorageKey) useAppStore.persist.rehydrate()
     }
     window.addEventListener('storage', onStorage)
     return () => window.removeEventListener('storage', onStorage)
   }, [])
   useEffect(() => {
+    if (isLive) return
     seedIfNeeded()
     expireDue()
     const id = setInterval(expireDue, 5000)
@@ -43,6 +48,7 @@ export default function App() {
   return (
     <MotionConfig reducedMotion="user">
       <CountryBackdrop />
+      {configurationError ? <main className="mx-auto max-w-xl px-4 py-16"><DataStatus error={new RepoError(configurationError)} /></main> : <>
       <Routes>
         <Route path="/" element={<DirectoryPage />} />
         <Route path="/consultant/:id" element={<ProfilePage />} />
@@ -55,7 +61,9 @@ export default function App() {
         <Route path="/staff/*" element={<StaffApp />} />
         <Route path="*" element={<DirectoryPage />} />
       </Routes>
-      <DemoPanel />
+      {!isLive && <DemoPanel />}
+      <ActionFeedback />
+      </>}
     </MotionConfig>
   )
 }

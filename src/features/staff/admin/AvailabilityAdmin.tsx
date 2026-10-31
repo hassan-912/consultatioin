@@ -1,7 +1,10 @@
 import { useState } from 'react'
 import { useT } from '../../../i18n'
-import { useAppStore } from '../../../store/useAppStore'
-import { editSchedule, getConsultants, getRules } from '../../../store/actions'
+import { getConsultants } from '../../../store/actions'
+import { useStaffSchedules, refreshPublicMetadata } from '../../../data/hooks'
+import { repo } from '../../../data'
+import { isLive } from '../../../data/mode'
+import { DataStatus, reportActionError } from '../../../data/feedback'
 import type { Format } from '../../../domain/types'
 import { bookingConfig } from '../../../config/booking'
 import { formatDate } from '../../../domain/time'
@@ -13,16 +16,21 @@ const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${St
 
 export function AvailabilityAdmin() {
   const { t, l, lang } = useT()
-  const overrides = useAppStore(s => s.scheduleOverrides)
+  const schedules = useStaffSchedules()
   const [id, setId] = useState('mohamed-gamal')
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
-  const rules = getRules(id, overrides)
+  const [saving, setSaving] = useState(false)
+  const rules = schedules[id]
   const days = [0, 1, 2, 3, 4, 5, 6] as const
 
-  const toggleFormat = (f: Format) => {
+  if (!rules) return <DataStatus loading />
+  const toggleFormat = async (f: Format) => {
     const next = rules.formats.includes(f) ? rules.formats.filter(x => x !== f) : [...rules.formats, f]
-    if (next.length) editSchedule(id, { formats: next })
+    if (!next.length) return
+    setSaving(true)
+    try { await repo.saveSchedule(id, { formats: next }); if (isLive) await refreshPublicMetadata() }
+    finally { setSaving(false) }
   }
 
   return (
@@ -58,7 +66,7 @@ export function AvailabilityAdmin() {
             <div className="flex gap-2">
               {(['online', 'in-person'] as Format[]).map(f => (
                 <label key={f} className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-line px-3 text-sm font-semibold">
-                  <input type="checkbox" className="size-4 accent-slate" checked={rules.formats.includes(f)} onChange={() => toggleFormat(f)} />
+                  <input type="checkbox" className="size-4 accent-slate" disabled={saving} aria-busy={saving} checked={rules.formats.includes(f)} onChange={() => void toggleFormat(f).catch(reportActionError)} />
                   {t(`format.${f}`)}
                 </label>
               ))}
@@ -78,8 +86,8 @@ export function AvailabilityAdmin() {
             <Button
               className="mt-3"
               disabled={!from || !to || to < from}
-              onClick={() => {
-                editSchedule(id, { leave: [...(overrides[id]?.leave ?? []), { from, to }] })
+              onClick={async () => {
+                await repo.saveSchedule(id, { leave: [...rules.leave, { from, to }] })
                 setFrom('')
                 setTo('')
               }}
@@ -87,7 +95,7 @@ export function AvailabilityAdmin() {
               {t('staff.admin.addLeave')}
             </Button>
           </div>
-          <Notice tone="info">{l({ en: 'Hours, breaks, buffers and limits are demo values pending company decisions.', ar: 'الساعات والراحات والفواصل والحدود قيم تجريبية بانتظار قرارات الشركة.' })}</Notice>
+          {!isLive && <Notice tone="info">{l({ en: 'Hours, breaks, buffers and limits are demo values pending company decisions.', ar: 'الساعات والراحات والفواصل والحدود قيم تجريبية بانتظار قرارات الشركة.' })}</Notice>}
         </section>
       </div>
     </>

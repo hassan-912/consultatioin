@@ -1,12 +1,19 @@
 import type { BookingEvent, CheckInVerdict } from '../domain/bookingStatus'
 import type { Slot } from '../domain/availability'
 import type { Actor, Booking, BookingStatus, CustomerDetails, Format, Lang, PaymentMethodId } from '../domain/types'
+import type { ScheduleRules } from '../domain/availability'
+import type { ConsultationRecord } from '../store/useAppStore'
+import type { AuditEntry } from '../domain/types'
 
 // Same class the store actions throw, so existing `instanceof` checks keep working.
 export { SlotTaken } from '../store/actions'
 
 /** The unpaid hold ran out before payment was submitted. */
 export class HoldExpired extends Error {}
+export class RepoError extends Error {
+  constructor(public code: string, options?: ErrorOptions) { super(code, options) }
+}
+export interface PublicMetadata { consultantId: string; formats: Format[]; total: number; thisMonth: number }
 
 export interface ReserveDraft {
   consultantId: string
@@ -28,7 +35,7 @@ export interface PaymentInput {
 }
 
 export interface BookingRepo {
-  availableSlots(consultantId: string, date: string, format: Format): Promise<Slot[]>
+  availableSlots(consultantId: string, date: string, format: Format, rescheduleToken?: string): Promise<Slot[]>
   reserve(draft: ReserveDraft): Promise<{ bookingId: string; reference: string; manageToken: string; holdExpiresAt: number }>
   submitPayment(manageToken: string, p: PaymentInput): Promise<Booking>
   getByManageToken(token: string): Promise<Booking | null>
@@ -41,5 +48,12 @@ export interface BookingRepo {
   /** Looks the code up and, when the verdict is `ok`, records the check-in. */
   checkIn(code: string): Promise<{ verdict: CheckInVerdict; booking?: Booking }>
   receiptUrl(bookingId: string): Promise<string | null>
+  staffManageToken(bookingId: string): Promise<string>
+  publicMetadata(): Promise<PublicMetadata[]>
+  staffRecords(): Promise<Record<string, ConsultationRecord>>
+  saveRecord(bookingId: string, record: ConsultationRecord): Promise<void>
+  staffAudit(): Promise<AuditEntry[]>
+  staffSchedules(): Promise<Record<string, ScheduleRules>>
+  saveSchedule(consultantId: string, patch: Partial<ScheduleRules>): Promise<void>
   subscribe(onChange: () => void): () => void
 }

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useT } from '../../../i18n'
 import type { Branch, Format } from '../../../domain/types'
 import { bookingConfig } from '../../../config/booking'
@@ -8,24 +8,21 @@ import { Icon } from '../../../components/Icon'
 import { DemoBadge, Ltr, Notice } from '../../../components/ui'
 import { formatMoney, priceFor } from '../../../domain/pricing'
 import { DateStrip } from '../../directory/Filters'
-import { slotsFor } from '../../shared/availability'
+import { useSlots } from '../../../data/hooks'
+import { DataStatus } from '../../../data/feedback'
 import { TimeWithZone } from '../shared'
 
-export function SlotStep({ consultantId, branch, format, durationMin, slotStartIso, onChange, error, excludeBookingId }: {
+export function SlotStep({ consultantId, branch, format, durationMin, slotStartIso, onChange, error, excludeBookingId, rescheduleToken }: {
   consultantId: string; branch: Branch; format: Format; durationMin: number | null; slotStartIso: string | null
   onChange: (p: { durationMin?: number; slotStartIso?: string | null }) => void; error?: string | null; excludeBookingId?: string
+  rescheduleToken?: string
 }) {
   const { t, lang } = useT()
   const filters = useAppStore(s => s.filters)
-  const bookings = useAppStore(s => s.bookings)
   const duration = durationMin ?? bookingConfig.durations[format][0]
   const [date, setDate] = useState(slotStartIso ? dateInZone(slotStartIso, branch.timeZone) : filters.date)
 
-  const slots = useMemo(
-    () => slotsFor(consultantId, date, format, duration, excludeBookingId),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [consultantId, date, format, duration, bookings, excludeBookingId],
-  )
+  const { slots, loading, error: loadError } = useSlots(consultantId, date, format, duration, excludeBookingId, rescheduleToken)
 
   return (
     <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
@@ -48,7 +45,7 @@ export function SlotStep({ consultantId, branch, format, durationMin, slotStartI
           <Icon name="clock" size={13} />
           {t('booking.timesShownIn', { zone: zoneLabel(branch.timeZone, lang) })}
         </p>
-        {slots.length ? (
+        {loading || loadError ? <DataStatus loading={loading} error={loadError} /> : slots.length ? (
           <div role="radiogroup" aria-label={t('common.availableAppointments')} className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-5">
             {slots.map(s => {
               const active = s.startIso === slotStartIso

@@ -9,6 +9,9 @@ import { Icon } from '../../../components/Icon'
 import { BoardingPass, manageUrl } from '../../ticket/BoardingPass'
 import { getSaver, ticketPdf } from '../../ticket/ticketPdf'
 import { buildConfirmationMessage, whatsappLink } from './whatsappMessage'
+import { isLive } from '../../../data/mode'
+import { DataStatus, errorKey } from '../../../data/feedback'
+import { RepoError } from '../../../data/types'
 
 const canShareFiles = () => {
   try {
@@ -22,11 +25,30 @@ const canShareFiles = () => {
 /** Finance's WhatsApp confirmation: greeting from a named team member, chosen language, ticket PDF. */
 export function WhatsAppSender({ b }: { b: Booking }) {
   const { t } = useT()
+  const [ticket, setTicket] = useState<Booking>()
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<unknown>(null)
+  if (!isLive) return <Sender b={b} />
+  if (ticket) return <Sender b={ticket} />
+  return <div className="mt-4 grid gap-3"><DataStatus loading={busy} error={error} /><Button disabled={busy} onClick={async () => {
+    setBusy(true); setError(null)
+    try {
+      if (!import.meta.env.VITE_SITE_URL) throw new RepoError('LIVE_CONFIG_MISSING')
+      const token = await repo.staffManageToken(b.id)
+      const full = await repo.getByManageToken(token)
+      if (!full?.qrToken || !full.manageToken) throw new RepoError('NOT_FOUND')
+      setTicket(full)
+    } catch (error) { setError(error) } finally { setBusy(false) }
+  }}>{t('staff.finance.sendTitle')}</Button></div>
+}
+
+function Sender({ b }: { b: Booking }) {
+  const { t } = useT()
   const sender = useAppStore(s => s.senderName)
   const [msgLang, setMsgLang] = useState<Lang>(b.customer.consultationLang)
   const [saved, setSaved] = useState(false)
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState(false)
+  const [error, setError] = useState<unknown>(null)
   const [saver, setSaver] = useState<Awaited<ReturnType<typeof getSaver>>>(null)
   const passRef = useRef<HTMLDivElement>(null)
   const share = useMemo(canShareFiles, [])
@@ -49,13 +71,13 @@ export function WhatsAppSender({ b }: { b: Booking }) {
 
   const shareAll = async () => {
     setBusy(true)
-    setError(false)
+    setError(null)
     try {
       const file = new File([await pdf()], filename, { type: 'application/pdf' })
       await navigator.share({ files: [file], text })
       await repo.staffTransition(b.id, { type: 'mark-sent', via: 'whatsapp' }, 'finance')
     } catch (err) {
-      if ((err as Error)?.name !== 'AbortError') setError(true)
+      if ((err as Error)?.name !== 'AbortError') setError(err)
     } finally {
       setBusy(false)
     }
@@ -64,12 +86,12 @@ export function WhatsAppSender({ b }: { b: Booking }) {
   const savePdf = async () => {
     if (!saver) return
     setBusy(true)
-    setError(false)
+    setError(null)
     try {
       await saver(filename, await pdf())
       setSaved(true)
     } catch (err) {
-      if ((err as { code?: string })?.code !== 'declined') setError(true)
+      if ((err as { code?: string })?.code !== 'declined') setError(err)
     } finally {
       setBusy(false)
     }
@@ -117,7 +139,7 @@ export function WhatsAppSender({ b }: { b: Booking }) {
       </div>
 
       {!ready && <p className="text-sm font-semibold text-warn">{t('staff.finance.senderRequired')}</p>}
-      {error && <Notice tone="bad">{t('ticket.downloadFailed')}</Notice>}
+      {error != null && <Notice tone="bad">{t(error instanceof RepoError ? errorKey(error) : 'ticket.downloadFailed')}</Notice>}
 
       {share ? (
         <div>

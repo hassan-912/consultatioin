@@ -1,8 +1,9 @@
 import { useT } from '../i18n'
 
 /** Company KPI score out of 10, as a ten-segment meter. */
-export function ScoreBar({ score, size = 'md' }: { score: number; size?: 'sm' | 'md' }) {
+export function ScoreBar({ score, size = 'md' }: { score: number | null; size?: 'sm' | 'md' }) {
   const { t } = useT()
+  if (score == null) return <p className="text-sm text-muted">{t('data.unavailable')}</p>
   const segs = Array.from({ length: 10 }, (_, i) => {
     const fill = Math.max(0, Math.min(1, score - i))
     return fill >= 1 ? 'full' : fill > 0 ? 'part' : 'empty'

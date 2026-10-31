@@ -10,6 +10,7 @@ import { Avatar, CountUp } from '../../components/widgets'
 import { ScoreBar } from '../../components/ScoreBar'
 import { ButtonLink } from '../../components/ui'
 import { Icon } from '../../components/Icon'
+import { DataStatus } from '../../data/feedback'
 
 export function experienceText(c: Consultant, lang: 'ar' | 'en') {
   const n = c.experienceLabel ? c.experienceLabel[lang] : String(c.experienceYears)
@@ -93,7 +94,7 @@ export function ConsultantCard({ consultant: c }: { consultant: Consultant }) {
           </span>
         </div>
 
-        {av.slots.length > 0 ? (
+        {av.loading || av.error ? <DataStatus loading={av.loading} error={av.error} /> : av.slots.length > 0 ? (
           <ul className="flex flex-wrap gap-2" aria-label={t('common.availableAppointments')}>
             {av.slots.slice(0, MAX_SLOTS).map(({ slot, format }) => (
               <li key={slot.startIso + format}>

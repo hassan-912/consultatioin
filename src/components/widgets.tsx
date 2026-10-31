@@ -38,15 +38,16 @@ export function Avatar({ consultant, size = 'md', showPending = false }: { consu
   )
 }
 
-export function CountUp({ value, decimals = 0 }: { value: number; decimals?: number }) {
+export function CountUp({ value, decimals = 0 }: { value: number | null; decimals?: number }) {
   const reduce = useReducedMotion()
-  const [shown, setShown] = useState(reduce ? value : 0)
+  const [shown, setShown] = useState(reduce ? value ?? 0 : 0)
   useEffect(() => {
+    if (value == null) return
     if (reduce) return setShown(value)
     const c = animate(0, value, { duration: 0.9, ease: [0.2, 0.8, 0.2, 1], onUpdate: setShown })
     return () => c.stop()
   }, [value, reduce])
-  return <span dir="ltr" className="tabular">{shown.toFixed(decimals)}</span>
+  return <span dir="ltr" className="tabular">{value == null ? '—' : shown.toFixed(decimals)}</span>
 }
 
 export function Stat({ label, value, sub }: { label: string; value: ReactNode; sub?: ReactNode }) {

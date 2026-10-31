@@ -7,13 +7,14 @@ import { Header } from '../../components/Header'
 import { Avatar } from '../../components/widgets'
 import { Notice } from '../../components/ui'
 import { NotFound } from './BookingPage'
+import { isLive } from '../../data/mode'
 
 /** Prototype waiting room. The real meeting platform is a pending decision. */
 export function MeetPage() {
   const { token = '' } = useParams()
   const { t, l, lang } = useT()
   const b = useAppStore(s => Object.values(s.bookings).find(x => x.meetingUrl === `#/meet/${token}`))
-  if (!b) return <NotFound />
+  if (isLive || !b) return <NotFound />
   const c = getConsultant(b.consultantId)
   return (
     <>

@@ -7,6 +7,7 @@ import { LangSwitch } from '../../components/LangSwitch'
 import { TextField } from '../../components/fields'
 import { Button, Notice } from '../../components/ui'
 import { Icon } from '../../components/Icon'
+import { isLive } from '../../data/mode'
 
 export function StaffLogin() {
   const { t } = useT()
@@ -19,9 +20,10 @@ export function StaffLogin() {
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     setBusy(true)
-    const ok = await signIn(username, password)
-    setBusy(false)
-    if (!ok) setError(true)
+    try {
+      const ok = await signIn(username, password)
+      if (!ok) setError(true)
+    } catch { setError(true) } finally { setBusy(false) }
   }
 
   return (
@@ -39,7 +41,8 @@ export function StaffLogin() {
           <h1 className="mt-4 text-2xl font-semibold">{t('staff.login.title')}</h1>
           <p className="mt-1 text-sm text-muted">{t('staff.login.hint')}</p>
           <div className="mt-6 grid gap-4">
-            {error && <Notice tone="bad">{t('staff.login.error')}</Notice>}
+            {isLive && <Notice tone="info">{t('data.authPending')}</Notice>}
+            {error && <Notice tone="bad">{t(isLive ? 'data.authPending' : 'staff.login.error')}</Notice>}
             <TextField
               label={t('staff.login.username')}
               dir="ltr"
@@ -68,11 +71,11 @@ export function StaffLogin() {
                 <Icon name={show ? 'eyeOff' : 'eye'} size={17} />
               </button>
             </div>
-            <Button type="submit" size="lg" disabled={busy || !username || !password}>
+            <Button type="submit" size="lg" disabled={isLive || busy || !username || !password}>
               {busy ? t('staff.login.checking') : t('staff.login.submit')}
             </Button>
           </div>
-          <p className="mt-5 text-xs text-muted">{t('staff.login.prototype')}</p>
+          {!isLive && <p className="mt-5 text-xs text-muted">{t('staff.login.prototype')}</p>}
         </form>
         <Link to="/" className="mt-6 inline-flex min-h-11 items-center gap-1.5 text-sm text-mist hover:text-white">
           <Icon name="chevron" size={15} className="rotate-180" />

@@ -1,4 +1,8 @@
-import { useMemo } from 'react'
+import { useStaffBookings, useStaffSchedules } from '../../../data/hooks'
+import { useEffect, useMemo, useState } from 'react'
+import { repo } from '../../../data'
+import { isLive } from '../../../data/mode'
+import { DataStatus } from '../../../data/feedback'
 import { useT } from '../../../i18n'
 import { useAppStore, todayIn } from '../../../store/useAppStore'
 import { getConsultants, getRules } from '../../../store/actions'
@@ -14,12 +18,12 @@ type DayState = { kind: 'off' | 'holiday' | 'leave' | 'unavailable' } | { kind: 
 
 const DAYS = 14
 
-function dayState(c: Consultant, rules: ScheduleRules, date: string, booked: number): DayState {
+function dayState(c: Consultant, rules: ScheduleRules, date: string, booked: number, serverFree?: number): DayState {
   if (rules.holidays.includes(date)) return { kind: 'holiday' }
   if (rules.leave.some(l => date >= l.from && date <= l.to)) return { kind: 'leave' }
   if (rules.unavailable.includes(date)) return { kind: 'unavailable' }
   if (rules.weekly[weekday(date)].length === 0) return { kind: 'off' }
-  const free = slotsFor(c.id, date, rules.formats[0]).length
+  const free = isLive ? serverFree ?? 0 : slotsFor(c.id, date, rules.formats[0]).length
   return { kind: 'open', booked, free }
 }
 
@@ -44,22 +48,38 @@ const tone: Record<DayState['kind'], string> = {
 
 export function AvailabilityBoard({ consultantIds }: { consultantIds?: string[] }) {
   const { t, l, lang } = useT()
-  const bookings = useAppStore(s => s.bookings)
+  const bookings = useStaffBookings()
   const overrides = useAppStore(s => s.scheduleOverrides)
   const consultantOverrides = useAppStore(s => s.consultantOverrides)
   const now = useAppStore(s => s.now)
   const today = todayIn('Africa/Cairo')
   const dates = useMemo(() => Array.from({ length: DAYS }, (_, i) => addDays(today, i)), [today])
+  const schedules = useStaffSchedules()
+  const [server, setServer] = useState<{ free: Record<string, number>; loading: boolean; error: unknown }>({ free: {}, loading: isLive, error: null })
+  const idsKey = consultantIds?.join(',') ?? ''
+  useEffect(() => {
+    if (!isLive) return
+    let active = true
+    setServer({ free: {}, loading: true, error: null })
+    const selected = getConsultants().filter(c => !idsKey || idsKey.split(',').includes(c.id))
+    Promise.all(selected.flatMap(c => dates.map(async d => {
+      const formats = schedules[c.id]?.formats ?? []
+      const slots = (await Promise.all(formats.map(f => repo.availableSlots(c.id, d, f)))).flat()
+      return [`${c.id}:${d}`, new Set(slots.map(s => s.startIso)).size] as const
+    }))).then(entries => { if (active) setServer({ free: Object.fromEntries(entries), loading: false, error: null }) }).catch(error => { if (active) setServer({ free: {}, loading: false, error }) })
+    return () => { active = false }
+  }, [dates, schedules, idsKey, bookings])
 
   const rows = useMemo(
     () =>
       getConsultants(consultantOverrides)
         .filter(c => !consultantIds || consultantIds.includes(c.id))
+        .filter(c => !isLive || schedules[c.id])
         .map(c => {
-          const rules = getRules(c.id, overrides)
+          const rules = isLive ? schedules[c.id] : getRules(c.id, overrides)
           const tz = branchById(c.branchId).timeZone
           const mine = Object.values(bookings).filter(b => b.consultantId === c.id && isBlocking(b, now()))
-          const cells = dates.map(d => dayState(c, rules, d, mine.filter(b => dateInZone(b.startIso, tz) === d).length))
+          const cells = dates.map(d => dayState(c, rules, d, mine.filter(b => dateInZone(b.startIso, tz) === d).length, server.free[`${c.id}:${d}`]))
           const weeklyOff = ([0, 1, 2, 3, 4, 5, 6] as const).filter(w => rules.weekly[w].length === 0)
           const inWindow = (d: string) => d >= dates[0] && d <= dates[dates.length - 1]
           const leaveDates = dates.filter(d => rules.leave.some(lv => d >= lv.from && d <= lv.to))
@@ -73,7 +93,7 @@ export function AvailabilityBoard({ consultantIds }: { consultantIds?: string[] 
           }
         }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [bookings, overrides, consultantOverrides, dates, consultantIds],
+    [bookings, overrides, consultantOverrides, dates, consultantIds, schedules, server.free],
   )
 
   const cellLabel = (s: DayState) =>
@@ -82,6 +102,7 @@ export function AvailabilityBoard({ consultantIds }: { consultantIds?: string[] 
       : t(`staff.calendar.${s.kind}`)
   const sep = lang === 'ar' ? '، ' : ', '
   const range = ([a, b]: [string, string]) => (a === b ? formatDate(a, lang, 'short') : `${formatDate(a, lang, 'short')} – ${formatDate(b, lang, 'short')}`)
+  if (isLive && (server.loading || server.error)) return <DataStatus loading={server.loading} error={server.error} />
 
   return (
     <div className="grid gap-6">

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { bookingConfig } from '../../config/booking'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
@@ -11,7 +11,10 @@ import { branchById } from '../../config/branches'
 import { Header } from '../../components/Header'
 import { Button } from '../../components/ui'
 import { Icon } from '../../components/Icon'
-import { offeredFormats } from '../shared/availability'
+import { useOfferedFormats } from '../shared/availability'
+import { isLive } from '../../data/mode'
+import { DataStatus } from '../../data/feedback'
+import type { Booking } from '../../domain/types'
 import { FormatStep } from './steps/FormatStep'
 import { SlotStep } from './steps/SlotStep'
 import { DetailsStep } from './steps/DetailsStep'
@@ -39,12 +42,15 @@ function Wizard({ id }: { id: string }) {
   const consultant = getConsultant(id, overrides)
   const branch = branchById(consultant.branchId)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const offered = useMemo(() => offeredFormats(id), [id])
+  const offered = useOfferedFormats(id)
   const [errors, setErrors] = useState<DetailErrors>({})
   const [tried, setTried] = useState(false)
   const [slotError, setSlotError] = useState<string | null>(null)
   const [fatal, setFatal] = useState<unknown>(null)
-  if (fatal) throw fatal
+  const [remoteBooking, setRemoteBooking] = useState<Booking>()
+  const pendingReservations = useRef(new Map<string, ReturnType<typeof repo.reserve>>())
+  const [reserveAttempt, setReserveAttempt] = useState(0)
+  if (fatal && !isLive) throw fatal
 
   // Start a fresh draft when arriving for a different consultant.
   useEffect(() => {
@@ -61,18 +67,42 @@ function Wizard({ id }: { id: string }) {
     if (step !== 4 || draft.consultantId !== id) return
     const d = useAppStore.getState().draft
     if (!d.format || !d.slotStartIso) return
-    repo.reserve({ consultantId: id, format: d.format, startIso: d.slotStartIso, details: d.details, lang, supersedes: d.bookingId ?? undefined })
+    setFatal(null)
+    const key = JSON.stringify([id, d.format, d.slotStartIso, d.details, lang, d.bookingId])
+    let pending = pendingReservations.current.get(key)
+    if (!pending) {
+      pending = repo.reserve({ consultantId: id, format: d.format, startIso: d.slotStartIso, details: d.details, lang, supersedes: d.bookingId ?? undefined })
+      pendingReservations.current.set(key, pending)
+    }
+    const stillCurrent = () => {
+      const current = useAppStore.getState().draft
+      return current.consultantId === id && current.slotStartIso === d.slotStartIso && current.format === d.format
+    }
+    pending
+      .then(async r => {
+        if (isLive) {
+          const booking = await repo.getByManageToken(r.manageToken)
+          if (!booking) throw new Error('NOT_FOUND')
+          if (stillCurrent()) {
+            setRemoteBooking(booking)
+            updateDraft({ bookingId: r.bookingId })
+          }
+        }
+      })
       .catch(e => {
+        if (!stillCurrent()) return
         if (e instanceof SlotTaken) {
           setSlotError(t('booking.noTimes'))
           updateDraft({ step: 1, slotStartIso: null })
         } else {
           setFatal(e) // rethrown during render so the error boundary sees it, as the old sync call did
         }
-      })
-  }, [step, draft.consultantId, draft.slotStartIso, id, lang, t, updateDraft])
+      }).finally(() => { pendingReservations.current.delete(key) })
+  }, [step, draft.consultantId, draft.slotStartIso, draft.format, id, lang, t, updateDraft, reserveAttempt])
 
-  const booking = draft.bookingId ? bookings[draft.bookingId] : undefined
+  const booking = isLive
+    ? remoteBooking?.consultantId === id && remoteBooking.format === draft.format && Date.parse(remoteBooking.startIso) === Date.parse(draft.slotStartIso ?? '') ? remoteBooking : undefined
+    : draft.bookingId ? bookings[draft.bookingId] : undefined
   const go = (s: 0 | 1 | 2 | 3 | 4) => updateDraft({ step: s })
 
 
@@ -128,6 +158,8 @@ function Wizard({ id }: { id: string }) {
             transition={{ duration: 0.22 }}
             className="min-w-0"
           >
+            <DataStatus error={fatal} loading={step === 4 && !booking && !fatal} />
+            {isLive && fatal != null && <Button className="mt-3" onClick={() => setReserveAttempt(n => n + 1)}>{t('data.retry')}</Button>}
             {step === 0 && <FormatStep value={draft.format} offered={offered} branch={branch} onChange={f => updateDraft({ format: f, durationMin: bookingConfig.durations[f][0], slotStartIso: null, step: 1 })} />}
             {step === 1 && draft.format && (
               <SlotStep

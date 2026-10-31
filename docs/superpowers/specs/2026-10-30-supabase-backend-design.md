@@ -12,7 +12,7 @@
 
 **Outcome.** The same app runs as a real website. Bookings, payments, receipts, schedules, audit history and staff accounts live in a dedicated Supabase project, so:
 - ticket and booking links work on any device;
-- finance sees new payments live and gets an email for each;
+- finance sees new payments and notifications inside the website only;
 - customers who chose email receive their confirmed ticket automatically;
 - staff sign in with real accounts, and every rule (no double-booking, hold expiry, single check-in, no auto-confirm) is enforced by the database.
 
@@ -22,7 +22,7 @@
 | Hosting | Real website on a free Vercel address first; `book.mg-visa.com` later via one DNS record |
 | Backend | New dedicated Supabase project, region **eu-central-1 (Frankfurt)**; existing projects untouched |
 | Architecture | Browser talks to Supabase directly; Row Level Security + database functions guard every action; no custom API server |
-| Finance alerts | Live updates in the staff workspace **and** an email per new payment |
+| Finance alerts | Live updates and notifications in the staff workspace only; finance email alerts removed by the user on 2026-10-30 |
 | Customer email | Confirmed ticket emailed automatically when finance verifies (channel = email) |
 | Demo | claude.ai artifact stays as the design demo, built in "artifact" mode with browser storage and demo data |
 
@@ -38,7 +38,7 @@ Staff browser ──┼─> Vercel (static SPA)│   Postgres + RLS + RPC functi
                 │                      │   Realtime: bookings changes
                 │                      │   pg_cron: expire holds every minute
                 │                      │   Edge Functions (secret keys):
-                │                      │     notify-finance, send-ticket-email
+                │                      │     send-ticket-email (customer email only)
                 │                      └─> Resend (email API)
 ```
 
@@ -111,7 +111,7 @@ Indexes: `(consultant_id, starts_at)`, `(status)`, unique tokens.
 
 - **pg_cron** every minute: `expire_due_holds()` flips unexpired→`expired`, writes audit.
 - **Realtime:** staff workspace subscribes to `bookings` changes (RLS-filtered) → Payment review updates live, badge count, optional sound/browser notification.
-- **Edge Function `notify-finance`** — triggered by a database webhook on `payments` insert; emails `FINANCE_ALERT_TO` via Resend: reference, customer, amount, method, txn ref, link to the review screen. Retries on failure; failures logged.
+- **Finance notifications:** website only, using the authorized live payment queue, pending count and an accessible new-payment notice linking to review. No finance email address, email alert function or browser push permission is required.
 - **Edge Function `send-ticket-email`** — triggered when a booking becomes `confirmed` and `channel = email`; renders a bilingual (customer `lang`) email with booking details and the manage link; attaches the ticket PDF (rendered server-side from the same fields) — v1 may link the PDF instead of attaching if server rendering slips (see §9). Sets `ticket_sent_at/via`.
 - **WhatsApp** stays the manual finance flow (share sheet / two steps), now reading live data.
 
@@ -120,7 +120,7 @@ Indexes: `(consultant_id, starts_at)`, `(status)`, unique tokens.
 - **Repo:** GitHub repository (owner to create or grant access; the session's GitHub connector is currently failing).
 - **Vercel:** static build of `npm run build` (production mode), free tier, preview deploys per branch.
 - **Env vars (browser, public):** `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SITE_URL`.
-- **Secrets (Supabase only):** `RESEND_API_KEY`, `FINANCE_ALERT_TO`, `EMAIL_FROM`, service role key (never shipped to the browser).
+- **Secrets (Supabase only):** `RESEND_API_KEY`, `EMAIL_FROM`, service role key (never shipped to the browser).
 - **Links:** manage/ticket links use `VITE_SITE_URL` (free address now; `book.mg-visa.com` later — old links redirected).
 - **Artifact build** unchanged: local data layer, demo seed, prototype controls; never contains Supabase keys.
 - **Backups:** Supabase daily backups on. Migrations live in `supabase/migrations/` and are the only way schema changes.
@@ -149,10 +149,14 @@ Indexes: `(consultant_id, starts_at)`, `(status)`, unique tokens.
 
 ## 10. Open decisions (must be settled before go-live)
 
-- Finance alert address (`FINANCE_ALERT_TO`) and sender address/domain (`EMAIL_FROM`; DNS records on mg-visa.com for Resend).
+- Customer ticket sender address/domain (`EMAIL_FROM`; DNS records on mg-visa.com for Resend). No finance inbox is required.
 - Retention period for receipts and customer data.
 - Which staff get accounts, and their roles.
 - Real InstaPay link, Vodafone Cash wallet numbers and recipient name.
 - Cancellation / reschedule / refund / no-show policy (customer self-service limits).
 - GitHub and Vercel account ownership.
 - Supabase plan: confirm cost for the new project (Free tier allows 2 active projects per org; Crew-MG currently has 1 active + 1 paused).
+
+## User clarification — 2026-10-30
+
+Online consultations use Zoom or Google Meet. Show this as information only; meeting-platform connection and automatic link generation are outside this implementation. Preserve any existing real booking meeting links. Finance notifications stay inside the website; customer ticket email remains a separate selected channel.

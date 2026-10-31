@@ -10,10 +10,17 @@ import { Logo } from '../../components/Logo'
 import { QrCode } from '../../components/widgets'
 import { Ltr } from '../../components/ui'
 import { Icon } from '../../components/Icon'
+import { isLive } from '../../data/mode'
 
 const VALID = ['confirmed', 'checked-in', 'completed']
 
-export const manageUrl = (b: Booking) => `${location.origin}${location.pathname}#/booking/${b.manageToken}`
+export const manageUrl = (b: Booking) => {
+  if (!isLive) return `${location.origin}${location.pathname}#/booking/${b.manageToken}`
+  if (!import.meta.env.VITE_SITE_URL || !b.manageToken) return ''
+  const site = new URL(import.meta.env.VITE_SITE_URL)
+  site.hash = `/booking/${b.manageToken}`
+  return site.toString()
+}
 
 /** The entry ticket, styled as a boarding pass. */
 export const BoardingPass = forwardRef<HTMLDivElement, { booking: Booking; lang?: Lang }>(({ booking: b, lang: forced }, ref) => {

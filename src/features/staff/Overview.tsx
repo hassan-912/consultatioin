@@ -1,3 +1,4 @@
+import { useStaffBookings } from '../../data/hooks'
 import { Link } from 'react-router-dom'
 import { useT } from '../../i18n'
 import { useAppStore, todayIn } from '../../store/useAppStore'
@@ -9,7 +10,7 @@ import { ScreenTitle } from './StaffApp'
 export function Overview() {
   const { t } = useT()
   const role = useAppStore(s => s.role)
-  const bookings = Object.values(useAppStore(s => s.bookings))
+  const bookings = Object.values(useStaffBookings())
   const today = todayIn('Africa/Cairo')
   const todays = bookings.filter(b => dateInZone(b.startIso, b.tz) === today && ['confirmed', 'checked-in', 'completed'].includes(b.status))
   const tiles = [

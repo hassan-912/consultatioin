@@ -4,7 +4,7 @@
 
 **Goal:** Run the existing app as a real website whose bookings, payments, receipts, schedules, audit history and staff accounts live in a dedicated Supabase project, with live finance updates and email alerts.
 
-**Architecture:** A data-access layer (`src/data/`) sits between the UI and storage, with a `local` implementation (today's Zustand store; used by tests and the claude.ai demo) and a `supabase` implementation. Supabase enforces every rule in Postgres (exclusion constraint, `SECURITY DEFINER` RPCs, RLS, pg_cron). Two Edge Functions send email through Resend. The SPA deploys to Vercel.
+**Architecture:** A data-access layer (`src/data/`) sits between the UI and storage, with a `local` implementation (today's Zustand store; used by tests and the claude.ai demo) and a `supabase` implementation. Supabase enforces every rule in Postgres (exclusion constraint, `SECURITY DEFINER` RPCs, RLS, pg_cron). An Edge Function sends customer-selected ticket email through Resend; finance notifications stay inside the website. The SPA deploys to Vercel.
 
 **Tech Stack:** Supabase (Postgres 17, Auth, Storage, Realtime, pg_cron, btree_gist, Edge Functions on Deno), `@supabase/supabase-js` v2, Supabase CLI (local stack + migrations), Resend, Vercel, existing Vite/React/TS app, Vitest.
 
@@ -14,7 +14,7 @@
 
 - New Supabase project in org **Crew-MG**, region **eu-central-1**. Never touch `mgvisa-reviewer` or `queue are code`. Creating the project requires `confirm_cost` and the user's explicit OK.
 - Schema changes only through files in `supabase/migrations/`; apply to a Supabase branch / local stack first, production last.
-- The browser only ever holds `VITE_SUPABASE_URL` + publishable key. Service-role key, `RESEND_API_KEY`, `FINANCE_ALERT_TO`, `EMAIL_FROM` exist only as Supabase secrets.
+- The browser only ever holds `VITE_SUPABASE_URL` + publishable key. Service-role key, `RESEND_API_KEY`, `EMAIL_FROM` exist only as Supabase secrets.
 - RLS enabled on every table; `anon` has **no** table privileges — customers act only through RPCs.
 - Status machine, hold minutes (30), buffer (10), price (1000 EGP), duration range (15–30, slot 30) identical to `src/config/booking.ts` and `src/domain/bookingStatus.ts`.
 - No code path confirms a booking without a finance/admin user (`autoConfirm` stays false).
@@ -29,7 +29,7 @@
 2. **Customer guessing another booking** → `get_booking` with a wrong token returns nothing; `anon` `select * from bookings` is denied (Task 4 RLS test).
 3. **Hold expiring between page load and submit** → `submit_payment` refuses an expired `reserved` hold and the UI shows the expired screen (Task 3 SQL test + Task 7 contract test).
 4. **Arabic-Indic digits / spaces in phone and txn ref sent to RPCs** → normalized in SQL, so lookups match (Task 3 test).
-5. **Email function failure** → booking state unaffected; failure logged; retry does not double-send (Task 9 idempotency test via `ticket_sent_at` / `notified_at`).
+5. **Email function failure** → booking state unaffected; failure logged; retry does not double-send (Task 9 idempotency test via `ticket_sent_at` / durable outbox state).
 
 ---
 
@@ -48,7 +48,6 @@ supabase/
   migrations/0001_schema.sql, 0002_status_machine.sql, 0003_customer_rpcs.sql,
              0004_rls_staff.sql, 0005_storage.sql, 0006_cron.sql, 0007_notify.sql
   tests/*.sql         pgTAP tests
-  functions/notify-finance/index.ts
   functions/send-ticket-email/index.ts
   seed.sql            schedules from src/demo/schedule.ts (dev only)
 vercel.json
@@ -133,11 +132,14 @@ Maps RPC error codes to `SlotTaken` / `HoldExpired`; receipt upload via signed U
 Production: `supabase.auth.signInWithPassword`, session from Supabase, role from `staff_profiles`; password reset link. Admin screen: invite by email (Edge `inviteUserByEmail` through an admin-only function), set role/consultant, deactivate. Artifact mode keeps the prototype accounts.
 - [ ] Tests (local layer + mocked auth): signed-out → login screen; deactivated profile → refused; consultant session only shows own data. Commit.
 
-### Task 9: Notifications (live + email)
+### Task 9: Notifications (website finance + customer email)
 
-**Files:** `0007_notify.sql` (database webhooks → functions; `payments.notified_at`), `supabase/functions/notify-finance/index.ts`, `supabase/functions/send-ticket-email/index.ts` (+ `deno test` files), Modify `PaymentQueue.tsx` (realtime badge, optional sound/Notification API).
-- [ ] Tests: `notify-finance` builds the email (reference, customer, amount, method, txn, review link) and is idempotent on `notified_at`; `send-ticket-email` only for `confirmed` + `channel=email`, bilingual by `lang`, sets `ticket_sent_at`, idempotent; Resend errors leave booking unchanged and are logged. PDF: attach server-rendered PDF if Arabic shaping passes a visual check; otherwise send manage link + "Download PDF" (spec §9 fallback) — record the decision in the ledger.
-- [ ] Deploy functions to the dev branch with secrets; send one test email to an address the user provides. Commit.
+**User clarification:** Finance notifications stay inside the website. No finance alert email, finance inbox or `FINANCE_ALERT_TO`. Zoom or Google Meet is shown as information only; no meeting-provider integration or fake link generation.
+
+**Files:** Next additive notification migration; `supabase/functions/send-ticket-email/index.ts` and pure handler tests; finance workspace live pending badge/new-payment notice. Customer email only when `confirmed` and `channel=email`. A durable retry outbox and stable provider idempotency key prevent lost or duplicated ticket email. No deletion or cleanup jobs.
+- [ ] Tests: authorized finance live count/notice links to payment review; no finance email invoked. Customer email bilingual by `lang`, sets `ticket_sent_at` only after provider success, and is idempotent under retry/concurrency. Provider failure preserves booking state and leaves retryable notification state; no PII/tokens in logs.
+- [ ] PDF fallback: customer email can link to the secure booking page and browser Download PDF; document the decision.
+- [ ] Deploy only after verified development target/configuration and intended test recipient are available. No real email sends during local tests.
 
 ### Task 10: Build modes, Vercel, preview
 

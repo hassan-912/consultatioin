@@ -1,5 +1,5 @@
+import { useStaffAudit } from '../../../data/hooks'
 import { useT } from '../../../i18n'
-import { useAppStore } from '../../../store/useAppStore'
 import { formatInZone } from '../../../domain/time'
 import type { Actor } from '../../../domain/types'
 import { ScreenTitle } from '../StaffApp'
@@ -9,7 +9,7 @@ const statusKeys = new Set(['reserved', 'on-hold', 'confirmed', 'checked-in', 'c
 
 export function AuditLog() {
   const { t, lang } = useT()
-  const audit = useAppStore(s => s.audit)
+  const audit = useStaffAudit()
   const actor = (a: Actor) => (a === 'customer' || a === 'system' ? a : t(`staff.roles.${a}`))
   const label = (v?: string) => (v && statusKeys.has(v) ? t(`status.${v as 'confirmed'}`) : v)
   const actionKey = (a: string) => (['created', 'submitted', 'transition', 'edited', 'sent', 'checkin', 'signin'].includes(a) ? t(`audit.${a as 'created'}`) : a)

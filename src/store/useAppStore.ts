@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
+import { isLive, uiStorageKey } from '../data/mode'
 import type {
   AuditEntry, Booking, BranchId, Consultant, CustomerDetails, Format, Lang, ProgramId, StaffRole,
 } from '../domain/types'
@@ -124,10 +125,17 @@ export const useAppStore = create<AppState>()(
       addAudit: e => set(s => ({ audit: [{ ...e, at: s.now() }, ...s.audit].slice(0, 500) })),
     }),
     {
-      name: 'mg-proto-v1',
+      name: uiStorageKey,
       // localStorage so a booking link opens in any tab or window of the same browser.
       storage: createJSONStorage(() => localStorage),
-      partialize: ({ setLang: _a, now: _b, ...rest }) => rest,
+      partialize: ({ setLang: _a, now: _b, ...rest }) => isLive
+        ? { lang: rest.lang, filters: rest.filters, senderName: rest.senderName }
+        : rest,
+      merge: (persisted, current) => {
+        if (!isLive) return { ...current, ...(persisted as Partial<AppState>) }
+        const saved = persisted as Partial<AppState> | undefined
+        return { ...current, lang: saved?.lang === 'en' ? 'en' : 'ar', filters: saved?.filters ?? current.filters, senderName: saved?.senderName ?? '' }
+      },
       onRehydrateStorage: () => state => {
         if (state) applyDocumentLang(state.lang)
       },

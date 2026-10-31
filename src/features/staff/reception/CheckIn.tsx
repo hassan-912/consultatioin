@@ -1,6 +1,10 @@
+import { useStaffBookings } from '../../../data/hooks'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useT } from '../../../i18n'
-import { useAppStore, todayIn } from '../../../store/useAppStore'
+import { todayIn } from '../../../store/useAppStore'
+import { isLive } from '../../../data/mode'
+import type { Booking } from '../../../domain/types'
+import { DataStatus, reportActionError } from '../../../data/feedback'
 import { repo } from '../../../data'
 import { checkInVerdict, type CheckInVerdict } from '../../../domain/bookingStatus'
 import { formatInZone, dateInZone, formatDate } from '../../../domain/time'
@@ -16,9 +20,12 @@ declare global { interface Window { BarcodeDetector?: new (o: { formats: string[
 
 export function CheckIn() {
   const { t, lang } = useT()
-  const bookings = useAppStore(s => s.bookings)
+  const bookings = useStaffBookings()
   const [code, setCode] = useState('')
   const [checked, setChecked] = useState<string | null>(null)
+  const [remote, setRemote] = useState<{ booking?: Booking; verdict: CheckInVerdict }>()
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<unknown>(null)
   const [camera, setCamera] = useState<'off' | 'on' | 'unavailable'>('off')
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -27,12 +34,18 @@ export function CheckIn() {
     const q = normalizeDigits(raw).trim()
     return Object.values(bookings).find(b => b.qrToken === q || b.reference === q.toUpperCase())
   }
-  const booking = checked !== null ? find(checked) : undefined
-  const verdict: CheckInVerdict | null = checked === null ? null : checkInVerdict(booking, booking ? todayIn(booking.tz) : todayIn('Africa/Cairo'))
+  const booking = isLive ? remote?.booking : checked !== null ? find(checked) : undefined
+  const verdict: CheckInVerdict | null = isLive ? remote?.verdict ?? null : checked === null ? null : checkInVerdict(booking, booking ? todayIn(booking.tz) : todayIn('Africa/Cairo'))
+  const lookupCode = async (value: string) => {
+    setChecked(value)
+    if (!isLive) return
+    setBusy(true); setError(null); setRemote(undefined)
+    try { setRemote(await repo.checkIn(value)) } catch (error) { setError(error) } finally { setBusy(false) }
+  }
 
   const lookup = (e?: FormEvent) => {
     e?.preventDefault()
-    setChecked(code)
+    void lookupCode(code)
   }
 
   const stopCamera = () => {
@@ -59,7 +72,7 @@ export function CheckIn() {
         const found = await detector.detect(v).catch(() => [])
         if (found[0]) {
           setCode(found[0].rawValue)
-          setChecked(found[0].rawValue)
+          void lookupCode(found[0].rawValue)
           stopCamera()
           return
         }
@@ -96,11 +109,12 @@ export function CheckIn() {
           </Button>
           <form onSubmit={lookup} className="mt-4 grid gap-3 border-t border-line pt-4">
             <TextField label={t('staff.reception.manual')} dir="ltr" value={code} onChange={e => setCode(e.target.value)} placeholder="MG-XXXX-XXXX" />
-            <Button type="submit">{t('staff.reception.lookup')}</Button>
+            <Button type="submit" disabled={busy}>{t('staff.reception.lookup')}</Button>
           </form>
         </section>
 
         <section aria-live="polite">
+          <DataStatus loading={busy} error={error} />
           {verdict && (
             <div className="grid gap-3">
               <Notice tone={tone[verdict]} className="text-base">
@@ -116,8 +130,8 @@ export function CheckIn() {
                   <BookingMeta b={booking} />
                 </div>
               )}
-              {verdict === 'ok' && booking && (
-                <Button size="lg" variant="primary" onClick={() => repo.checkIn(booking.qrToken)}>
+              {!isLive && verdict === 'ok' && booking && (
+                <Button size="lg" variant="primary" onClick={() => repo.checkIn(booking.qrToken || booking.reference).catch(reportActionError)}>
                   <Icon name="check" size={18} />
                   {t('staff.reception.record')}
                 </Button>

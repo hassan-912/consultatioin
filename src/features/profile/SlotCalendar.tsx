@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useT } from '../../i18n'
 import type { Consultant, Format } from '../../domain/types'
 import { bookingConfig } from '../../config/booking'
@@ -9,29 +9,25 @@ import { Segmented } from '../../components/fields'
 import { DemoBadge } from '../../components/ui'
 import { Icon } from '../../components/Icon'
 import { DateStrip } from '../directory/Filters'
-import { offeredFormats, slotsFor } from '../shared/availability'
+import { useOfferedFormats } from '../shared/availability'
+import { useSlots } from '../../data/hooks'
+import { DataStatus } from '../../data/feedback'
 import { useStartBooking } from '../directory/ConsultantCard'
 
 export function SlotCalendar({ consultant }: { consultant: Consultant }) {
   const { t, lang } = useT()
   const filters = useAppStore(s => s.filters)
-  const bookings = useAppStore(s => s.bookings)
-  const overrides = useAppStore(s => s.scheduleOverrides)
   const branch = branchById(consultant.branchId)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const formats = useMemo(() => offeredFormats(consultant.id), [consultant.id, overrides])
+  const formats = useOfferedFormats(consultant.id)
   const [format, setFormat] = useState<Format>(
-    filters.format !== 'any' && formats.includes(filters.format) ? filters.format : formats[0],
+    filters.format !== 'any' && formats.includes(filters.format) ? filters.format : formats[0] ?? 'online',
   )
   const duration = bookingConfig.durations[format][0]
   const [date, setDate] = useState(filters.date)
   const startBooking = useStartBooking()
 
-  const slots = useMemo(
-    () => (formats.includes(format) ? slotsFor(consultant.id, date, format, duration) : []),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [consultant.id, date, format, duration, bookings, overrides, formats],
-  )
+  const { slots, loading, error } = useSlots(consultant.id, date, format, duration)
 
   return (
     <section aria-labelledby="cal-title" className="rounded-3xl bg-white p-5 ring-1 ring-line sm:p-6">
@@ -69,7 +65,7 @@ export function SlotCalendar({ consultant }: { consultant: Consultant }) {
         <Icon name="clock" size={13} />
         {t('booking.timesShownIn', { zone: zoneLabel(branch.timeZone, lang) })}
       </p>
-      {slots.length ? (
+      {loading || error ? <DataStatus loading={loading} error={error} /> : slots.length ? (
         <ul className="grid grid-cols-3 gap-2 sm:grid-cols-5">
           {slots.map(s => (
             <li key={s.startIso}>

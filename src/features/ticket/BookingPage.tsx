@@ -4,7 +4,8 @@ import { useT } from '../../i18n'
 import { useAppStore } from '../../store/useAppStore'
 import { getConsultant } from '../../store/actions'
 import { repo } from '../../data'
-import { useBookingByToken } from '../../data/useBookings'
+import { useBookingLookup } from '../../data/useBookings'
+import { DataStatus, errorKey } from '../../data/feedback'
 import { Header } from '../../components/Header'
 import { Footer } from '../../components/Footer'
 import { Button, ButtonLink, ConfirmButton, Notice, StatusChip } from '../../components/ui'
@@ -36,7 +37,8 @@ export function NotFound() {
 
 export function BookingPage() {
   const { token = '' } = useParams()
-  const booking = useBookingByToken(token)
+  const { booking, loading, error } = useBookingLookup(token)
+  if (loading || error) return <><Header /><main id="main" className="mx-auto max-w-lg px-4 py-16"><DataStatus loading={loading} error={error} /></main></>
   if (!booking) return <NotFound />
   return <Manage b={booking} />
 }
@@ -103,6 +105,7 @@ function Manage({ b }: { b: Booking }) {
             <p className="mt-0.5">{help}</p>
             {b.ticketSentVia && <p className="mt-1 text-xs">{t('ticket.sentVia', { channel: t(b.ticketSentVia === 'email' ? 'booking.channelEmail' : 'booking.channelWhatsapp') })}</p>}
           </Notice>
+          {b.format === 'online' && <p className="text-sm text-slate">{t('booking.meetingLinkNote')}</p>}
 
           {canPay && (
             <div className="rounded-3xl bg-paper p-1">
@@ -134,7 +137,7 @@ function Manage({ b }: { b: Booking }) {
               </Button>
             )}
             {CANCELLABLE.includes(b.status) && (
-              <ConfirmButton size="lg" label={t('ticket.cancelBooking')} confirmText={t('ticket.cancelConfirm')} onConfirm={() => void repo.cancel(b.manageToken)}>
+              <ConfirmButton size="lg" label={t('ticket.cancelBooking')} confirmText={t('ticket.cancelConfirm')} onConfirm={() => repo.cancel(b.manageToken)}>
                 <Icon name="x" size={18} />
                 {t('ticket.cancelBooking')}
               </ConfirmButton>
@@ -171,8 +174,8 @@ function Manage({ b }: { b: Booking }) {
                 await repo.reschedule(b.manageToken, newSlot!)
                 setReschedOpen(false)
                 setReschedError(null)
-              } catch {
-                setReschedError(t('payment.slotTaken'))
+              } catch (error) {
+                setReschedError(t(errorKey(error)))
               }
               setNewSlot(null)
             }}
@@ -190,6 +193,7 @@ function Manage({ b }: { b: Booking }) {
           slotStartIso={newSlot}
           error={reschedError}
           excludeBookingId={b.id}
+          rescheduleToken={b.manageToken}
           onChange={p => p.slotStartIso !== undefined && setNewSlot(p.slotStartIso)}
         />
       </BottomSheet>

@@ -11,6 +11,10 @@ import { formatDate } from '../../domain/time'
 import { WorldRoutes, useRoutePhase } from './WorldRoutes'
 import { Filters } from './Filters'
 import { ConsultantCard } from './ConsultantCard'
+import { isLive } from '../../data/mode'
+import { usePublicMetadata } from '../../data/hooks'
+import { useLiveData } from '../../data/liveState'
+import { DataStatus } from '../../data/feedback'
 
 export function DirectoryPage() {
   const { t, lang } = useT()
@@ -19,16 +23,18 @@ export function DirectoryPage() {
   const overrides = useAppStore(s => s.consultantOverrides)
   const scheduleOverrides = useAppStore(s => s.scheduleOverrides)
   const resetFilters = useAppStore(s => s.resetFilters)
+  const metadata = usePublicMetadata()
+  const metadataError = useLiveData(s => s.metadataError)
 
   const list = useMemo(
     () =>
       getConsultants(overrides).filter(c => {
         if (filters.branch !== 'all' && c.branchId !== filters.branch) return false
         if (filters.program !== 'all' && !c.programs.includes(filters.program)) return false
-        if (filters.format !== 'any' && !getRules(c.id, scheduleOverrides).formats.includes(filters.format)) return false
+        if (filters.format !== 'any' && !(isLive ? metadata?.find(m => m.consultantId === c.id)?.formats ?? [] : getRules(c.id, scheduleOverrides).formats).includes(filters.format)) return false
         return true
       }),
-    [filters, overrides, scheduleOverrides],
+    [filters, overrides, scheduleOverrides, metadata],
   )
 
   return (
@@ -59,7 +65,7 @@ export function DirectoryPage() {
           <DemoBadge />
         </div>
 
-        {list.length ? (
+        {isLive && !metadata ? <DataStatus loading={!metadataError} error={metadataError} /> : list.length ? (
           <div className="grid gap-4 sm:gap-5">
             {list.map(c => <ConsultantCard key={c.id} consultant={c} />)}
           </div>

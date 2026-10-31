@@ -1,11 +1,12 @@
 import { useState } from 'react'
+import { isLive } from '../../../data/mode'
 import { useT } from '../../../i18n'
 import { useAppStore } from '../../../store/useAppStore'
 import { editConsultant, getConsultants } from '../../../store/actions'
 import type { Consultant } from '../../../domain/types'
 import { branchById } from '../../../config/branches'
 import { Avatar } from '../../../components/widgets'
-import { Button } from '../../../components/ui'
+import { Button, Notice } from '../../../components/ui'
 import { TextArea, TextField } from '../../../components/fields'
 import { Icon } from '../../../components/Icon'
 import { ScreenTitle } from '../StaffApp'
@@ -55,6 +56,7 @@ export function ConsultantsAdmin() {
   return (
     <>
       <ScreenTitle title={t('staff.screens.consultants')} />
+      {isLive && <Notice className="mb-4">{t('data.sourceManaged')}</Notice>}
       <div className="grid gap-3">
         {getConsultants(overrides).map(c => (
           <div key={c.id} className="rounded-2xl bg-white p-4 ring-1 ring-line">
@@ -75,7 +77,7 @@ export function ConsultantsAdmin() {
                   {[!c.bio && t('placeholder.bio'), !c.photo && t('placeholder.photo'), !c.videoUrl && t('placeholder.video')].filter(Boolean).join(' / ')}
                 </p>
               </div>
-              <Button variant="ghost" size="sm" aria-label={`${t('staff.admin.editProfile')} ${c.name.en}`} onClick={() => setEditing(editing === c.id ? null : c.id)}>
+              <Button variant="ghost" size="sm" disabled={isLive} title={isLive ? t('data.sourceManaged') : undefined} aria-label={`${t('staff.admin.editProfile')} ${c.name.en}`} onClick={() => setEditing(editing === c.id ? null : c.id)}>
                 <Icon name="settings" size={15} />
                 <span className="hidden sm:inline">{t('staff.admin.editProfile')}</span>
               </Button>

@@ -1,3 +1,4 @@
+import { useStaffBookings } from '../../../data/hooks'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useT } from '../../../i18n'
@@ -10,13 +11,14 @@ import { ConfirmButton } from '../../../components/ui'
 import { SelectField, TextField } from '../../../components/fields'
 import { ScreenTitle } from '../StaffApp'
 import { BookingMeta, Empty } from '../common'
+import { isLive } from '../../../data/mode'
 
 const STATUSES: BookingStatus[] = ['reserved', 'on-hold', 'confirmed', 'checked-in', 'completed', 'no-show', 'expired', 'rejected', 'wrong-amount', 'duplicate', 'late-transfer', 'cancelled']
 
 export function BookingsAdmin() {
   const { t } = useT()
   const role = useAppStore(s => s.role)
-  const all = Object.values(useAppStore(s => s.bookings))
+  const all = Object.values(useStaffBookings())
   const [status, setStatus] = useState<BookingStatus | 'all'>('all')
   const [q, setQ] = useState('')
   const query = normalizeDigits(q).trim().toLowerCase()
@@ -39,9 +41,9 @@ export function BookingsAdmin() {
           <article key={b.id} aria-label={b.reference} className="flex flex-col gap-3 rounded-2xl bg-white p-4 ring-1 ring-line sm:flex-row sm:items-center sm:justify-between">
             <BookingMeta b={b} />
             <div className="flex shrink-0 gap-2">
-              <Link to={`/booking/${b.manageToken}`} className="inline-flex min-h-10 items-center rounded-xl px-3 text-sm font-semibold text-navy hover:bg-paper">{t('ticket.manage')}</Link>
+              {!isLive && <Link to={`/booking/${b.manageToken}`} className="inline-flex min-h-10 items-center rounded-xl px-3 text-sm font-semibold text-navy hover:bg-paper">{t('ticket.manage')}</Link>}
               {role === 'admin' && canApply(b, 'cancel') && (
-                <ConfirmButton size="sm" label={t('ticket.cancelBooking')} confirmText={t('ticket.cancelConfirm')} onConfirm={() => void repo.staffTransition(b.id, { type: 'cancel' }, role)} />
+                <ConfirmButton size="sm" label={t('ticket.cancelBooking')} confirmText={t('ticket.cancelConfirm')} onConfirm={() => repo.staffTransition(b.id, { type: 'cancel' }, role)} />
               )}
             </div>
           </article>

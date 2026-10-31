@@ -7,6 +7,7 @@ import { Footer } from '../../components/Footer'
 import { TextField } from '../../components/fields'
 import { Button, Notice } from '../../components/ui'
 import { Icon } from '../../components/Icon'
+import { DataStatus } from '../../data/feedback'
 
 export function FindBookingPage() {
   const { t } = useT()
@@ -14,12 +15,17 @@ export function FindBookingPage() {
   const [ref, setRef] = useState('')
   const [phone, setPhone] = useState('')
   const [notFound, setNotFound] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<unknown>(null)
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
-    const token = await repo.find(ref, phone)
-    if (!token) return setNotFound(true)
-    navigate(`/booking/${token}`)
+    setBusy(true); setError(null); setNotFound(false)
+    try {
+      const token = await repo.find(ref, phone)
+      if (!token) return setNotFound(true)
+      navigate(`/booking/${token}`)
+    } catch (error) { setError(error) } finally { setBusy(false) }
   }
 
   return (
@@ -33,9 +39,10 @@ export function FindBookingPage() {
         <p className="mt-2 text-slate">{t('ticket.findHint')}</p>
         <form onSubmit={submit} noValidate className="mt-8 grid gap-5 rounded-3xl bg-white p-5 ring-1 ring-line sm:p-6">
           {notFound && <Notice tone="bad">{t('ticket.notFound')}</Notice>}
+          <DataStatus loading={busy} error={error} />
           <TextField label={t('common.reference')} dir="ltr" placeholder="MG-XXXX-XXXX" autoCapitalize="characters" value={ref} onChange={e => { setRef(e.target.value); setNotFound(false) }} />
           <TextField label={t('booking.phone')} type="tel" dir="ltr" placeholder="+20 100 123 4567" value={phone} onChange={e => { setPhone(e.target.value); setNotFound(false) }} />
-          <Button type="submit" size="lg">{t('ticket.findSubmit')}</Button>
+          <Button type="submit" size="lg" disabled={busy}>{t('ticket.findSubmit')}</Button>
         </form>
       </main>
       <Footer />

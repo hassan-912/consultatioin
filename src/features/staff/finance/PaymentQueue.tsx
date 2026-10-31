@@ -1,6 +1,6 @@
+import { useStaffBookings } from '../../../data/hooks'
 import { useState } from 'react'
 import { useT } from '../../../i18n'
-import { useAppStore } from '../../../store/useAppStore'
 import { repo, SlotTaken } from '../../../data'
 import type { Booking } from '../../../domain/types'
 import { formatInZone } from '../../../domain/time'
@@ -13,6 +13,8 @@ import { BottomSheet } from '../../../components/widgets'
 import { WhatsAppSender } from './WhatsAppSender'
 import { ScreenTitle } from '../StaffApp'
 import { BookingMeta, Empty, Tabs } from '../common'
+import { isLive } from '../../../data/mode'
+import { DataStatus, errorKey } from '../../../data/feedback'
 
 const REVIEW = ['on-hold', 'wrong-amount', 'duplicate', 'late-transfer']
 
@@ -24,10 +26,22 @@ function ReviewItem({ b }: { b: Booking }) {
   const method = paymentConfig.methods.find(m => m.id === b.payment?.method)
   const [slotTaken, setSlotTaken] = useState(false)
   const [viewing, setViewing] = useState(false)
+  const [receiptUrl, setReceiptUrl] = useState<string>()
+  const [receiptLoading, setReceiptLoading] = useState(false)
+  const [receiptError, setReceiptError] = useState<unknown>(null)
+  const viewReceipt = async () => {
+    setViewing(true); setReceiptLoading(true); setReceiptError(null)
+    try {
+      const url = await repo.receiptUrl(b.id)
+      if (!url) throw new Error('Receipt unavailable')
+      setReceiptUrl(url)
+    }
+    catch (error) { setReceiptError(error) } finally { setReceiptLoading(false) }
+  }
   const act = (e: Parameters<typeof repo.staffTransition>[1]) =>
     repo.staffTransition(b.id, e, 'finance').catch(err => {
       if (err instanceof SlotTaken) setSlotTaken(true)
-      else throw err
+      else setErr(t(errorKey(err)))
     })
   const onHold = b.status === 'on-hold'
 
@@ -41,9 +55,9 @@ function ReviewItem({ b }: { b: Booking }) {
         <div>
           <dt className="text-xs text-muted">{t('staff.finance.receipt')}</dt>
           <dd className="truncate font-semibold">
-            {b.payment?.receiptImage ? (
-              <button type="button" onClick={() => setViewing(true)} className="group mt-0.5 flex items-center gap-2 text-start" aria-label={t('staff.finance.viewReceipt')}>
-                <img src={b.payment.receiptImage} alt="" className="h-12 w-9 rounded-md object-cover ring-1 ring-line group-hover:ring-slate" />
+            {b.payment?.receiptImage || b.payment?.hasReceipt ? (
+              <button type="button" onClick={() => void viewReceipt()} className="group mt-0.5 flex min-h-11 items-center gap-2 text-start" aria-label={t('staff.finance.viewReceipt')}>
+                {b.payment.receiptImage && <img src={b.payment.receiptImage} alt="" className="h-12 w-9 rounded-md object-cover ring-1 ring-line group-hover:ring-slate" />}
                 <span className="text-sm font-semibold text-navy group-hover:underline">{t('staff.finance.viewReceipt')}</span>
               </button>
             ) : (
@@ -58,9 +72,12 @@ function ReviewItem({ b }: { b: Booking }) {
         )}
       </dl>
 
-      <BottomSheet open={viewing} onClose={() => setViewing(false)} title={`${t('staff.finance.receipt')} — ${b.reference}`}>
+      <BottomSheet open={viewing} onClose={() => { setViewing(false); setReceiptUrl(undefined) }} title={`${t('staff.finance.receipt')} — ${b.reference}`}>
         <div className="grid gap-4 pb-4 sm:grid-cols-[1fr_200px]">
-          <img src={b.payment?.receiptImage} alt={t('staff.finance.receipt')} className="mx-auto max-h-[60dvh] w-auto rounded-xl ring-1 ring-line" />
+          <DataStatus loading={receiptLoading} error={receiptError} />
+          {receiptUrl && (b.payment?.receiptPath?.toLowerCase().endsWith('.pdf')
+            ? <iframe src={receiptUrl} title={t('staff.finance.receipt')} className="h-[60dvh] w-full" />
+            : <img src={receiptUrl} alt={t('staff.finance.receipt')} className="mx-auto max-h-[60dvh] w-auto rounded-xl ring-1 ring-line" />)}
           <dl className="grid content-start gap-3 text-sm">
             <div><dt className="text-xs text-muted">{t('staff.finance.expected')}</dt><dd className="font-semibold"><Ltr>{formatMoney(b.price, lang)}</Ltr></dd></div>
             <div><dt className="text-xs text-muted">{t('staff.finance.txn')}</dt><dd className="font-semibold"><Ltr>{b.payment?.txnRef}</Ltr></dd></div>
@@ -70,6 +87,7 @@ function ReviewItem({ b }: { b: Booking }) {
         </div>
       </BottomSheet>
       {slotTaken && <Notice tone="bad" className="mt-4">{t('staff.finance.slotTaken')}</Notice>}
+      {err && !rejecting && <p role="alert" className="mt-3 text-sm text-bad">{err}</p>}
       {rejecting ? (
         <div className="mt-4 grid gap-3">
           <TextField label={t('staff.finance.reason')} value={reason} onChange={e => { setReason(e.target.value); setErr(undefined) }} error={err} />
@@ -108,12 +126,12 @@ function SendItem({ b }: { b: Booking }) {
       {via === 'email' ? (
         <>
           <div className="mt-4">
-            <Button onClick={() => repo.staffTransition(b.id, { type: 'mark-sent', via: 'email' }, 'finance')}>
+            <Button disabled={isLive} onClick={() => repo.staffTransition(b.id, { type: 'mark-sent', via: 'email' }, 'finance')}>
               <Icon name="mail" size={16} />
               {t('staff.finance.sendEmail')}
             </Button>
           </div>
-          <p className="mt-2 text-xs text-muted">{t('staff.finance.emailSimulated')}</p>
+          <p className="mt-2 text-xs text-muted">{t(isLive ? 'data.emailUnavailable' : 'staff.finance.emailSimulated')}</p>
         </>
       ) : (
         <WhatsAppSender b={b} />
@@ -124,7 +142,7 @@ function SendItem({ b }: { b: Booking }) {
 
 export function PaymentQueue() {
   const { t } = useT()
-  const all = Object.values(useAppStore(s => s.bookings))
+  const all = Object.values(useStaffBookings())
   const [tab, setTab] = useState<'review' | 'sent' | 'history'>('review')
   const review = all.filter(b => REVIEW.includes(b.status))
     // Newest submissions first.

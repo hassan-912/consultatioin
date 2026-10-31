@@ -1,5 +1,8 @@
 import { useAppStore, emptyDraft, todayIn } from '../store/useAppStore'
-import { applyEvent, createReservation, rescheduleBooking, submitPayment } from '../store/actions'
+import { applyEvent, createReservation, rescheduleBooking, submitPayment, getRules, editSchedule } from '../store/actions'
+import { consultants } from '../config/consultants'
+import { demoStats } from '../demo/seed'
+import { publicTotals } from '../domain/stats'
 import { slotsFor } from '../features/shared/availability'
 import { InvalidTransition, checkInVerdict } from '../domain/bookingStatus'
 import { cleanPhone, normalizeDigits } from '../domain/phone'
@@ -97,6 +100,21 @@ export function createLocalRepo(): BookingRepo {
       return get().bookings[bookingId]?.payment?.receiptImage ?? null
     },
 
+    async staffManageToken(id) { return get().bookings[id]?.manageToken ?? '' },
+    async publicMetadata() {
+      return consultants.map(c => ({ consultantId: c.id, formats: getRules(c.id).formats, ...publicTotals(Object.values(get().bookings), c.id, get().now(), demoStats[c.id]) }))
+    },
+    async staffRecords() { return get().records },
+    async staffAudit() { return get().audit },
+    async staffSchedules() { return Object.fromEntries(consultants.map(c => [c.id, getRules(c.id)])) },
+    async saveSchedule(id, patch) {
+      const baseLeave = getRules(id, {}).leave
+      editSchedule(id, patch.leave ? { ...patch, leave: patch.leave.filter(l => !baseLeave.some(b => b.from === l.from && b.to === l.to)) } : patch)
+    },
+    async saveRecord(id, record) {
+      useAppStore.setState(s => ({ records: { ...s.records, [id]: record } }))
+      get().addAudit({ actor: get().role, action: 'edited', bookingRef: get().bookings[id]?.reference, to: record.outcome })
+    },
     subscribe(onChange) {
       return useAppStore.subscribe(onChange)
     },
