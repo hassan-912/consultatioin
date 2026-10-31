@@ -1,5 +1,5 @@
-import { useState, type ReactNode } from 'react'
-import { Link, NavLink, Navigate, Route, Routes } from 'react-router-dom'
+import { useEffect, useState, type ReactNode } from 'react'
+import { Link, NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { useT } from '../../i18n'
 import { useAppStore } from '../../store/useAppStore'
 import { Logo } from '../../components/Logo'
@@ -9,7 +9,9 @@ import { Icon } from '../../components/Icon'
 import { can, screens, type StaffScreen } from './permissions'
 import { Overview } from './Overview'
 import { StaffLogin } from './StaffLogin'
+import { StaffReset } from './StaffReset'
 import { signOut } from '../../store/auth'
+import { restoreStaffSession, watchStaffAuth } from '../../store/liveAuth'
 import { PaymentQueue } from './finance/PaymentQueue'
 import { CheckIn } from './reception/CheckIn'
 import { Arrivals } from './reception/Arrivals'
@@ -20,6 +22,7 @@ import { BookingsAdmin } from './admin/BookingsAdmin'
 import { PaymentsAdmin, KpiAdmin } from './admin/SettingsAdmin'
 import { AuditLog } from './admin/AuditLog'
 import { PendingDecisions } from './admin/PendingDecisions'
+import { StaffAccounts } from './admin/StaffAccounts'
 import { useStaffHydration, staffSessionKey } from '../../data/hooks'
 import { useLiveData } from '../../data/liveState'
 import { isLive } from '../../data/mode'
@@ -40,6 +43,7 @@ const views: Record<StaffScreen, () => ReactNode> = {
   kpi: () => <KpiAdmin />,
   audit: () => <AuditLog />,
   decisions: () => <PendingDecisions />,
+  staffAccounts: () => <StaffAccounts />,
 }
 
 function SessionCard({ dark = true }: { dark?: boolean }) {
@@ -90,12 +94,22 @@ export function StaffApp() {
   const role = useAppStore(s => s.role)
   const session = useAppStore(s => s.staffSession)
   const [open, setOpen] = useState(false)
+  const { pathname } = useLocation()
+  const [restoring, setRestoring] = useState(isLive)
+  useEffect(() => {
+    if (!isLive) return
+    const stop = watchStaffAuth()
+    let active = true
+    void restoreStaffSession().finally(() => { if (active) setRestoring(false) })
+    return () => { active = false; stop() }
+  }, [])
   useStaffHydration()
   const loading = useLiveData(s => s.loading)
   const error = useLiveData(s => s.error)
   const snapshotKey = useLiveData(s => s.staffKey)
   const staleSnapshot = isLive && snapshotKey !== staffSessionKey(session)
-  if (!session) return <StaffLogin />
+  if (isLive && pathname.replace(/\/$/, '') === '/staff/reset') return <StaffReset />
+  if (!session) return restoring ? <p role="status" className="grid min-h-dvh place-items-center bg-slate-deep text-mist">{t('staff.login.restoring')}</p> : <StaffLogin />
 
   return (
     <div className="min-h-dvh bg-paper lg:grid lg:grid-cols-[260px_minmax(0,1fr)]">

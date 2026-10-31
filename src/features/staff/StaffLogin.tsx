@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useT } from '../../i18n'
 import { signIn } from '../../store/auth'
+import { requestPasswordReset, signInWithEmail } from '../../store/liveAuth'
 import { Logo } from '../../components/Logo'
 import { LangSwitch } from '../../components/LangSwitch'
 import { TextField } from '../../components/fields'
@@ -15,16 +16,25 @@ export function StaffLogin() {
   const [password, setPassword] = useState('')
   const [show, setShow] = useState(false)
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState(false)
+  const [error, setError] = useState<'invalid' | 'inactive' | 'unavailable' | null>(null)
+  const [forgot, setForgot] = useState(false)
+  const [sent, setSent] = useState(false)
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     setBusy(true)
     try {
-      const ok = await signIn(username, password)
-      if (!ok) setError(true)
-    } catch { setError(true) } finally { setBusy(false) }
+      if (isLive && forgot) {
+        setError(null)
+        const r = await requestPasswordReset(username)
+        if (r === 'sent') setSent(true); else setError('unavailable')
+      } else if (isLive) {
+        const r = await signInWithEmail(username, password)
+        if (r !== 'ok') setError(r)
+      } else if (!(await signIn(username, password))) setError('invalid')
+    } catch { setError('unavailable') } finally { setBusy(false) }
   }
+  const errorText = error === 'inactive' ? 'staff.login.inactive' : error === 'unavailable' ? 'staff.login.unavailable' : 'staff.login.error'
 
   return (
     <div className="relative flex min-h-dvh flex-col bg-slate-deep px-4 py-6 text-white">
@@ -41,24 +51,26 @@ export function StaffLogin() {
           <h1 className="mt-4 text-2xl font-semibold">{t('staff.login.title')}</h1>
           <p className="mt-1 text-sm text-muted">{t('staff.login.hint')}</p>
           <div className="mt-6 grid gap-4">
-            {isLive && <Notice tone="info">{t('data.authPending')}</Notice>}
-            {error && <Notice tone="bad">{t(isLive ? 'data.authPending' : 'staff.login.error')}</Notice>}
+            {forgot && <p className="text-sm text-muted">{t('staff.login.forgotHint')}</p>}
+            {sent && <Notice tone="ok">{t('staff.login.resetSent')}</Notice>}
+            {error && <Notice tone="bad">{t(errorText)}</Notice>}
             <TextField
-              label={t('staff.login.username')}
+              label={t(isLive ? 'staff.login.email' : 'staff.login.username')}
               dir="ltr"
+              type={isLive ? 'email' : 'text'}
               autoComplete="username"
               autoCapitalize="none"
               value={username}
-              onChange={e => { setUsername(e.target.value); setError(false) }}
+              onChange={e => { setUsername(e.target.value); setError(null); setSent(false) }}
             />
-            <div className="relative">
+            {!forgot && <div className="relative">
               <TextField
                 label={t('staff.login.password')}
                 dir="ltr"
                 type={show ? 'text' : 'password'}
                 autoComplete="current-password"
                 value={password}
-                onChange={e => { setPassword(e.target.value); setError(false) }}
+                onChange={e => { setPassword(e.target.value); setError(null) }}
                 className="pe-12"
               />
               <button
@@ -70,10 +82,15 @@ export function StaffLogin() {
               >
                 <Icon name={show ? 'eyeOff' : 'eye'} size={17} />
               </button>
-            </div>
-            <Button type="submit" size="lg" disabled={isLive || busy || !username || !password}>
-              {busy ? t('staff.login.checking') : t('staff.login.submit')}
+            </div>}
+            <Button type="submit" size="lg" disabled={busy || !username || (!forgot && !password)}>
+              {forgot ? t('staff.login.sendReset') : busy ? t('staff.login.checking') : t('staff.login.submit')}
             </Button>
+            {isLive && (
+              <button type="button" onClick={() => { setForgot(v => !v); setError(null); setSent(false) }} className="min-h-11 text-start text-sm font-semibold text-slate hover:text-ink">
+                {forgot ? t('staff.login.backToSignIn') : t('staff.login.forgot')}
+              </button>
+            )}
           </div>
           {!isLive && <p className="mt-5 text-xs text-muted">{t('staff.login.prototype')}</p>}
         </form>

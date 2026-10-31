@@ -3,7 +3,7 @@ import type { IconName } from '../../components/Icon'
 
 export type StaffScreen =
   | 'overview' | 'payments' | 'checkin' | 'arrivals' | 'myCalendar' | 'myBookings' | 'records'
-  | 'consultants' | 'availability' | 'bookings' | 'paymentSettings' | 'kpi' | 'audit' | 'decisions'
+  | 'consultants' | 'availability' | 'bookings' | 'paymentSettings' | 'kpi' | 'audit' | 'decisions' | 'staffAccounts'
 
 export const screens: { id: StaffScreen; path: string; icon: IconName }[] = [
   { id: 'overview', path: '', icon: 'layers' },
@@ -20,6 +20,7 @@ export const screens: { id: StaffScreen; path: string; icon: IconName }[] = [
   { id: 'kpi', path: 'kpi', icon: 'sparkle' },
   { id: 'audit', path: 'audit', icon: 'history' },
   { id: 'decisions', path: 'decisions', icon: 'alert' },
+  { id: 'staffAccounts', path: 'staff-accounts', icon: 'shield' },
 ]
 
 export const permissions: Record<StaffRole, StaffScreen[]> = {

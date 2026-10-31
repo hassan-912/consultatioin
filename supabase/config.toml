@@ -417,3 +417,7 @@ enabled = true
 
 [functions.create-receipt-upload]
 verify_jwt = false
+
+# Verifies the caller JWT and the admin role itself (service-role lookup), so the gateway check is off.
+[functions.invite-staff]
+verify_jwt = false
