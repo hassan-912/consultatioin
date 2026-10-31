@@ -381,6 +381,10 @@ export const en = {
       unresolved: 'Unresolved decisions',
     },
     finance: {
+      alerts: {
+        badge: '{count} payments awaiting review', newPayment: 'New payment received — {reference}', view: 'Open payment', dismiss: 'Dismiss',
+        sound: 'Play a sound for new payments', reconnecting: 'Live updates are disconnected. Reconnecting — the list still refreshes automatically.',
+      },
       queueEmpty: 'No payments waiting for review.',
       expected: 'Expected',
       submitted: 'Submitted',

@@ -1,5 +1,6 @@
 import { useStaffBookings } from '../../../data/hooks'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useT } from '../../../i18n'
 import { repo, SlotTaken } from '../../../data'
 import type { Booking } from '../../../domain/types'
@@ -16,10 +17,12 @@ import { BookingMeta, Empty, Tabs } from '../common'
 import { isLive } from '../../../data/mode'
 import { DataStatus, errorKey } from '../../../data/feedback'
 
-const REVIEW = ['on-hold', 'wrong-amount', 'duplicate', 'late-transfer']
+import { REVIEW_STATUSES as REVIEW } from './paymentAlerts'
 
-function ReviewItem({ b }: { b: Booking }) {
+function ReviewItem({ b, focused }: { b: Booking; focused?: boolean }) {
   const { t, l, lang } = useT()
+  const ref = useRef<HTMLElement>(null)
+  useEffect(() => { if (focused) { ref.current?.scrollIntoView?.({ block: 'center' }); ref.current?.focus() } }, [focused])
   const [rejecting, setRejecting] = useState(false)
   const [reason, setReason] = useState('')
   const [err, setErr] = useState<string>()
@@ -46,7 +49,7 @@ function ReviewItem({ b }: { b: Booking }) {
   const onHold = b.status === 'on-hold'
 
   return (
-    <article aria-label={b.reference} className="rounded-2xl bg-white p-4 ring-1 ring-line sm:p-5">
+    <article ref={ref} tabIndex={-1} aria-label={b.reference} className={`rounded-2xl bg-white p-4 outline-none ring-1 sm:p-5 ${focused ? 'ring-2 ring-gold' : 'ring-line'}`}>
       <BookingMeta b={b} />
       <dl className="mt-4 grid grid-cols-2 gap-3 rounded-xl bg-paper p-3 text-sm sm:grid-cols-4">
         <div><dt className="text-xs text-muted">{t('staff.finance.expected')}</dt><dd className="font-semibold"><Ltr>{formatMoney(b.price, lang)}</Ltr></dd></div>
@@ -144,6 +147,8 @@ export function PaymentQueue() {
   const { t } = useT()
   const all = Object.values(useStaffBookings())
   const [tab, setTab] = useState<'review' | 'sent' | 'history'>('review')
+  const [params] = useSearchParams()
+  const focusId = params.get('focus')
   const review = all.filter(b => REVIEW.includes(b.status))
     // Newest submissions first.
     .sort((a, b) => (b.payment?.submittedAt ?? b.createdAt) - (a.payment?.submittedAt ?? a.createdAt))
@@ -166,7 +171,7 @@ export function PaymentQueue() {
         ]}
       />
       <div className="grid gap-3">
-        {tab === 'review' && (review.length ? review.map(b => <ReviewItem key={b.id} b={b} />) : <Empty>{t('staff.finance.queueEmpty')}</Empty>)}
+        {tab === 'review' && (review.length ? review.map(b => <ReviewItem key={b.id} b={b} focused={b.id === focusId} />) : <Empty>{t('staff.finance.queueEmpty')}</Empty>)}
         {tab === 'sent' && (toSend.length ? toSend.map(b => <SendItem key={b.id} b={b} />) : <Empty>{t('staff.finance.queueEmpty')}</Empty>)}
         {tab === 'history' && history.map(b => (
           <div key={b.id} className="rounded-2xl bg-white p-4 ring-1 ring-line">

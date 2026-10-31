@@ -13,6 +13,7 @@ import { StaffReset } from './StaffReset'
 import { signOut } from '../../store/auth'
 import { restoreStaffSession, watchStaffAuth } from '../../store/liveAuth'
 import { PaymentQueue } from './finance/PaymentQueue'
+import { ConnectionIndicator, NewPaymentNotice, PaymentBadge } from './finance/paymentAlerts'
 import { CheckIn } from './reception/CheckIn'
 import { Arrivals } from './reception/Arrivals'
 import { MyCalendar, MyBookings, Records } from './consultant/ConsultantDesk'
@@ -83,6 +84,7 @@ function Nav({ onNavigate }: { onNavigate?: () => void }) {
         >
           <Icon name={s.icon} size={17} />
           {t(`staff.screens.${s.id}`)}
+          {s.id === 'payments' && <PaymentBadge />}
         </NavLink>
       ))}
     </nav>
@@ -134,6 +136,8 @@ export function StaffApp() {
         </header>
 
         <main id="main" className="mx-auto max-w-5xl px-4 py-6 sm:px-6">
+          <ConnectionIndicator />
+          <NewPaymentNotice />
           {isLive && <DataStatus loading={loading || staleSnapshot} error={error} />}
           {(!isLive || (!loading && !error && !staleSnapshot)) &&
           <Routes>

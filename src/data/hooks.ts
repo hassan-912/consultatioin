@@ -58,8 +58,9 @@ export function useStaffHydration() {
     useLiveData.setState({ bookings: {}, records: {}, audit: [], schedules: {}, staffKey: staffSessionKey(session), loading: true, error: null })
     void refresh()
     const off = repo.subscribe(() => void refresh())
+    const offConnection = repo.onConnection?.(connection => { if (active) useLiveData.setState({ connection }) })
     const timer = setInterval(() => void refresh(), 15000)
-    return () => { active = false; clearInterval(timer); off(); useLiveData.setState({ bookings: {}, records: {}, audit: [], schedules: {}, staffKey: null, loading: true, error: null, actionError: null }) }
+    return () => { active = false; clearInterval(timer); off(); offConnection?.(); useLiveData.setState({ bookings: {}, records: {}, audit: [], schedules: {}, staffKey: null, connection: 'idle', loading: true, error: null, actionError: null }) }
   }, [session])
 }
 let metadataRequest: Promise<void> | undefined

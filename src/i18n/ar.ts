@@ -383,6 +383,10 @@ export const ar: Dict = {
       unresolved: 'قرارات لم تُحسم',
     },
     finance: {
+      alerts: {
+        badge: '{count} مدفوعات بانتظار المراجعة', newPayment: 'تم استلام دفعة جديدة — {reference}', view: 'افتح الدفعة', dismiss: 'إغلاق',
+        sound: 'تشغيل صوت عند وصول دفعة جديدة', reconnecting: 'انقطع التحديث المباشر. جارٍ إعادة الاتصال — ما زالت القائمة تتحدث تلقائيًا.',
+      },
       queueEmpty: 'لا توجد مدفوعات بانتظار المراجعة.',
       expected: 'المطلوب',
       submitted: 'وقت الإرسال',

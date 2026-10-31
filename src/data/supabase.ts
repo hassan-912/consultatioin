@@ -59,6 +59,9 @@ export function createSupabaseRepo(clients: BackendClients): BookingRepo {
   const { customer, staff } = clients
   const listeners = new Set<() => void>()
   let channel: ReturnType<SupabaseClient['channel']> | undefined
+  const connectionListeners = new Set<(state: 'connected' | 'reconnecting') => void>()
+  let connection: 'connected' | 'reconnecting' | undefined
+  const setConnection = (state: 'connected' | 'reconnecting') => { connection = state; connectionListeners.forEach(fn => fn(state)) }
   const changed = () => listeners.forEach(fn => fn())
   const customerBooking = async (rpc: string, args: Row) => {
     const row = await result<Row>(customer.rpc(rpc, args))
@@ -218,12 +221,18 @@ export function createSupabaseRepo(clients: BackendClients): BookingRepo {
     subscribe(fn) {
       listeners.add(fn)
       if (!channel) channel = staff.channel('mg-staff-bookings').on('postgres_changes', { event: '*', schema: 'public', table: 'bookings', select: ['id', 'status'] }, changed).subscribe(status => {
-        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') changed()
+        if (status === 'SUBSCRIBED') setConnection('connected')
+        else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') { setConnection('reconnecting'); if (status !== 'CLOSED') changed() }
       })
       return () => {
         listeners.delete(fn)
-        if (!listeners.size && channel) { void staff.removeChannel(channel); channel = undefined }
+        if (!listeners.size && channel) { void staff.removeChannel(channel); channel = undefined; connection = undefined }
       }
+    },
+    onConnection(fn) {
+      connectionListeners.add(fn)
+      if (connection) fn(connection)
+      return () => { connectionListeners.delete(fn) }
     },
   }
   const holds = new Map<string, Awaited<ReturnType<BookingRepo['reserve']>>>()

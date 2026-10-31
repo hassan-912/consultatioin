@@ -56,4 +56,6 @@ export interface BookingRepo {
   staffSchedules(): Promise<Record<string, ScheduleRules>>
   saveSchedule(consultantId: string, patch: Partial<ScheduleRules>): Promise<void>
   subscribe(onChange: () => void): () => void
+  /** Live transports report whether the realtime channel is up. Local mode has no channel and omits this. */
+  onConnection?(fn: (state: 'connected' | 'reconnecting') => void): () => void
 }

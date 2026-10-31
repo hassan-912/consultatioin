@@ -148,3 +148,20 @@ test('default and supplied fetch are never invoked as a method of another object
     expect(receivers.every(r => r === undefined || r === globalThis)).toBe(true)
   } finally { vi.unstubAllGlobals() }
 })
+test('realtime connection state is reported to onConnection and replayed to late listeners', () => {
+  const h = harness(() => [])
+  let status: (s: string) => void = () => {}
+  const channel = { on: vi.fn(), subscribe: vi.fn((fn: (s: string) => void) => { status = fn; return channel }) }
+  channel.on.mockReturnValue(channel)
+  vi.spyOn(h.clients.staff, 'channel').mockReturnValue(channel as any)
+  vi.spyOn(h.clients.staff, 'removeChannel').mockResolvedValue('ok')
+  const states: string[] = []
+  const off = h.repo.subscribe(() => {})
+  const offConnection = h.repo.onConnection!(s => states.push(s))
+  status('SUBSCRIBED'); status('CHANNEL_ERROR'); status('SUBSCRIBED'); status('TIMED_OUT'); status('CLOSED')
+  expect(states).toEqual(['connected', 'reconnecting', 'connected', 'reconnecting', 'reconnecting'])
+  const late: string[] = []
+  h.repo.onConnection!(s => late.push(s))
+  expect(late).toEqual(['reconnecting'])
+  offConnection(); off()
+})

@@ -421,3 +421,8 @@ verify_jwt = false
 # Verifies the caller JWT and the admin role itself (service-role lookup), so the gateway check is off.
 [functions.invite-staff]
 verify_jwt = false
+
+# Internal worker poked by the database (pg_net). It verifies the x-webhook-secret header itself before any
+# database access or send, so the gateway JWT check is off.
+[functions.send-ticket-email]
+verify_jwt = false
