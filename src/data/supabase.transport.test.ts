@@ -1,6 +1,6 @@
 import { createBackendClients } from '../lib/supabase'
 import { createSupabaseRepo, STAFF_BOOKING_COLUMNS } from './supabase'
-import { RepoError, SlotTaken } from './types'
+import { SlotTaken } from './types'
 
 const row = {
   id: 'c36de880-ff66-4ea8-a724-80dcc0a48800', reference: 'MG-ABCD-EFGH', consultant_id: 'mohamed-gamal', branch_id: 'nasr-city',
@@ -59,7 +59,7 @@ test('receipt upload failure rejects and does not submit payment', async () => {
   const h = harness(r => r.url.pathname.includes('/functions/')
     ? { bucket: 'receipts', path: `${row.id}/receipt.pdf`, token: 'upload-token' }
     : new Response(JSON.stringify({ message: 'permission denied' }), { status: 403 }))
-  await expect(h.repo.submitPayment('manage', { method: 'instapay', txnRef: 'TX1234', receipt: new Blob(['pdf'], { type: 'application/pdf' }) })).rejects.toBeInstanceOf(RepoError)
+  await expect(h.repo.submitPayment('manage', { method: 'instapay', txnRef: 'TX1234', receipt: new Blob(['pdf'], { type: 'application/pdf' }) })).rejects.toMatchObject({ code: 'UPLOAD_FAILED' })
   expect(h.calls.some(r => r.url.pathname.endsWith('submit_payment'))).toBe(false)
 })
 test('staff rows use explicit columns and map payment metadata without acquiring customer capabilities', async () => {
@@ -122,4 +122,13 @@ test('Realtime is staff-only invalidation requesting id/status, and unsubscribe 
   expect(listener).toHaveBeenCalledOnce()
   off()
   expect(remove).toHaveBeenCalledWith(channel)
+})
+test('a failed storage upload surfaces as UPLOAD_FAILED, not a generic network error', async () => {
+  const h = harness(r => r.url.pathname.includes('/functions/')
+    ? { bucket: 'receipts', path: `${row.id}/receipt.png`, token: 'upload-token' }
+    : new Response(JSON.stringify({ message: 'boom' }), { status: 500 }))
+  await expect(h.repo.submitPayment('manage', { method: 'instapay', txnRef: 'TX1234', receiptImage: 'data:image/png;base64,YWJj' })).rejects.toMatchObject({ code: 'UPLOAD_FAILED' })
+})
+test('missing live configuration is refused rather than falling back to local data', () => {
+  expect(() => createBackendClients('', '')).toThrow('LIVE_CONFIG_MISSING')
 })

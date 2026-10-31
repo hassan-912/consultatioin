@@ -115,7 +115,9 @@ export function createSupabaseRepo(clients: BackendClients): BookingRepo {
         const capability = await response.json().catch(() => { throw new RepoError('UPLOAD_FAILED') })
         if (!response.ok) throw rpcFailure({ message: capability.error ?? capability.code ?? 'UPLOAD_FAILED' })
         if (capability.bucket !== 'receipts' || !capability.path || !capability.token) throw new RepoError('UPLOAD_FAILED')
+        // Storage errors carry no RPC code; only a rejected capability is distinguishable from a failed upload.
         await result(customer.storage.from(capability.bucket).uploadToSignedUrl(capability.path, capability.token, blob, { upsert: false, contentType: blob.type }))
+          .catch(e => { throw e instanceof RepoError && e.code === 'FORBIDDEN' ? e : new RepoError('UPLOAD_FAILED', { cause: e }) })
         path = capability.path
       }
       return customerBooking('submit_payment', { p_manage_token: token, p_method: p.method, p_txn_ref: p.txnRef, p_receipt_path: path })
