@@ -101,6 +101,8 @@ export function createLocalRepo(): BookingRepo {
     },
 
     async staffManageToken(id) { return get().bookings[id]?.manageToken ?? '' },
+    // Prototype: no real email; recording the send is the simulation.
+    async queueTicketEmail(id) { applyEvent(id, { type: 'mark-sent', via: 'email' }, get().staffSession?.role ?? get().role); return 'sent' },
     async publicMetadata() {
       return consultants.map(c => ({ consultantId: c.id, formats: getRules(c.id).formats, ...publicTotals(Object.values(get().bookings), c.id, get().now(), demoStats[c.id]) }))
     },

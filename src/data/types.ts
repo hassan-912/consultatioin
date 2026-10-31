@@ -49,6 +49,8 @@ export interface BookingRepo {
   checkIn(code: string): Promise<{ verdict: CheckInVerdict; booking?: Booking }>
   receiptUrl(bookingId: string): Promise<string | null>
   staffManageToken(bookingId: string): Promise<string>
+  /** Finance/admin: send the ticket by email (any channel). Resolves to the outbox status. */
+  queueTicketEmail(bookingId: string): Promise<'pending' | 'sending' | 'sent' | 'failed'>
   publicMetadata(): Promise<PublicMetadata[]>
   staffRecords(): Promise<Record<string, ConsultationRecord>>
   saveRecord(bookingId: string, record: ConsultationRecord): Promise<void>

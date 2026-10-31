@@ -169,6 +169,7 @@ export function createSupabaseRepo(clients: BackendClients): BookingRepo {
       return r.signedUrl
     },
     async staffManageToken(id) { await requireStaff(); return result(staff.rpc('staff_manage_token', { p_booking_id: id })) },
+    async queueTicketEmail(id) { await requireStaff(); const status = await result<'pending' | 'sending' | 'sent' | 'failed'>(staff.rpc('staff_queue_ticket_email', { p_booking_id: id })); changed(); return status },
     async publicMetadata() {
       const rows = await result<Row[]>(customer.rpc('public_consultant_metadata'))
       return rows.map(r => ({ consultantId: r.consultant_id, formats: r.formats as Format[], total: Number(r.total), thisMonth: Number(r.this_month) }))

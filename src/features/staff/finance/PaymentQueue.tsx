@@ -8,7 +8,7 @@ import { formatInZone } from '../../../domain/time'
 import { formatMoney } from '../../../domain/pricing'
 import { paymentConfig } from '../../../config/payments'
 import { Button, Ltr, Notice } from '../../../components/ui'
-import { TextField } from '../../../components/fields'
+import { Segmented, TextField } from '../../../components/fields'
 import { Icon } from '../../../components/Icon'
 import { BottomSheet } from '../../../components/widgets'
 import { WhatsAppSender } from './WhatsAppSender'
@@ -118,24 +118,53 @@ function ReviewItem({ b, focused }: { b: Booking; focused?: boolean }) {
 
 function SendItem({ b }: { b: Booking }) {
   const { t } = useT()
-  const via = b.customer.channel
+  const preferred = b.customer.channel
+  const hasEmail = !!b.customer.email?.trim()
+  // Finance may send by either channel; the customer's preference is only the default.
+  const [via, setVia] = useState<'email' | 'whatsapp'>(preferred === 'email' && hasEmail ? 'email' : 'whatsapp')
+  const [queued, setQueued] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<unknown>(null)
+  const sendEmail = async () => {
+    setBusy(true); setError(null)
+    try { await repo.queueTicketEmail(b.id); setQueued(true) } catch (err) { setError(err) } finally { setBusy(false) }
+  }
+  const emailNote = queued ? 'staff.finance.emailQueued'
+    : !isLive ? 'staff.finance.emailSimulated'
+    : preferred === 'email' ? 'staff.finance.emailAuto' : 'staff.finance.emailManual'
   return (
     <article aria-label={b.reference} className="rounded-2xl bg-white p-4 ring-1 ring-line sm:p-5">
       <BookingMeta b={b} />
-      <div className="mt-4 rounded-xl bg-paper p-3 text-sm">
-        <p className="text-xs text-muted">{t('booking.channel')}: <span className="font-semibold text-ink">{t(via === 'email' ? 'booking.channelEmail' : 'booking.channelWhatsapp')}</span></p>
-        <p className="mt-1"><Ltr>{via === 'email' ? b.customer.email : b.customer.phone}</Ltr></p>
+      <div className="mt-4 grid gap-1 rounded-xl bg-paper p-3 text-sm">
+        <p className="text-xs text-muted">{t('staff.finance.preferred')}: <span className="font-semibold text-ink">{t(preferred === 'email' ? 'booking.channelEmail' : 'booking.channelWhatsapp')}</span></p>
+        {hasEmail && <p><Ltr>{b.customer.email}</Ltr></p>}
+        <p><Ltr>{b.customer.phone}</Ltr></p>
+      </div>
+      <div className="mt-4">
+        <Segmented
+          name={`send-via-${b.id}`}
+          label={t('staff.finance.sendVia')}
+          value={via}
+          onChange={setVia}
+          options={[
+            { value: 'email', label: t('booking.channelEmail'), disabled: !hasEmail },
+            { value: 'whatsapp', label: t('booking.channelWhatsapp') },
+          ]}
+        />
       </div>
       {via === 'email' ? (
-        <>
-          <div className="mt-4">
-            <Button disabled={isLive} onClick={() => repo.staffTransition(b.id, { type: 'mark-sent', via: 'email' }, 'finance')}>
-              <Icon name="mail" size={16} />
-              {t('staff.finance.sendEmail')}
-            </Button>
-          </div>
-          <p className="mt-2 text-xs text-muted">{t(isLive ? 'data.emailUnavailable' : 'staff.finance.emailSimulated')}</p>
-        </>
+        hasEmail ? (
+          <>
+            <div className="mt-4">
+              <Button disabled={busy || queued} onClick={() => void sendEmail()}>
+                <Icon name="mail" size={16} />
+                {t('staff.finance.sendEmail')}
+              </Button>
+            </div>
+            <p className="mt-2 text-xs text-muted">{t(emailNote)}</p>
+            {error != null && <Notice tone="bad" className="mt-3">{t(errorKey(error))}</Notice>}
+          </>
+        ) : <Notice tone="warn" className="mt-4">{t('staff.finance.emailNoAddress')}</Notice>
       ) : (
         <WhatsAppSender b={b} />
       )}
