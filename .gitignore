@@ -6,3 +6,4 @@ coverage
 *.log
 artifact
 .cache
+docs/demo-staff-logins.md
