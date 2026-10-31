@@ -6,7 +6,7 @@ Read this first when resuming. The live progress ledger is copied below (the ori
 - **Prototype** (branch `feat/prototype`, published as the claude.ai artifact v8): complete.
 - **Backend** (branch `feat/supabase`): plan `docs/superpowers/plans/2026-10-30-supabase-backend.md`, spec `docs/superpowers/specs/2026-10-30-supabase-backend-design.md`, executed with superpowers:subagent-driven-development.
   - Tasks 1–6 complete and reviewed (data layer, schema, status machine + customer RPCs, staff roles/RLS, receipt storage, hold expiry). Migrations `supabase/migrations/0001–0012`.
-  - **Task 7 in progress** (Supabase repo implementation + live screen reads): committed as a WIP snapshot (`wip(task7)` commit) including `0013_public_metadata.sql`. Not yet reviewed. Queued after it: Task 7c (daily-capacity race fix, migration 0014), Task 7d (dependency audit fixes).
+  - Task 7 complete and reviewed (live Supabase repo, anon-only customer client, staff client, receipt uploads). Next: Task 7c (daily-capacity race, migration 0014), Task 7d (dependency audit).
   - Remaining: Tasks 8 (real staff auth), 9 (notifications — finance alerts in-website only, per user), 10 (Vercel preview — needs GitHub/Vercel access), 11 (security review + go-live checklist).
 - **Supabase**: dev project `mg-consultations`, ref `jqieqoquhjwubenkwmut`, eu-central-1, org Crew-MG, $0/month. Migrations 0001–0009 were applied to it in the first session; check `list_migrations` before applying more.
 - App tests at handover: 151 passed, 1 skipped (`npx vitest run`).
@@ -77,3 +77,9 @@ Additional Task5 validation: installed isolated Deno runtime under .cache/edge-t
 USER STEERING: Finance notifications inside website only; no finance email, FINANCE_ALERT_TO or notify-finance email function. Customer ticket email remains separate existing channel unless user changes it. Meeting platform Zoom or Google Meet is informational only; no integration/provisioning. Task7 implementer notified; Task9 brief updated before dispatch.
 
 Task7d queued: readonly npm audit reports6 dependency advisories (3critical,2high,1moderate), primarily older jspdf/sharp/vitest plus transitives. No exploitability assertion; patch direct dependencies with PDF/image/test compatibility validation, no blanket force update. Run after feature integration to avoid concurrent package changes.
+Task 7: finished from WIP c499d40 + 9fb99b3 (153 app tests, 8 SQL files pass locally, artifact has no supabase). Review: 4 Important.
+Task 7: Ruling: restore supabase/migrations/0008_rls_staff.sql byte-identical to its last pre-WIP commit (line-ending-only rewrite violates "don't edit prior migrations"; restoring bytes deletes nothing); rls.test.sql keeps its content but its original line endings — supersedes the Codex note preserving those line-ending changes — cost if wrong: none (no semantic change).
+Task 7: Ruling: availability board free-slot counts refresh every 60s or on schedule change (not on every booking change) to avoid ~170 RPC bursts — cost if wrong: counts up to 60s stale on the staff board only.
+Task 7: fix round 1/5 (4 addressed, 0 open; commits 9fb99b3..df81954)
+Task 7: minor (deferred): CRLF conversions in useBookings.ts, lib/supabase.ts, live.integration.test.tsx; AvailabilityBoard stale-on-error not shown; workers not aborted on unmount
+Task 7: complete (commits 9b86270..df81954, review clean)
