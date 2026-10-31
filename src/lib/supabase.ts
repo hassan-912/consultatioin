@@ -9,7 +9,7 @@ export interface BackendClients {
 }
 
 /** No shared auth storage, URL grant handling, or staff credentials on customer requests. */
-export function createBackendClients(url: string, key: string, request: typeof fetch = fetch, storageNamespace = 'mg'): BackendClients {
+export function createBackendClients(url: string, key: string, request: typeof fetch = (...args) => globalThis.fetch(...args), storageNamespace = 'mg'): BackendClients {
   if (!url || !key) throw new Error('LIVE_CONFIG_MISSING')
   const customer = createClient(url, key, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, storageKey: `${storageNamespace}-customer-anonymous` },

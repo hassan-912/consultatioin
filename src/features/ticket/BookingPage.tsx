@@ -38,9 +38,10 @@ export function NotFound() {
 export function BookingPage() {
   const { token = '' } = useParams()
   const { booking, loading, error } = useBookingLookup(token)
-  if (loading || error) return <><Header /><main id="main" className="mx-auto max-w-lg px-4 py-16"><DataStatus loading={loading} error={error} /></main></>
+  if (!booking && (loading || error)) return <><Header /><main id="main" className="mx-auto max-w-lg px-4 py-16"><DataStatus loading={loading} error={error} /></main></>
   if (!booking) return <NotFound />
-  return <Manage b={booking} />
+  // A transient polling failure keeps the last good booking so open forms survive.
+  return <>{error != null && <div className="mx-auto max-w-lg px-4 pt-3"><DataStatus error={error} /></div>}<Manage b={booking} /></>
 }
 
 const RESCHEDULABLE = ['on-hold', 'confirmed']

@@ -36,6 +36,18 @@ test('live customer lookup ignores prototype data and distinguishes loading, mis
   await waitFor(() => expect(result.current.booking).toEqual(booking))
   expect(useAppStore.getState().bookings).not.toHaveProperty('real')
 })
+test('a transient polling error keeps the last good booking', async () => {
+  vi.useFakeTimers()
+  try {
+    vi.mocked(repo.getByManageToken).mockResolvedValueOnce(booking).mockRejectedValueOnce(new Error('offline'))
+    const { result } = renderHook(() => useBookingLookup('real-token'))
+    await act(async () => {})
+    expect(result.current.booking).toEqual(booking)
+    await act(async () => vi.advanceTimersByTime(5000))
+    expect(result.current).toMatchObject({ booking, loading: false })
+    expect(result.current.error).toBeTruthy()
+  } finally { vi.useRealTimers() }
+})
 test('late customer lookup cannot replace a different token and polling stops after unmount', async () => {
   vi.useFakeTimers()
   try {

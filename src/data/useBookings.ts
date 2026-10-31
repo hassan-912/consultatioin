@@ -18,7 +18,7 @@ export function useBookingLookup(token: string) {
       try {
         const booking = await repo.getByManageToken(token)
         if (active) setState({ token, booking: booking ?? undefined, loading: false, error: null })
-      } catch (error) { if (active) setState({ token, loading: false, error }) }
+      } catch (error) { if (active) setState(s => ({ token, loading: false, error, booking: s.token === token ? s.booking : undefined })) }
     }
     setState({ token, loading: true, error: null })
     void refresh()

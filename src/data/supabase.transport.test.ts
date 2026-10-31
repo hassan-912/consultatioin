@@ -132,3 +132,19 @@ test('a failed storage upload surfaces as UPLOAD_FAILED, not a generic network e
 test('missing live configuration is refused rather than falling back to local data', () => {
   expect(() => createBackendClients('', '')).toThrow('LIVE_CONFIG_MISSING')
 })
+test('default and supplied fetch are never invoked as a method of another object', async () => {
+  const receivers: unknown[] = []
+  const native = vi.fn(async function (this: unknown) {
+    receivers.push(this)
+    if (this !== undefined && this !== globalThis) throw new TypeError('Illegal invocation')
+    return new Response(JSON.stringify({ error: 'x' }), { status: 500 })
+  })
+  vi.stubGlobal('fetch', native)
+  try {
+    for (const clients of [createBackendClients('http://127.0.0.1:54321', 'k', undefined, 'mg-bind-default'), createBackendClients('http://127.0.0.1:54321', 'k', native as unknown as typeof fetch, 'mg-bind-native')]) {
+      await expect(createSupabaseRepo(clients).submitPayment('manage', { method: 'instapay', txnRef: 'TX1234', receiptImage: 'data:image/png;base64,YWJj' })).rejects.not.toMatchObject({ cause: expect.objectContaining({ message: 'Illegal invocation' }) })
+    }
+    expect(receivers.length).toBeGreaterThanOrEqual(2)
+    expect(receivers.every(r => r === undefined || r === globalThis)).toBe(true)
+  } finally { vi.unstubAllGlobals() }
+})

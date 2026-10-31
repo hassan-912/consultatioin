@@ -57,18 +57,32 @@ export function AvailabilityBoard({ consultantIds }: { consultantIds?: string[] 
   const schedules = useStaffSchedules()
   const [server, setServer] = useState<{ free: Record<string, number>; loading: boolean; error: unknown }>({ free: {}, loading: isLive, error: null })
   const idsKey = consultantIds?.join(',') ?? ''
+  const formatsKey = JSON.stringify(Object.entries(schedules).map(([id, r]) => [id, r.formats, r.weekly, r.breaks, r.maxPerDay]))
+  const formatsByConsultant = useMemo(() => Object.fromEntries(Object.entries(schedules).map(([id, r]) => [id, r.formats])), [formatsKey]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!isLive) return
     let active = true
-    setServer({ free: {}, loading: true, error: null })
     const selected = getConsultants().filter(c => !idsKey || idsKey.split(',').includes(c.id))
-    Promise.all(selected.flatMap(c => dates.map(async d => {
-      const formats = schedules[c.id]?.formats ?? []
-      const slots = (await Promise.all(formats.map(f => repo.availableSlots(c.id, d, f)))).flat()
-      return [`${c.id}:${d}`, new Set(slots.map(s => s.startIso)).size] as const
-    }))).then(entries => { if (active) setServer({ free: Object.fromEntries(entries), loading: false, error: null }) }).catch(error => { if (active) setServer({ free: {}, loading: false, error }) })
-    return () => { active = false }
-  }, [dates, schedules, idsKey, bookings])
+    const jobs = selected.flatMap(c => dates.map(d => ({ c, d, formats: formatsByConsultant[c.id] ?? [] })))
+    const load = async () => {
+      const entries: (readonly [string, number])[] = []
+      let next = 0
+      // Bounded concurrency so a refresh never floods the API with one request per cell.
+      await Promise.all(Array.from({ length: 6 }, async () => {
+        while (next < jobs.length) {
+          const { c, d, formats } = jobs[next++]
+          const slots = (await Promise.all(formats.map(f => repo.availableSlots(c.id, d, f)))).flat()
+          entries.push([`${c.id}:${d}`, new Set(slots.map(s => s.startIso)).size] as const)
+        }
+      }))
+      return entries
+    }
+    // The previous board stays on screen while a refresh runs.
+    const run = () => load().then(entries => { if (active) setServer({ free: Object.fromEntries(entries), loading: false, error: null }) }).catch(error => { if (active) setServer(s => ({ ...s, loading: false, error })) })
+    void run()
+    const timer = setInterval(() => void run(), 60000)
+    return () => { active = false; clearInterval(timer) }
+  }, [dates, formatsKey, idsKey])
 
   const rows = useMemo(
     () =>
@@ -102,7 +116,7 @@ export function AvailabilityBoard({ consultantIds }: { consultantIds?: string[] 
       : t(`staff.calendar.${s.kind}`)
   const sep = lang === 'ar' ? '، ' : ', '
   const range = ([a, b]: [string, string]) => (a === b ? formatDate(a, lang, 'short') : `${formatDate(a, lang, 'short')} – ${formatDate(b, lang, 'short')}`)
-  if (isLive && (server.loading || server.error)) return <DataStatus loading={server.loading} error={server.error} />
+  if (isLive && Object.keys(server.free).length === 0 && (server.loading || server.error)) return <DataStatus loading={server.loading} error={server.error} />
 
   return (
     <div className="grid gap-6">

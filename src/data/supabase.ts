@@ -107,7 +107,8 @@ export function createSupabaseRepo(clients: BackendClients): BookingRepo {
         if (!['image/jpeg', 'image/png', 'image/webp', 'application/pdf'].includes(blob.type) || blob.size > 5 * 1024 * 1024) throw new RepoError('INVALID_INPUT')
         let response: Response
         try {
-          response = await clients.fetch(`${clients.url}/functions/v1/create-receipt-upload`, {
+          const send = clients.fetch // detached on purpose: a native fetch throws if called as a method
+          response = await send(`${clients.url}/functions/v1/create-receipt-upload`, {
             method: 'POST', headers: { apikey: clients.key, 'Content-Type': 'application/json' },
             body: JSON.stringify({ manage_token: token, mime_type: blob.type }),
           })
