@@ -6,10 +6,10 @@ Read this first when resuming. The live progress ledger is copied below (the ori
 - **Prototype** (branch `feat/prototype`, published as the claude.ai artifact v8): complete.
 - **Backend** (branch `feat/supabase`): plan `docs/superpowers/plans/2026-10-30-supabase-backend.md`, spec `docs/superpowers/specs/2026-10-30-supabase-backend-design.md`, executed with superpowers:subagent-driven-development.
   - Tasks 1–6 complete and reviewed (data layer, schema, status machine + customer RPCs, staff roles/RLS, receipt storage, hold expiry). Migrations `supabase/migrations/0001–0012`.
-  - Task 7 complete and reviewed (live Supabase repo, anon-only customer client, staff client, receipt uploads). Next: Task 7c (daily-capacity race, migration 0014), Task 7d (dependency audit).
-  - Remaining: Tasks 8 (real staff auth), 9 (notifications — finance alerts in-website only, per user), 10 (Vercel preview — needs GitHub/Vercel access), 11 (security review + go-live checklist).
+  - Tasks 7, 7c (daily-capacity lock, 0014), 7d (deps, audit 0), 8 (real staff auth + invite-staff, 0015), 9 (finance in-site alerts + ticket email outbox, 0016) complete and reviewed.
+  - Remaining: Task 10 (apply migrations to dev project, deploy functions, Vercel preview — needs user's Vercel access), Task 11 (security review + go-live checklist).
 - **Supabase**: dev project `mg-consultations`, ref `jqieqoquhjwubenkwmut`, eu-central-1, org Crew-MG, $0/month. Migrations 0001–0009 were applied to it in the first session; check `list_migrations` before applying more.
-- App tests at handover: 151 passed, 1 skipped (`npx vitest run`).
+- App tests: 208 passed, 1 skipped (`npx vitest run`); SQL suite via `node .cache/test-db.mjs` (local only).
 
 ## User decisions to respect
 - Do not delete existing database data or files the user didn't ask to remove.
@@ -83,3 +83,16 @@ Task 7: Ruling: availability board free-slot counts refresh every 60s or on sche
 Task 7: fix round 1/5 (4 addressed, 0 open; commits 9fb99b3..df81954)
 Task 7: minor (deferred): CRLF conversions in useBookings.ts, lib/supabase.ts, live.integration.test.tsx; AvailabilityBoard stale-on-error not shown; workers not aborted on unmount
 Task 7: complete (commits 9b86270..df81954, review clean)
+Task 7c: minor (deferred): SKIP LOCKED in apply_transition can give rare safe spurious SLOT_TAKEN; runner always lets reserve lock first; runner doesn't verify template includes 0014 (+3 more in review file)
+Task 7c: Ruling: 0012-0014 are not yet applied to the cloud dev project; apply in order in Task 10 before the preview walkthrough (check list_migrations first) — cost if wrong: preview fails until applied.
+Task 7c: complete (commits f1f816e..d71bc8e, review clean)
+Task 7d: complete (commits d71bc8e..ffe718b, review clean; audit 6 -> 0)
+Task 8: Ruling: staff list shows display names (staff_profiles has no email) and invites write no audit row — acceptable for v1; revisit in Task 11 — cost if wrong: a small migration adding email/audit.
+Task 8: Ruling: supersedes the earlier 'invites write no audit row' ruling — invite-staff must write audit_log and must not overwrite/reactivate an existing staff_profiles row (existing → 409 or same audited path as set_staff_role); set enable_signup = false in supabase/config.toml; cloud Auth signup/redirect allow-list checked in Task 10/11 — cost if wrong: none.
+Task 8: fix round 1/5 (1 addressed, 0 open; commits d0e05a1..bec2e4f)
+Task 8: minor (deferred): refused grant after inviteUserByEmail leaves an orphan auth user (no staff access; admin retry gets 409 until removed in dashboard)
+Task 8: complete (commits ffe718b..bec2e4f, review clean)
+Task 9: Ruling: PDF fallback — ticket email carries the manage link + 'Download PDF' instruction (no server-side PDF; Arabic shaping unverified) per spec §9 — cost if wrong: add server PDF later.
+Task 9: minor (deferred): per-row send loop lacks try/catch (one throw can poison a batch); failed-8x rows have no staff UI; stale "email not connected" copy on Send ticket tab
+Task 9: complete (commits bec2e4f..fc0714a, review clean)
+Next: Task 10 needs user gate — Vercel account/project; apply migrations to dev project (check list_migrations; 0010-0016 likely pending); set function secrets + Vault entries; deploy create-receipt-upload, invite-staff, send-ticket-email.
