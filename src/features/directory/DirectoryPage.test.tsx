@@ -30,10 +30,11 @@ test('branch filter: Dubai shows only Mohamed Abdelaziz', () => {
 })
 
 test('format filter removes consultants who do not offer it', () => {
-  useAppStore.getState().setFilters({ format: 'in-person' })
-  renderPage()
-  expect(screen.queryByText('Ahmed Khalil')).not.toBeInTheDocument() // online only
   useAppStore.getState().setFilters({ format: 'online' })
+  renderPage()
+  expect(screen.queryByText('Mohamed Salah')).not.toBeInTheDocument() // in person only
+  expect(screen.getByText('Ahmed Khalil')).toBeInTheDocument()
+  useAppStore.getState().setFilters({ format: 'in-person' })
 })
 
 test('a company holiday shows no slots on that date and still gives the next available appointment', () => {

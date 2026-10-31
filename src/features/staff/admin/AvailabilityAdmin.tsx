@@ -4,7 +4,7 @@ import { getConsultants } from '../../../store/actions'
 import { useStaffSchedules, refreshPublicMetadata } from '../../../data/hooks'
 import { repo } from '../../../data'
 import { isLive } from '../../../data/mode'
-import { DataStatus, reportActionError } from '../../../data/feedback'
+import { reportActionError } from '../../../data/feedback'
 import type { Format } from '../../../domain/types'
 import { bookingConfig } from '../../../config/booking'
 import { formatDate } from '../../../domain/time'
@@ -24,7 +24,18 @@ export function AvailabilityAdmin() {
   const rules = schedules[id]
   const days = [0, 1, 2, 3, 4, 5, 6] as const
 
-  if (!rules) return <DataStatus loading />
+  // Hydration is finished before this screen renders, so a missing row means no hours were ever set, not "still loading".
+  if (!rules) return (
+    <>
+      <ScreenTitle title={t('staff.screens.availability')} />
+      <div className="mb-5 max-w-xs">
+        <SelectField label={t('common.consultant')} value={id} onChange={e => setId(e.target.value)}>
+          {getConsultants().map(c => <option key={c.id} value={c.id}>{l(c.name)}</option>)}
+        </SelectField>
+      </div>
+      <Notice tone="info">{l({ en: 'No working hours are set for this consultant yet, so customers cannot book them.', ar: 'لم يتم تحديد ساعات عمل لهذا المستشار بعد، لذلك لا يمكن للعملاء الحجز معه.' })}</Notice>
+    </>
+  )
   const toggleFormat = async (f: Format) => {
     const next = rules.formats.includes(f) ? rules.formats.filter(x => x !== f) : [...rules.formats, f]
     if (!next.length) return

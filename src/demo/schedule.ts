@@ -28,7 +28,7 @@ export function buildScheduleRules(): ScheduleRules[] {
   return [
     rule('mohamed-gamal', egyptWeek(true), { holidays: [companyHoliday] }),
     rule('ahmed-salama', egyptWeek(), { holidays: [companyHoliday] }),
-    rule('ahmed-khalil', egyptWeek(), { holidays: [companyHoliday], formats: ['online'] }),
+    rule('ahmed-khalil', egyptWeek(), { holidays: [companyHoliday] }),
     rule('mohamed-esmail', egyptWeek(true), { holidays: [companyHoliday], unavailable: [rel(1)] }),
     rule('ahmed-tarek', egyptWeek(), { holidays: [companyHoliday], leave: [{ from: rel(2), to: rel(4) }] }),
     rule('mohamed-salah', egyptWeek(true), { holidays: [companyHoliday], formats: ['in-person'] }),
