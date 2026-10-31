@@ -7,8 +7,10 @@ Read this first when resuming. The live progress ledger is copied below (the ori
 - **Backend** (branch `feat/supabase`): plan `docs/superpowers/plans/2026-10-30-supabase-backend.md`, spec `docs/superpowers/specs/2026-10-30-supabase-backend-design.md`, executed with superpowers:subagent-driven-development.
   - Tasks 1–6 complete and reviewed (data layer, schema, status machine + customer RPCs, staff roles/RLS, receipt storage, hold expiry). Migrations `supabase/migrations/0001–0012`.
   - Tasks 7, 7c (daily-capacity lock, 0014), 7d (deps, audit 0), 8 (real staff auth + invite-staff, 0015), 9 (finance in-site alerts + ticket email outbox, 0016) complete and reviewed.
-  - Remaining: Task 10 (apply migrations to dev project, deploy functions, Vercel preview — needs user's Vercel access), Task 11 (security review + go-live checklist).
-- **Supabase**: dev project `mg-consultations`, ref `jqieqoquhjwubenkwmut`, eu-central-1, org Crew-MG, $0/month. Migrations 0001–0009 were applied to it in the first session; check `list_migrations` before applying more.
+  - Task 10 partly done (2026-10-31): migrations 0001–0016 applied to the dev project; Edge Functions `create-receipt-upload`, `invite-staff`, `send-ticket-email` deployed (ACTIVE v1, verify_jwt=false, own auth); cron jobs `expire-holds` and `dispatch-ticket-emails` active.
+  - Remaining for Task 10: user sets function secrets (`SITE_URL`, `TICKET_EMAIL_WEBHOOK_SECRET`, `RESEND_API_KEY`, `EMAIL_FROM`) and Vault entries (`project_url`, `ticket_email_webhook_secret`); Auth: disable sign-up, add `${SITE_URL}/#/staff/reset` to redirect URLs; first admin account; schedules (cloud has none — admin enters them, or apply seed.sql only with user OK); Vercel preview (needs user's Vercel access).
+  - Task 11 (security review + go-live checklist). Advisor notes to triage there: anon/authenticated SECURITY DEFINER warnings are by design (public RPCs; staff RPCs check role); RLS-no-policy tables are intentionally locked; `pg_net` in `public` schema; 3 unindexed FKs (consultation_records.updated_by, payments.decided_by, schedule_exceptions.consultant_id); drop pgtap before go-live.
+- **Supabase**: dev project `mg-consultations`, ref `jqieqoquhjwubenkwmut`, eu-central-1, org Crew-MG, $0/month. Migrations 0001–0016 applied; check `list_migrations` before applying more.
 - App tests: 208 passed, 1 skipped (`npx vitest run`); SQL suite via `node .cache/test-db.mjs` (local only).
 
 ## User decisions to respect
