@@ -8,6 +8,7 @@ import { formatInZone } from '../../domain/time'
 import { formatMoney } from '../../domain/pricing'
 import { Ltr, StatusChip } from '../../components/ui'
 import { Icon } from '../../components/Icon'
+import { StaffAssessment } from '../../assessment/StaffAssessment'
 
 export function BookingMeta({ b, showStatus = true }: { b: Booking; showStatus?: boolean }) {
   const { t, l, lang } = useT()
@@ -20,12 +21,14 @@ export function BookingMeta({ b, showStatus = true }: { b: Booking; showStatus?:
         {b.demo && <span className="rounded-full bg-gold-soft px-2 py-0.5 text-[11px] font-semibold text-gold-deep">{t('common.demo')}</span>}
       </div>
       <p className="mt-1 text-sm font-semibold text-slate">{b.customer.name} — <Ltr>{b.customer.phone}</Ltr></p>
+      {b.customer.email && <p className="mt-0.5 text-sm text-muted"><Ltr>{b.customer.email}</Ltr></p>}
       <p className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm text-muted">
         <span className="inline-flex items-center gap-1"><Icon name={b.format === 'online' ? 'video' : 'building'} size={14} />{l(c.name)}, {l(branchById(b.branchId).name)}</span>
         <span>{formatInZone(b.startIso, b.tz, lang, 'full')}</span>
         <span>{t('common.durationRange', bookingConfig.durationRange)}</span>
         <span className="font-semibold text-ink"><Ltr>{formatMoney(b.price, lang)}</Ltr></span>
       </p>
+      <StaffAssessment bookingId={b.id} />
     </div>
   )
 }

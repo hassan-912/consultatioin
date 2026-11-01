@@ -3,6 +3,7 @@ import type { Slot } from '../domain/availability'
 import type { Actor, Booking, BookingStatus, ConsultantReviews, CustomerDetails, Format, Lang, PaymentMethodId, Review, StaffReview } from '../domain/types'
 import type { ScheduleRules } from '../domain/availability'
 import type { ConsultationRecord } from '../store/useAppStore'
+import type { StoredAssessment } from '../assessment/questions'
 import type { AuditEntry } from '../domain/types'
 
 // Same class the store actions throw, so existing `instanceof` checks keep working.
@@ -58,6 +59,10 @@ export interface BookingRepo {
   getReview(manageToken: string): Promise<Review | null>
   /** Allowed once, after the consultation is marked completed. */
   submitReview(manageToken: string, rating: number, comment: string): Promise<Review>
+  /** Customer: the booking form's situation answers, saved with the hold. Never readable by the customer. */
+  saveAssessment(manageToken: string, assessment: StoredAssessment): Promise<void>
+  /** Admin and the booking's consultant: answers keyed by booking id. */
+  staffAssessments(): Promise<Record<string, StoredAssessment>>
   /** Admin: every review, newest first, hidden ones included. */
   staffReviews(): Promise<StaffReview[]>
   /** Admin: hide a review from the public profile, or restore it. */

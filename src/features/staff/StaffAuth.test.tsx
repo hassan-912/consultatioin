@@ -16,11 +16,11 @@ const client = vi.hoisted(() => ({
 vi.mock('../../data/mode', () => ({ isLive: true, uiStorageKey: 'mg-live-ui-v1' }))
 vi.mock('#data-repo', () => ({
   configurationError: null, staffClient: client,
-  repo: { staffList: vi.fn().mockResolvedValue([]), staffRecords: vi.fn().mockResolvedValue({}), staffAudit: vi.fn().mockResolvedValue([]), staffSchedules: vi.fn().mockResolvedValue({}), subscribe: vi.fn(() => vi.fn()) },
+  repo: { staffList: vi.fn().mockResolvedValue([]), staffRecords: vi.fn().mockResolvedValue({}), staffAudit: vi.fn().mockResolvedValue([]), staffSchedules: vi.fn().mockResolvedValue({}), staffAssessments: vi.fn().mockResolvedValue({}), subscribe: vi.fn(() => vi.fn()) },
 }))
 vi.mock('../../data', () => ({
   configurationError: null, staffClient: client,
-  repo: { staffList: vi.fn().mockResolvedValue([]), staffRecords: vi.fn().mockResolvedValue({}), staffAudit: vi.fn().mockResolvedValue([]), staffSchedules: vi.fn().mockResolvedValue({}), subscribe: vi.fn(() => vi.fn()) },
+  repo: { staffList: vi.fn().mockResolvedValue([]), staffRecords: vi.fn().mockResolvedValue({}), staffAudit: vi.fn().mockResolvedValue([]), staffSchedules: vi.fn().mockResolvedValue({}), staffAssessments: vi.fn().mockResolvedValue({}), subscribe: vi.fn(() => vi.fn()) },
 }))
 
 const openStaff = (path = '/staff') =>

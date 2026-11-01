@@ -126,6 +126,16 @@ export function createLocalRepo(): BookingRepo {
       get().addAudit({ actor: 'customer', action: 'reviewed', bookingRef: b.reference, to: String(rating) })
       return review
     },
+    async saveAssessment(token, a) {
+      const b = mustFind(token)
+      if (!['reserved', 'on-hold'].includes(b.status)) throw new RepoError('INVALID_TRANSITION')
+      useAppStore.setState(s => ({ assessments: { ...s.assessments, [b.id]: a } }))
+    },
+    async staffAssessments() {
+      const session = get().staffSession
+      if (!session || (session.role !== 'admin' && session.role !== 'consultant')) return {}
+      return Object.fromEntries(Object.entries(get().assessments).filter(([id]) => session.role === 'admin' || get().bookings[id]?.consultantId === session.consultantId))
+    },
     async staffReviews() {
       return Object.entries(get().reviews)
         .map(([bookingId, r]) => ({ ...r, id: bookingId, hidden: !!r.hidden, bookingRef: get().bookings[bookingId]?.reference }))

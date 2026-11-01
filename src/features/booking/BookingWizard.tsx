@@ -21,6 +21,7 @@ import { DetailsStep } from './steps/DetailsStep'
 import { ReviewStep } from './steps/ReviewStep'
 import { PaymentStep } from './steps/PaymentStep'
 import { SummaryCard, validateDetails, type DetailErrors } from './shared'
+import { isAssessed, unanswered } from '../../assessment/questions'
 
 const STEP_KEYS = ['format', 'time', 'details', 'review', 'payment'] as const
 
@@ -80,6 +81,10 @@ function Wizard({ id }: { id: string }) {
     }
     pending
       .then(async r => {
+        // Situation answers travel separately from the booking details so they never reach the ticket.
+        // A failed save must not block payment; the consultant can still ask in person.
+        const a = d.assessment
+        if (a && a.program === d.details.program) await repo.saveAssessment(r.manageToken, a).catch(() => undefined)
         if (isLive) {
           const booking = await repo.getByManageToken(r.manageToken)
           if (!booking) throw new Error('NOT_FOUND')
@@ -106,12 +111,14 @@ function Wizard({ id }: { id: string }) {
   const go = (s: 0 | 1 | 2 | 3 | 4) => updateDraft({ step: s })
 
 
+  const program = draft.details.program
+  const assessmentIncomplete = isAssessed(program) && unanswered(program, draft.assessment?.program === program ? draft.assessment.answers : {}).length > 0
   const next = () => {
     if (step === 2) {
       const e = validateDetails(draft.details)
       setErrors(e)
       setTried(true)
-      if (Object.keys(e).length) return
+      if (Object.keys(e).length || assessmentIncomplete) return
     }
     if (step === 0 && draft.format) updateDraft({ durationMin: draft.durationMin ?? null })
     if (step < 4) go((step + 1) as 0 | 1 | 2 | 3 | 4)
@@ -179,7 +186,8 @@ function Wizard({ id }: { id: string }) {
             {step === 2 && <DetailsStep value={draft.details} onChange={p => {
               updateDetails(p)
               if (tried) setErrors(validateDetails({ ...draft.details, ...p }))
-            }} errors={errors} showSummary={tried} onSubmit={next} />}
+            }} errors={errors} showSummary={tried} onSubmit={next}
+              assessment={draft.assessment} onAssessment={assessment => updateDraft({ assessment })} assessmentIncomplete={assessmentIncomplete} />}
             {step === 3 && draft.format && draft.durationMin && draft.slotStartIso && (
               <ReviewStep consultant={consultant} branch={branch} format={draft.format} durationMin={draft.durationMin} slotStartIso={draft.slotStartIso} details={draft.details} onEdit={go} onContinue={next} />
             )}

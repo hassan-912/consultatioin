@@ -5,6 +5,7 @@ import type {
   AuditEntry, Booking, BranchId, Consultant, CustomerDetails, Format, Lang, ProgramId, Review, StaffRole,
 } from '../domain/types'
 import type { ScheduleRules } from '../domain/availability'
+import type { StoredAssessment } from '../assessment/questions'
 
 export interface Filters {
   branch: BranchId | 'all'
@@ -20,6 +21,8 @@ export interface BookingDraft {
   durationMin: number | null
   slotStartIso: string | null
   details: CustomerDetails
+  /** Situation answers for assessed programs; kept apart from details so they never reach the ticket. */
+  assessment: StoredAssessment | null
   bookingId: string | null
 }
 
@@ -36,7 +39,7 @@ export const emptyDetails = (lang: Lang = 'ar'): CustomerDetails => ({
 
 export const emptyDraft = (): BookingDraft => ({
   consultantId: null, step: 0, format: null, durationMin: null, slotStartIso: null,
-  details: emptyDetails(), bookingId: null,
+  details: emptyDetails(), assessment: null, bookingId: null,
 })
 
 export const defaultFilters = (): Filters => ({
@@ -82,6 +85,8 @@ export interface AppState {
   records: Record<string, ConsultationRecord>
   /** Prototype only: customer reviews keyed by booking id. */
   reviews: Record<string, Review & { consultantId: string; hidden?: boolean }>
+  /** Prototype only: booking-form assessment answers keyed by booking id. */
+  assessments: Record<string, StoredAssessment>
   consultantOverrides: Record<string, Partial<Consultant>>
   scheduleOverrides: Record<string, Partial<ScheduleRules>>
   kpiOverrides: Record<string, number>
@@ -124,6 +129,7 @@ export const useAppStore = create<AppState>()(
       lastCustomerBookingId: null,
       records: {},
       reviews: {},
+      assessments: {},
       consultantOverrides: {},
       scheduleOverrides: {},
       kpiOverrides: {},

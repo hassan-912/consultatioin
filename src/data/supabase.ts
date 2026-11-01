@@ -5,6 +5,7 @@ import type { ScheduleRules } from '../domain/availability'
 import { dateInZone, addDays } from '../domain/time'
 import { HoldExpired, RepoError, SlotTaken, type BookingRepo, type PaymentInput } from './types'
 import type { ConsultationRecord } from '../store/useAppStore'
+import type { StoredAssessment } from '../assessment/questions'
 
 type Row = Record<string, any> // JSON returned by RPCs and explicitly selected table columns.
 export const STAFF_BOOKING_COLUMNS = 'id,reference,consultant_id,branch_id,format,starts_at,ends_at,tz,price_amount,price_currency,customer_name,customer_phone,customer_email,channel,lang,program,note,status,hold_expires_at,reject_reason,meeting_url,checked_in_at,ticket_sent_at,ticket_sent_via,created_at'
@@ -185,6 +186,14 @@ export function createSupabaseRepo(clients: BackendClients): BookingRepo {
     },
     async submitReview(token, rating, comment) {
       return mapReview(await result<Row>(customer.rpc('submit_review', { p_manage_token: token, p_rating: rating, p_comment: comment })))
+    },
+    async saveAssessment(token, a) {
+      await result(customer.rpc('save_assessment', { p_manage_token: token, p_program: a.program, p_answers: a.answers }))
+    },
+    async staffAssessments() {
+      await requireStaff()
+      const rows = await allRows(staff.from('booking_assessments').select('booking_id,program,answers').order('booking_id'))
+      return Object.fromEntries(rows.map(r => [r.booking_id, { program: r.program, answers: r.answers ?? {} }])) as Record<string, StoredAssessment>
     },
     async staffReviews() {
       await requireStaff()

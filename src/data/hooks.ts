@@ -19,6 +19,16 @@ export function useStaffRecords() {
   const live = useLiveData(s => s.records)
   return isLive ? live : local
 }
+export function useStaffAssessments() {
+  const local = useAppStore(s => s.assessments)
+  const session = useAppStore(s => s.staffSession)
+  const bookings = useAppStore(s => s.bookings)
+  const live = useLiveData(s => s.assessments)
+  if (isLive) return live
+  // Prototype mirrors the database rule: admin sees all, a consultant only their own bookings.
+  if (!session || (session.role !== 'admin' && session.role !== 'consultant')) return {}
+  return session.role === 'admin' ? local : Object.fromEntries(Object.entries(local).filter(([id]) => bookings[id]?.consultantId === session.consultantId))
+}
 export function useStaffAudit() {
   const local = useAppStore(s => s.audit)
   const live = useLiveData(s => s.audit)
@@ -41,26 +51,27 @@ export function useStaffHydration() {
       if (running) { again = true; return }
       running = true
       try {
-        const [bookings, records, audit, schedules] = await Promise.all([
+        const [bookings, records, audit, schedules, assessments] = await Promise.all([
           repo.staffList({}),
           session.role === 'admin' || session.role === 'consultant' ? repo.staffRecords() : Promise.resolve({}),
           session.role === 'admin' || session.role === 'finance' ? repo.staffAudit() : Promise.resolve([]),
           repo.staffSchedules(),
+          session.role === 'admin' || session.role === 'consultant' ? repo.staffAssessments() : Promise.resolve({}),
         ])
-        if (active) useLiveData.setState({ bookings: Object.fromEntries(bookings.map(b => [b.id, b])), records, audit, schedules, error: null, loading: false })
+        if (active) useLiveData.setState({ bookings: Object.fromEntries(bookings.map(b => [b.id, b])), records, audit, schedules, assessments, error: null, loading: false })
       } catch (error) {
-        if (active) useLiveData.setState({ bookings: {}, records: {}, audit: [], schedules: {}, error, loading: false })
+        if (active) useLiveData.setState({ bookings: {}, records: {}, audit: [], schedules: {}, assessments: {}, error, loading: false })
       } finally {
         running = false
         if (active && again) { again = false; void refresh() }
       }
     }
-    useLiveData.setState({ bookings: {}, records: {}, audit: [], schedules: {}, staffKey: staffSessionKey(session), loading: true, error: null })
+    useLiveData.setState({ bookings: {}, records: {}, audit: [], schedules: {}, assessments: {}, staffKey: staffSessionKey(session), loading: true, error: null })
     void refresh()
     const off = repo.subscribe(() => void refresh())
     const offConnection = repo.onConnection?.(connection => { if (active) useLiveData.setState({ connection }) })
     const timer = setInterval(() => void refresh(), 15000)
-    return () => { active = false; clearInterval(timer); off(); offConnection?.(); useLiveData.setState({ bookings: {}, records: {}, audit: [], schedules: {}, staffKey: null, connection: 'idle', loading: true, error: null, actionError: null }) }
+    return () => { active = false; clearInterval(timer); off(); offConnection?.(); useLiveData.setState({ bookings: {}, records: {}, audit: [], schedules: {}, assessments: {}, staffKey: null, connection: 'idle', loading: true, error: null, actionError: null }) }
   }, [session])
 }
 let metadataRequest: Promise<void> | undefined
