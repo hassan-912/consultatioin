@@ -74,7 +74,7 @@ export interface AppState {
   lastCustomerBookingId: string | null
   records: Record<string, ConsultationRecord>
   /** Prototype only: customer reviews keyed by booking id. */
-  reviews: Record<string, Review & { consultantId: string }>
+  reviews: Record<string, Review & { consultantId: string; hidden?: boolean }>
   consultantOverrides: Record<string, Partial<Consultant>>
   scheduleOverrides: Record<string, Partial<ScheduleRules>>
   kpiOverrides: Record<string, number>

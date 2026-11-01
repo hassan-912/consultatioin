@@ -22,6 +22,7 @@ import { AvailabilityAdmin } from './admin/AvailabilityAdmin'
 import { BookingsAdmin } from './admin/BookingsAdmin'
 import { PaymentsAdmin, KpiAdmin } from './admin/SettingsAdmin'
 import { AuditLog } from './admin/AuditLog'
+import { ReviewsAdmin } from './admin/ReviewsAdmin'
 import { PendingDecisions } from './admin/PendingDecisions'
 import { StaffAccounts } from './admin/StaffAccounts'
 import { useStaffHydration, staffSessionKey } from '../../data/hooks'
@@ -42,6 +43,7 @@ const views: Record<StaffScreen, () => ReactNode> = {
   availability: () => <AvailabilityAdmin />,
   paymentSettings: () => <PaymentsAdmin />,
   kpi: () => <KpiAdmin />,
+  reviews: () => <ReviewsAdmin />,
   audit: () => <AuditLog />,
   decisions: () => <PendingDecisions />,
   staffAccounts: () => <StaffAccounts />,

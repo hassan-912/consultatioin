@@ -52,3 +52,25 @@ test('no rating form before the consultation is completed', () => {
   open(`/booking/${base.manageToken}`)
   expect(screen.queryByText('How was your consultation?')).toBeNull()
 })
+
+test('admin hides a review: it leaves the public profile but stays in the admin list, and can be restored', async () => {
+  const { StaffApp } = await import('../staff/StaffApp')
+  const { loginAs } = await import('../../test/loginAs')
+  useAppStore.setState({ reviews: { r1: { rating: 1, comment: 'rude words', name: 'Sara', at: Date.now(), consultantId: 'ahmed-khalil' } } })
+  loginAs('admin')
+  const admin = render(<MemoryRouter initialEntries={['/staff/reviews']}><Routes><Route path="/staff/*" element={<StaffApp />} /></Routes></MemoryRouter>)
+  expect(await screen.findByText('rude words')).toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Hide from profile' }))
+  expect(await screen.findByRole('button', { name: 'Show on profile' })).toBeInTheDocument()
+  expect(useAppStore.getState().audit[0].action).toBe('review-hidden')
+  admin.unmount()
+
+  const profile = open('/consultant/ahmed-khalil')
+  expect(await screen.findByText('No verified feedback yet')).toBeInTheDocument()
+  expect(screen.queryByText('rude words')).toBeNull()
+  profile.unmount()
+
+  loginAs('finance')
+  render(<MemoryRouter initialEntries={['/staff/reviews']}><Routes><Route path="/staff/*" element={<StaffApp />} /></Routes></MemoryRouter>)
+  expect(screen.queryByRole('link', { name: /customer reviews/i })).toBeNull()
+})

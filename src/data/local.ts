@@ -107,15 +107,14 @@ export function createLocalRepo(): BookingRepo {
       return consultants.map(c => ({ consultantId: c.id, formats: getRules(c.id).formats, ...publicTotals(Object.values(get().bookings), c.id, get().now(), demoStats[c.id]) }))
     },
     async consultantReviews(consultantId) {
-      const list = Object.values(get().reviews).filter(r => r.consultantId === consultantId).sort((a, b) => b.at - a.at)
+      const list = Object.values(get().reviews).filter(r => r.consultantId === consultantId && !r.hidden).sort((a, b) => b.at - a.at)
       const average = list.length ? Math.round((list.reduce((n, r) => n + r.rating, 0) / list.length) * 10) / 10 : null
-      return { average, count: list.length, reviews: list.slice(0, 20).map(({ consultantId: _c, ...r }) => r) }
+      return { average, count: list.length, reviews: list.slice(0, 20).map(r => ({ rating: r.rating, comment: r.comment, name: r.name, at: r.at })) }
     },
     async getReview(token) {
       const r = get().reviews[mustFind(token).id]
       if (!r) return null
-      const { consultantId: _c, ...review } = r
-      return review
+      return { rating: r.rating, comment: r.comment, name: r.name, at: r.at }
     },
     async submitReview(token, rating, comment) {
       const b = mustFind(token)
@@ -126,6 +125,17 @@ export function createLocalRepo(): BookingRepo {
       useAppStore.setState(s => ({ reviews: { ...s.reviews, [b.id]: { ...review, consultantId: b.consultantId } } }))
       get().addAudit({ actor: 'customer', action: 'reviewed', bookingRef: b.reference, to: String(rating) })
       return review
+    },
+    async staffReviews() {
+      return Object.entries(get().reviews)
+        .map(([bookingId, r]) => ({ ...r, id: bookingId, hidden: !!r.hidden, bookingRef: get().bookings[bookingId]?.reference }))
+        .sort((a, b) => b.at - a.at)
+    },
+    async setReviewHidden(id, hidden) {
+      const r = get().reviews[id]
+      if (!r) throw new RepoError('NOT_FOUND')
+      useAppStore.setState(s => ({ reviews: { ...s.reviews, [id]: { ...r, hidden } } }))
+      get().addAudit({ actor: 'admin', action: hidden ? 'review-hidden' : 'review-shown', bookingRef: get().bookings[id]?.reference, to: String(r.rating) })
     },
     async staffRecords() { return get().records },
     async staffAudit() { return get().audit },

@@ -1,6 +1,6 @@
 import type { BookingEvent, CheckInVerdict } from '../domain/bookingStatus'
 import type { Slot } from '../domain/availability'
-import type { Actor, Booking, BookingStatus, ConsultantReviews, CustomerDetails, Format, Lang, PaymentMethodId, Review } from '../domain/types'
+import type { Actor, Booking, BookingStatus, ConsultantReviews, CustomerDetails, Format, Lang, PaymentMethodId, Review, StaffReview } from '../domain/types'
 import type { ScheduleRules } from '../domain/availability'
 import type { ConsultationRecord } from '../store/useAppStore'
 import type { AuditEntry } from '../domain/types'
@@ -58,6 +58,10 @@ export interface BookingRepo {
   getReview(manageToken: string): Promise<Review | null>
   /** Allowed once, after the consultation is marked completed. */
   submitReview(manageToken: string, rating: number, comment: string): Promise<Review>
+  /** Admin: every review, newest first, hidden ones included. */
+  staffReviews(): Promise<StaffReview[]>
+  /** Admin: hide a review from the public profile, or restore it. */
+  setReviewHidden(reviewId: string, hidden: boolean): Promise<void>
   staffRecords(): Promise<Record<string, ConsultationRecord>>
   saveRecord(bookingId: string, record: ConsultationRecord): Promise<void>
   staffAudit(): Promise<AuditEntry[]>

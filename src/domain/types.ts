@@ -149,6 +149,14 @@ export interface Review {
   at: number
 }
 
+/** Admin view of a review: includes hidden ones and which booking it came from. */
+export interface StaffReview extends Review {
+  id: string
+  consultantId: string
+  bookingRef?: string
+  hidden: boolean
+}
+
 export interface ConsultantReviews {
   average: number | null
   count: number

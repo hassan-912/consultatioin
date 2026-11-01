@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { BackendClients } from '../lib/supabase'
-import type { Booking, CustomerDetails, Format, AuditEntry, Review } from '../domain/types'
+import type { Booking, CustomerDetails, Format, AuditEntry, Review, StaffReview } from '../domain/types'
 import type { ScheduleRules } from '../domain/availability'
 import { dateInZone, addDays } from '../domain/time'
 import { HoldExpired, RepoError, SlotTaken, type BookingRepo, type PaymentInput } from './types'
@@ -185,6 +185,19 @@ export function createSupabaseRepo(clients: BackendClients): BookingRepo {
     },
     async submitReview(token, rating, comment) {
       return mapReview(await result<Row>(customer.rpc('submit_review', { p_manage_token: token, p_rating: rating, p_comment: comment })))
+    },
+    async staffReviews() {
+      await requireStaff()
+      const rows = await allRows(staff.from('consultant_reviews').select('id,booking_id,consultant_id,rating,comment,reviewer_name,hidden,created_at').order('created_at', { ascending: false }).order('id'))
+      const ids = [...new Set(rows.map(r => r.booking_id))]
+      const refs = ids.length ? await result<Row[]>(staff.from('bookings').select('id,reference').in('id', ids)) : []
+      const byId = new Map(refs.map(r => [r.id, r.reference]))
+      return rows.map(r => ({ ...mapReview({ ...r, name: r.reviewer_name }), id: r.id, consultantId: r.consultant_id, bookingRef: byId.get(r.booking_id), hidden: !!r.hidden })) as StaffReview[]
+    },
+    async setReviewHidden(id, hidden) {
+      await requireStaff()
+      await result(staff.rpc('staff_set_review_hidden', { p_review_id: id, p_hidden: hidden }))
+      changed()
     },
     async staffRecords() {
       await requireStaff()
