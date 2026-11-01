@@ -43,6 +43,13 @@ export const defaultFilters = (): Filters => ({
   branch: 'all', program: 'all', format: 'any', date: todayIn('Africa/Cairo'),
 })
 
+/** Saved filters from an earlier visit: a date that has passed falls back to today, or the calendar opens on an empty past day. */
+export const freshFilters = (saved?: Filters): Filters => {
+  if (!saved) return defaultFilters()
+  const today = todayIn('Africa/Cairo')
+  return { ...saved, date: !saved.date || saved.date < today ? today : saved.date }
+}
+
 export const applyDocumentLang = (lang: Lang) => {
   document.documentElement.lang = lang
   document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr'
@@ -135,9 +142,9 @@ export const useAppStore = create<AppState>()(
         ? { lang: rest.lang, filters: rest.filters, senderName: rest.senderName }
         : rest,
       merge: (persisted, current) => {
-        if (!isLive) return { ...current, ...(persisted as Partial<AppState>) }
+        if (!isLive) { const saved = persisted as Partial<AppState> | undefined; return { ...current, ...saved, filters: freshFilters(saved?.filters) } }
         const saved = persisted as Partial<AppState> | undefined
-        return { ...current, lang: saved?.lang === 'en' ? 'en' : 'ar', filters: saved?.filters ?? current.filters, senderName: saved?.senderName ?? '' }
+        return { ...current, lang: saved?.lang === 'en' ? 'en' : 'ar', filters: saved?.filters ? freshFilters(saved.filters) : current.filters, senderName: saved?.senderName ?? '' }
       },
       onRehydrateStorage: () => state => {
         if (state) applyDocumentLang(state.lang)

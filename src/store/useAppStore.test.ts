@@ -1,4 +1,4 @@
-import { useAppStore } from './useAppStore'
+import { useAppStore, todayIn } from './useAppStore'
 import { en } from '../i18n/en'
 import { ar } from '../i18n/ar'
 
@@ -63,4 +63,18 @@ test('Arabic plural categories for consultant counts', async () => {
   expect(ar(7)).toBe('7 مستشارين')
   expect(ar(11)).toBe('11 مستشارًا')
   expect(translate('en', `directory.count.${pluralCategory('en', 7)}`, { n: 7 })).toBe('7 consultants')
+})
+
+test('a saved date from an earlier day resets to today on reload; a future date is kept', async () => {
+  const s = useAppStore.getState()
+  const today = todayIn('Africa/Cairo')
+  for (const [savedDate, expected] of [['2020-01-01', today], ['2999-12-31', '2999-12-31']]) {
+    s.setFilters({ date: savedDate, branch: 'dubai' })
+    const saved = localStorage.getItem('mg-proto-v1')!
+    useAppStore.setState({ filters: { ...s.filters, date: 'x' } })
+    localStorage.setItem('mg-proto-v1', saved)
+    await useAppStore.persist.rehydrate()
+    expect(useAppStore.getState().filters.date).toBe(expected)
+    expect(useAppStore.getState().filters.branch).toBe('dubai')
+  }
 })
