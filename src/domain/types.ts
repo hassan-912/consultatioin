@@ -141,6 +141,20 @@ export interface Booking {
   demo?: boolean
 }
 
+/** A customer's rating of a completed consultation; only the first name is shown publicly. */
+export interface Review {
+  rating: number
+  comment: string
+  name: string
+  at: number
+}
+
+export interface ConsultantReviews {
+  average: number | null
+  count: number
+  reviews: Review[]
+}
+
 export type StaffRole = 'admin' | 'consultant' | 'finance' | 'reception'
 export type Actor = StaffRole | 'customer' | 'system'
 

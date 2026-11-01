@@ -20,7 +20,9 @@ test('English message greets the customer, names the sender and confirms the boo
   expect(m).toContain('MG-ABCD-EFGH')
   expect(m).toContain('Mohamed Gamal')
   expect(m).toContain('Makram Ebeid')
-  expect(m).toMatch(/ticket is attached as a PDF/i)
+  expect(m).not.toMatch(/PDF/)
+  expect(m).toMatch(/Your ticket: https:/)
+  expect(m).toMatch(/more than 15 minutes late/)
   expect(m).toContain(link)
   expect(m).toContain('17621')
 })
@@ -31,6 +33,7 @@ test('Arabic message uses Arabic text and the Arabic consultant name', () => {
   expect(m).toContain('معك منى من فريق المالية')
   expect(m).toContain('محمد جمال')
   expect(m).toContain('MG-ABCD-EFGH')
+  expect(m).toContain('15 دقيقة')
   expect(m).not.toMatch(/[٠-٩]/)
 })
 

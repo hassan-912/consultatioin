@@ -72,14 +72,16 @@ test('dismiss clears the notice and an already seen item does not re-announce', 
   expect(screen.queryByText(/new payment received/i)).toBeNull()
 })
 
-test('sound is off by default behind an explicit toggle and no browser Notification permission is requested', () => {
+test('sound is on by default and desktop pop-up permission is only requested on click', () => {
   const request = vi.fn()
   vi.stubGlobal('Notification', Object.assign(vi.fn(), { requestPermission: request, permission: 'default' }))
   loginAs('finance')
   openStaff('/staff/payments')
-  expect(screen.getByRole('checkbox', { name: /play a sound/i })).not.toBeChecked()
+  expect(screen.getByRole('checkbox', { name: /play a sound/i })).toBeChecked()
   act(() => useAppStore.setState(s => ({ bookings: { ...s.bookings, d: mk('d') } })))
   expect(request).not.toHaveBeenCalled()
+  fireEvent.click(screen.getByRole('button', { name: /show desktop pop-ups/i }))
+  expect(request).toHaveBeenCalledTimes(1)
   vi.unstubAllGlobals()
 })
 

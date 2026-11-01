@@ -1,4 +1,4 @@
-import { transition, checkInVerdict, InvalidTransition } from './bookingStatus'
+import { transition, checkInVerdict, InvalidTransition, arrivalTiming } from './bookingStatus'
 import { approvalStats, publicTotals } from './stats'
 import { useAppStore } from '../store/useAppStore'
 import { createReservation, submitPayment, applyEvent } from '../store/actions'
@@ -118,4 +118,14 @@ describe('store actions', () => {
     expect(s.bookings[r.id].status).toBe('confirmed')
     expect(s.audit[0]).toMatchObject({ actor: 'finance', from: 'on-hold', to: 'confirmed', bookingRef: r.reference })
   })
+})
+
+test('arrival timing: early beyond 15 minutes, on time within 15, late beyond 15', () => {
+  const b = { startIso: '2026-11-02T12:00:00.000Z' }
+  const at = (min: number) => Date.parse(b.startIso) + min * 60000
+  expect(arrivalTiming(b, at(-40))).toEqual({ kind: 'early', minutes: 40 })
+  expect(arrivalTiming(b, at(-15))).toEqual({ kind: 'on-time', minutes: 15 })
+  expect(arrivalTiming(b, at(5))).toEqual({ kind: 'on-time', minutes: 5 })
+  expect(arrivalTiming(b, at(15))).toEqual({ kind: 'on-time', minutes: 15 })
+  expect(arrivalTiming(b, at(16))).toEqual({ kind: 'late', minutes: 16 })
 })

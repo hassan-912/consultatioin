@@ -1,12 +1,12 @@
 import { useStaffBookings } from '../../../data/hooks'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useT } from '../../../i18n'
-import { todayIn } from '../../../store/useAppStore'
+import { todayIn, useAppStore } from '../../../store/useAppStore'
 import { isLive } from '../../../data/mode'
 import type { Booking } from '../../../domain/types'
 import { DataStatus, reportActionError } from '../../../data/feedback'
 import { repo } from '../../../data'
-import { checkInVerdict, type CheckInVerdict } from '../../../domain/bookingStatus'
+import { arrivalTiming, checkInVerdict, type CheckInVerdict } from '../../../domain/bookingStatus'
 import { formatInZone, dateInZone, formatDate } from '../../../domain/time'
 import { normalizeDigits } from '../../../domain/phone'
 import { Button, Notice } from '../../../components/ui'
@@ -21,6 +21,7 @@ declare global { interface Window { BarcodeDetector?: new (o: { formats: string[
 export function CheckIn() {
   const { t, lang } = useT()
   const bookings = useStaffBookings()
+  const now = useAppStore(s => s.now)
   const [code, setCode] = useState('')
   const [checked, setChecked] = useState<string | null>(null)
   const [remote, setRemote] = useState<{ booking?: Booking; verdict: CheckInVerdict }>()
@@ -125,6 +126,7 @@ export function CheckIn() {
                   })}
                 </p>
               </Notice>
+              {verdict === 'ok' && booking && <ArrivalNotice b={booking} at={booking.checkedInAt ?? now()} />}
               {booking && (
                 <div className="rounded-2xl bg-white p-4 ring-1 ring-line">
                   <BookingMeta b={booking} />
@@ -141,5 +143,22 @@ export function CheckIn() {
         </section>
       </div>
     </>
+  )
+}
+
+/** Tells reception whether the customer is early, on time or more than the grace period late. */
+function ArrivalNotice({ b, at }: { b: Booking; at: number }) {
+  const { t, lang } = useT()
+  const { kind, minutes } = arrivalTiming(b, at)
+  const wait = minutes >= 60
+    ? t('staff.reception.timing.hours', { h: Math.floor(minutes / 60), m: minutes % 60 })
+    : t('staff.reception.timing.mins', { m: minutes })
+  return (
+    <Notice tone={kind === 'on-time' ? 'ok' : 'warn'}>
+      <p className="flex items-center gap-2 font-semibold">
+        <Icon name="clock" size={16} className="shrink-0" />
+        {t(`staff.reception.timing.${kind}`, { time: formatInZone(b.startIso, b.tz, lang, 'time'), wait })}
+      </p>
+    </Notice>
   )
 }

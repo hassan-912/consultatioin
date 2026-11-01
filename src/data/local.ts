@@ -9,7 +9,7 @@ import { cleanPhone, normalizeDigits } from '../domain/phone'
 import { dateInZone } from '../domain/time'
 import { bookingConfig } from '../config/booking'
 import type { Booking } from '../domain/types'
-import { HoldExpired, type BookingRepo } from './types'
+import { HoldExpired, RepoError, type BookingRepo } from './types'
 
 const get = () => useAppStore.getState()
 
@@ -105,6 +105,27 @@ export function createLocalRepo(): BookingRepo {
     async queueTicketEmail(id) { applyEvent(id, { type: 'mark-sent', via: 'email' }, get().staffSession?.role ?? get().role); return 'sent' },
     async publicMetadata() {
       return consultants.map(c => ({ consultantId: c.id, formats: getRules(c.id).formats, ...publicTotals(Object.values(get().bookings), c.id, get().now(), demoStats[c.id]) }))
+    },
+    async consultantReviews(consultantId) {
+      const list = Object.values(get().reviews).filter(r => r.consultantId === consultantId).sort((a, b) => b.at - a.at)
+      const average = list.length ? Math.round((list.reduce((n, r) => n + r.rating, 0) / list.length) * 10) / 10 : null
+      return { average, count: list.length, reviews: list.slice(0, 20).map(({ consultantId: _c, ...r }) => r) }
+    },
+    async getReview(token) {
+      const r = get().reviews[mustFind(token).id]
+      if (!r) return null
+      const { consultantId: _c, ...review } = r
+      return review
+    },
+    async submitReview(token, rating, comment) {
+      const b = mustFind(token)
+      if (b.status !== 'completed' || get().reviews[b.id]) throw new RepoError('INVALID_TRANSITION')
+      const text = comment.trim()
+      if (!Number.isInteger(rating) || rating < 1 || rating > 5 || text.length > 500) throw new RepoError('INVALID_INPUT')
+      const review = { rating, comment: text, name: b.customer.name.trim().split(/\s+/)[0] || 'Customer', at: get().now() }
+      useAppStore.setState(s => ({ reviews: { ...s.reviews, [b.id]: { ...review, consultantId: b.consultantId } } }))
+      get().addAudit({ actor: 'customer', action: 'reviewed', bookingRef: b.reference, to: String(rating) })
+      return review
     },
     async staffRecords() { return get().records },
     async staffAudit() { return get().audit },

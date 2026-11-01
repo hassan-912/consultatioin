@@ -69,3 +69,12 @@
   60% { offset-distance: 100%; opacity: 1; }
   70%, 100% { offset-distance: 100%; opacity: 0; }
 }
+
+/* Finance new-payment pop-up: slides up with a small bounce so it catches the eye. */
+@keyframes mg-alert-pop {
+  0% { opacity: 0; transform: translateY(24px) scale(.96); }
+  60% { opacity: 1; transform: translateY(-4px) scale(1.02); }
+  100% { transform: none; }
+}
+.alert-pop { animation: mg-alert-pop .45s ease-out both; }
+@media (prefers-reduced-motion: reduce) { .alert-pop { animation: none; } }

@@ -37,6 +37,7 @@ const copy = {
     ticket: 'Open your booking ticket (QR code, reschedule and cancel):',
     manage: 'Open my ticket',
     pdf: 'On the ticket page choose "Download PDF" to save a copy.',
+    late: 'Please be on time. If you are more than 15 minutes late, you may be seen by a different consultant from the one you booked, due to workload.',
     help: `Questions? Call ${HOTLINE} or email ${SUPPORT_EMAIL}.`,
     thanks: 'Thank you for choosing MG International.',
   },
@@ -49,6 +50,7 @@ const copy = {
     ticket: 'افتح تذكرة الحجز (رمز QR وإعادة الجدولة والإلغاء):',
     manage: 'افتح تذكرتي',
     pdf: 'من صفحة التذكرة اختر «تنزيل PDF» لحفظ نسخة.',
+    late: 'يرجى الالتزام بالموعد. في حال التأخير أكثر من 15 دقيقة، قد تتم استشارتك مع مستشار غير الذي حجزت معه بسبب ضغط العمل.',
     help: `للاستفسار اتصل على ${HOTLINE} أو راسلنا على ${SUPPORT_EMAIL}.`,
     thanks: 'شكرًا لاختيارك إم جي إنترناشيونال.',
   },
@@ -87,13 +89,14 @@ ${rows.map(([k, v]) => `<tr><td style="padding:6px 0;color:#5b6573;width:34%;ver
 <p style="margin:0 0 12px"><a href="${e(input.manageUrl)}" style="display:inline-block;background:#0e2a47;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:bold">${e(c.manage)}</a></p>
 <p style="margin:0 0 16px;font-size:12px;color:#5b6573;word-break:break-all"><span dir="ltr">${e(input.manageUrl)}</span></p>
 <p style="margin:0 0 16px;font-size:13px">${e(c.pdf)}</p>
+<p style="margin:0 0 16px;padding:10px 12px;border-radius:8px;background:#fdf3e1;color:#8a5a00;font-size:13px;font-weight:bold">${e(c.late)}</p>
 <p style="margin:0 0 4px;font-size:13px">${e(c.help)}</p>
 <p style="margin:0;font-size:13px">${e(c.thanks)}</p>
 </div></div></body></html>`
   const text = [
     c.greeting(input.name), '', c.confirmed, '',
     ...rows.map(([k, v]) => `${k}: ${v}`), '',
-    c.ticket, input.manageUrl, '', c.pdf, '', c.help, c.thanks,
+    c.ticket, input.manageUrl, '', c.pdf, '', c.late, '', c.help, c.thanks,
   ].join('\n')
   return { subject: c.subject(input.reference), html, text }
 }

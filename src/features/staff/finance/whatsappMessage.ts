@@ -31,6 +31,8 @@ export function buildConfirmationMessage(b: Booking, lang: Lang, sender: string,
     t(b.format === 'in-person' ? 'staff.finance.wa.ticketInPerson' : 'staff.finance.wa.ticketOnline'),
     `${t('staff.finance.wa.manage')}: ${manageLink}`,
     '',
+    t('ticket.lateNote'),
+    '',
     t('staff.finance.wa.help', { hotline: contact.hotline }),
     t('staff.finance.wa.thanks'),
   ]

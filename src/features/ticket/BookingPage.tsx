@@ -18,6 +18,7 @@ import { getSaver, ticketPdf } from './ticketPdf'
 import { PaymentStep } from '../booking/steps/PaymentStep'
 import { SlotStep } from '../booking/steps/SlotStep'
 import { useStartBooking } from '../directory/ConsultantCard'
+import { ReviewCard } from '../reviews/Reviews'
 import type { Booking } from '../../domain/types'
 
 export function NotFound() {
@@ -106,6 +107,7 @@ function Manage({ b }: { b: Booking }) {
             <p className="mt-0.5">{help}</p>
             {b.ticketSentVia && <p className="mt-1 text-xs">{t('ticket.sentVia', { channel: t(b.ticketSentVia === 'email' ? 'booking.channelEmail' : 'booking.channelWhatsapp') })}</p>}
           </Notice>
+          {b.status === 'completed' && <ReviewCard b={b} />}
           {b.format === 'online' && <p className="text-sm text-slate">{t('booking.meetingLinkNote')}</p>}
 
           {canPay && (

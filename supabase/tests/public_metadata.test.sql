@@ -25,7 +25,9 @@ select ok(has_function_privilege('anon','public.reschedule_slots(text,date)','ex
 create temp table reschedule_day as
   select d::date as day, (public.available_slots('mohamed-gamal',d::date,'online'))[1] as starts_at
   from generate_series(current_date + interval '1 day', current_date + interval '14 days', interval '1 day') d
-  where cardinality(public.available_slots('mohamed-gamal',d::date,'online')) > 0 limit 1;
+  where cardinality(public.available_slots('mohamed-gamal',d::date,'online')) > 0
+    -- skip the day of the fixture booking above, which already uses that day's capacity
+    and d::date <> (date_trunc('month',now()) + interval '1 day')::date limit 1;
 update public.schedules set max_per_day=1 where consultant_id='mohamed-gamal';
 create temp table reschedule_hold as select public.reserve_slot('mohamed-gamal','online',starts_at,
   '{"name":"Reschedule test","phone":"+201000000014","channel":"whatsapp","lang":"en"}'::jsonb) as booking from reschedule_day;

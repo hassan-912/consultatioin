@@ -12,14 +12,14 @@ const open = (id: string) =>
 
 beforeEach(() => {
   useAppStore.getState().setLang('en')
-  useAppStore.setState({ bookings: {}, records: {}, seeded: true, approvalMinSample: null })
+  useAppStore.setState({ bookings: {}, records: {}, reviews: {}, seeded: true, approvalMinSample: null })
 })
 
-test('placeholders for missing bio, video, feedback; approval hidden below sample', () => {
+test('placeholders for missing bio, video, feedback; approval hidden below sample', async () => {
   open('ahmed-khalil')
   expect(screen.getByText('Biography under processing')).toBeInTheDocument()
   expect(screen.getAllByText('Video pending').length).toBeGreaterThan(0)
-  expect(screen.getByText('No verified feedback yet')).toBeInTheDocument()
+  expect(await screen.findByText('No verified feedback yet')).toBeInTheDocument()
   expect(screen.getByText(/not enough decided applications/i)).toBeInTheDocument()
 })
 

@@ -119,6 +119,11 @@ export const BoardingPass = forwardRef<HTMLDivElement, { booking: Booking; lang?
         </div>
       </div>
 
+      <p className="mx-5 mb-4 flex gap-2 rounded-xl bg-warn-soft px-3 py-2 text-xs font-semibold leading-relaxed text-warn">
+        <Icon name="clock" size={14} className="mt-0.5 shrink-0" />
+        {t('ticket.lateNote')}
+      </p>
+
       <div className="border-t border-line bg-paper px-5 py-3 text-xs text-muted">
         <p>
           {t('common.support')}: <Ltr className="font-semibold text-slate">{contact.hotline}</Ltr> — <Ltr>{contact.email}</Ltr>

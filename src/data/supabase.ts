@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { BackendClients } from '../lib/supabase'
-import type { Booking, CustomerDetails, Format, AuditEntry } from '../domain/types'
+import type { Booking, CustomerDetails, Format, AuditEntry, Review } from '../domain/types'
 import type { ScheduleRules } from '../domain/availability'
 import { dateInZone, addDays } from '../domain/time'
 import { HoldExpired, RepoError, SlotTaken, type BookingRepo, type PaymentInput } from './types'
@@ -8,6 +8,7 @@ import type { ConsultationRecord } from '../store/useAppStore'
 
 type Row = Record<string, any> // JSON returned by RPCs and explicitly selected table columns.
 export const STAFF_BOOKING_COLUMNS = 'id,reference,consultant_id,branch_id,format,starts_at,ends_at,tz,price_amount,price_currency,customer_name,customer_phone,customer_email,channel,lang,program,note,status,hold_expires_at,reject_reason,meeting_url,checked_in_at,ticket_sent_at,ticket_sent_via,created_at'
+const mapReview = (r: Row): Review => ({ rating: Number(r.rating), comment: r.comment ?? '', name: r.name, at: Date.parse(r.created_at) })
 const ms = (v: unknown) => v == null ? undefined : Date.parse(String(v))
 export function mapBooking(r: Row, audience: 'customer' | 'staff' = 'customer'): Booking {
   const c = r.customer ?? { name: r.customer_name, phone: r.customer_phone, email: r.customer_email, channel: r.channel, lang: r.lang, program: r.program, note: r.note }
@@ -173,6 +174,17 @@ export function createSupabaseRepo(clients: BackendClients): BookingRepo {
     async publicMetadata() {
       const rows = await result<Row[]>(customer.rpc('public_consultant_metadata'))
       return rows.map(r => ({ consultantId: r.consultant_id, formats: r.formats as Format[], total: Number(r.total), thisMonth: Number(r.this_month) }))
+    },
+    async consultantReviews(consultantId) {
+      const r = await result<Row>(customer.rpc('public_consultant_reviews', { p_consultant_id: consultantId }))
+      return { average: r.average == null ? null : Number(r.average), count: Number(r.count ?? 0), reviews: (r.reviews ?? []).map(mapReview) }
+    },
+    async getReview(token) {
+      const r = await result<Row | null>(customer.rpc('get_review', { p_manage_token: token }))
+      return r ? mapReview(r) : null
+    },
+    async submitReview(token, rating, comment) {
+      return mapReview(await result<Row>(customer.rpc('submit_review', { p_manage_token: token, p_rating: rating, p_comment: comment })))
     },
     async staffRecords() {
       await requireStaff()

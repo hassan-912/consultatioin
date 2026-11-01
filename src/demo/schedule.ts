@@ -8,12 +8,13 @@ const h = (hh: number, mm = 0) => hh * 60 + mm
 const day = (start: number, end: number) => [{ start, end }]
 const rel = (n: number) => addDays(todayIn('Africa/Cairo'), n)
 
+// Company rule: every consultation falls between 12:00 and 18:00 (branch local time).
+const hours = () => day(h(12), h(18))
 const egyptWeek = (sat = false): ScheduleRules['weekly'] => ({
-  0: day(h(10), h(18)), 1: day(h(10), h(18)), 2: day(h(10), h(18)), 3: day(h(10), h(18)), 4: day(h(10), h(18)),
-  5: [], 6: sat ? day(h(10), h(16)) : [],
+  0: hours(), 1: hours(), 2: hours(), 3: hours(), 4: hours(), 5: [], 6: sat ? hours() : [],
 })
 const dubaiWeek: ScheduleRules['weekly'] = {
-  0: [], 1: day(h(10), h(18)), 2: day(h(10), h(18)), 3: day(h(10), h(18)), 4: day(h(10), h(18)), 5: day(h(10), h(13)), 6: [],
+  0: [], 1: hours(), 2: hours(), 3: hours(), 4: hours(), 5: hours(), 6: [],
 }
 
 const BOTH: Format[] = ['online', 'in-person']

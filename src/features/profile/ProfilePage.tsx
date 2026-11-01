@@ -18,6 +18,7 @@ import { VideoPlayer } from './VideoPlayer'
 import { ApprovalStats } from './ApprovalStats'
 import { SlotCalendar } from './SlotCalendar'
 import { DirectoryPage } from '../directory/DirectoryPage'
+import { ConsultantFeedback } from '../reviews/Reviews'
 
 export function ProfilePage() {
   const { id = '' } = useParams()
@@ -118,11 +119,7 @@ function Profile({ c, t, l, lang, minSample }: { c: ReturnType<typeof getConsult
             <ScoreBar score={stats.kpi} />
           </section>
 
-          <section role="region" aria-labelledby="feedback" className="rounded-3xl bg-white p-5 ring-1 ring-line sm:p-6">
-            <h2 id="feedback" className="mb-3 text-lg font-semibold text-ink">{t('profile.ratingTitle')}</h2>
-            <p className="font-semibold text-slate">{t('profile.noFeedback')}</p>
-            <p className="mt-1 text-sm text-muted">{t('profile.noFeedbackHint')}</p>
-          </section>
+          <ConsultantFeedback consultantId={c.id} />
 
           <ApprovalStats outcomes={outcomes} minSample={minSample} />
         </aside>

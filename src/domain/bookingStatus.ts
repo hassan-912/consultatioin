@@ -108,4 +108,17 @@ export function checkInVerdict(b: Booking | undefined, todayInTz: string): Check
   }
 }
 
+/** Customers within this many minutes either side of the start time count as on time. */
+export const ARRIVAL_GRACE_MIN = 15
+
+export type ArrivalTiming = { kind: 'early' | 'on-time' | 'late'; minutes: number }
+
+/** How an arrival at `atMs` relates to the appointment start; `minutes` is the distance from the start. */
+export function arrivalTiming(b: Pick<Booking, 'startIso'>, atMs: number): ArrivalTiming {
+  const diff = Math.round((atMs - Date.parse(b.startIso)) / 60000)
+  if (diff < -ARRIVAL_GRACE_MIN) return { kind: 'early', minutes: -diff }
+  if (diff > ARRIVAL_GRACE_MIN) return { kind: 'late', minutes: diff }
+  return { kind: 'on-time', minutes: Math.abs(diff) }
+}
+
 export const isActive = (s: BookingStatus) => !['expired', 'cancelled', 'completed', 'no-show'].includes(s)

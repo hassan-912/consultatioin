@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { isLive, uiStorageKey } from '../data/mode'
 import type {
-  AuditEntry, Booking, BranchId, Consultant, CustomerDetails, Format, Lang, ProgramId, StaffRole,
+  AuditEntry, Booking, BranchId, Consultant, CustomerDetails, Format, Lang, ProgramId, Review, StaffRole,
 } from '../domain/types'
 import type { ScheduleRules } from '../domain/availability'
 
@@ -73,6 +73,8 @@ export interface AppState {
   audit: AuditEntry[]
   lastCustomerBookingId: string | null
   records: Record<string, ConsultationRecord>
+  /** Prototype only: customer reviews keyed by booking id. */
+  reviews: Record<string, Review & { consultantId: string }>
   consultantOverrides: Record<string, Partial<Consultant>>
   scheduleOverrides: Record<string, Partial<ScheduleRules>>
   kpiOverrides: Record<string, number>
@@ -114,6 +116,7 @@ export const useAppStore = create<AppState>()(
       audit: [],
       lastCustomerBookingId: null,
       records: {},
+      reviews: {},
       consultantOverrides: {},
       scheduleOverrides: {},
       kpiOverrides: {},
