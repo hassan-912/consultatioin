@@ -3,7 +3,7 @@ import { calculateScore, CATEGORIES, PENALTIES, type SelectionsMap } from './cal
 import { calculateCRS, DEFAULT_CRS_FORM, rawScoreToLang1Key, rawScoreToLang2Key, type CRSForm, type LangAbility, type LangTestType } from './calculator/canada-crs'
 import { calculateAustraliaGSM, DEFAULT_AUSTRALIA_GSM_FORM, type AustraliaGSMForm } from './calculator/australia-gsm'
 import { assessJobSeeker, type JobSeekerRoute } from './calculator/job-seeker'
-import { assessmentConfig } from '../config/assessment'
+import type { EgpRates } from './calculator/exchange-rates'
 import { questionsFor, unanswered, type Answers, type StoredAssessment } from './questions'
 
 export type Tone = 'ok' | 'warn' | 'bad'
@@ -135,7 +135,7 @@ const jobTitles: Record<JobSeekerRoute, L10n> = {
 }
 const jobRowAr: Record<string, string> = { Age: 'العمر', 'Relevant experience': 'الخبرة ذات الصلة', English: 'الإنجليزية', German: 'الألمانية', 'Qualifications & skills': 'المؤهلات والمهارات', 'Selected language': 'اللغة المختارة' }
 
-function jobSeeker(a: Answers): Omit<AssessmentResult, 'answers' | 'complete'> {
+function jobSeeker(a: Answers, fx: EgpRates | null): Omit<AssessmentResult, 'answers' | 'complete'> {
   const route = a.destination as JobSeekerRoute
   const form: Record<string, string> = Object.fromEntries(Object.entries(a).filter(([k]) => k.startsWith('js_')).map(([k, v]) => [k.slice(3), v]))
   if (route === 'germany') {
@@ -149,9 +149,7 @@ function jobSeeker(a: Answers): Omit<AssessmentResult, 'answers' | 'complete'> {
     })
   }
   if (!form.months) form.months = route === 'germany' ? '12' : route === 'austria' ? '6' : '9'
-  const { egpPerEur, egpPerSek } = assessmentConfig.exchangeRates
-  const now = new Date().toISOString()
-  const r = assessJobSeeker(route, form, { rates: { EUR: egpPerEur, SEK: egpPerSek }, updatedAt: now, nextUpdateAt: now })
+  const r = assessJobSeeker(route, form, fx)
   return {
     title: jobTitles[route] ?? L('Job seeker', 'البحث عن عمل'), score: r.total, max: null, threshold: r.threshold,
     rows: r.breakdown.map(row => ({ label: L(row.label, jobRowAr[row.label] ?? row.label), points: row.points })),
@@ -161,13 +159,22 @@ function jobSeeker(a: Answers): Omit<AssessmentResult, 'answers' | 'complete'> {
   }
 }
 
-/** Staff only: score a stored questionnaire with the same rules as MG's public calculator. */
-export function evaluate(s: StoredAssessment): AssessmentResult {
+const rateText = (n: number) => n.toLocaleString('en-US', { maximumFractionDigits: 2 })
+function ratesNote(fx: EgpRates | null): L10n {
+  if (!fx) return L('Live exchange rate unavailable right now, so a bank balance in another currency cannot be compared. It retries automatically.', 'سعر الصرف المباشر غير متاح الآن، لذلك لا يمكن مقارنة رصيد بعملة أخرى. ستتم إعادة المحاولة تلقائيًا.')
+  const at = new Date(fx.updatedAt).toISOString().slice(0, 16).replace('T', ' ')
+  const eur = rateText(fx.rates.EUR), sek = rateText(fx.rates.SEK)
+  return L(`Bank balance compared at the live rate: 1 EUR = ${eur} EGP, 1 SEK = ${sek} EGP (updated ${at} UTC).`, `تمت مقارنة الرصيد بسعر الصرف المباشر: 1 يورو = ${eur} جنيه، 1 كرونة = ${sek} جنيه (آخر تحديث ${at} UTC).`)
+}
+
+/** Staff only: score a stored questionnaire with the same rules as MG's public calculator. `fx` is the live EGP rate. */
+export function evaluate(s: StoredAssessment, fx: EgpRates | null = null): AssessmentResult {
   const a = s.answers
   const base = s.program === 'tourism' ? tourism(a)
     : s.program === 'immigration' ? (a.destination === 'australia' ? australia(a) : canada(a))
-    : jobSeeker(a)
-  const note = base.note ?? (s.program === 'job-seeking' && a.js_bankCurrency && a.js_bankCurrency !== 'EUR'
-    ? L(assessmentConfig.exchangeRates.note.en, assessmentConfig.exchangeRates.note.ar) : undefined)
+    : jobSeeker(a, fx)
+  const program = a.destination === 'sweden' ? 'SEK' : 'EUR'
+  const converted = s.program === 'job-seeking' && !!a.js_bankCurrency && a.js_bankCurrency !== program
+  const note = base.note && converted ? L(`${base.note.en} ${ratesNote(fx).en}`, `${base.note.ar} ${ratesNote(fx).ar}`) : base.note ?? (converted ? ratesNote(fx) : undefined)
   return { ...base, note, answers: answerList(s), complete: unanswered(s.program, a).length === 0 }
 }

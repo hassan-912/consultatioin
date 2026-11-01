@@ -5,6 +5,7 @@ import { BottomSheet } from '../components/widgets'
 import { Notice } from '../components/ui'
 import { Icon } from '../components/Icon'
 import { evaluate, type AssessmentResult, type Tone } from './evaluate'
+import { useEgpRates } from './useEgpRates'
 
 const toneClass: Record<Tone, string> = { ok: 'bg-ok-soft text-ok', warn: 'bg-warn-soft text-warn', bad: 'bg-bad-soft text-bad' }
 
@@ -26,7 +27,8 @@ function ScoreLine({ r }: { r: AssessmentResult }) {
 export function StaffAssessment({ bookingId }: { bookingId: string }) {
   const { t, l } = useT()
   const stored = useStaffAssessments()[bookingId]
-  const r = useMemo(() => (stored ? evaluate(stored) : null), [stored])
+  const { rates } = useEgpRates(stored?.program === 'job-seeking')
+  const r = useMemo(() => (stored ? evaluate(stored, rates) : null), [stored, rates])
   const [open, setOpen] = useState(false)
   if (!r) return null
   return (

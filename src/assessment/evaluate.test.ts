@@ -45,12 +45,20 @@ test('Australia points match the calculator and flag the 65 minimum', () => {
 
 test('job seeker Germany uses the calculator rules with self-declared recognition and EGP funds', () => {
   const answers = { destination: 'germany', js_recognised: 'yes', js_age: '29', js_language: 'english', js_languageLevel: 'b2', js_experience: 'two', js_bankBalance: '800000', js_bankCurrency: 'EGP' }
-  const r = evaluate({ program: 'job-seeking', answers })
+  const fx = { rates: { EUR: 52.4, SEK: 4.9 }, updatedAt: new Date().toISOString(), nextUpdateAt: new Date(Date.now() + 864e5).toISOString() }
+  const r = evaluate({ program: 'job-seeking', answers }, fx)
   expect(r.verdict.tone).toBe('ok')
   expect(r.issues).toEqual([])
-  const poor = evaluate({ program: 'job-seeking', answers: { ...answers, js_bankBalance: '1000' } })
-  expect(poor.issues.join(' ')).toMatch(/short by/)
-  expect(evaluate({ program: 'job-seeking', answers: { ...answers, js_recognised: 'unknown' } }).issues.join(' ')).toMatch(/Anabin/)
+  expect(r.note?.en).toMatch(/live rate: 1 EUR = 52.4 EGP/)
+  // 12 x 1,091 EUR = 13,092 EUR; at 52.4 that is 686,021 EGP, so 600,000 EGP falls short only at the live rate
+  expect(evaluate({ program: 'job-seeking', answers: { ...answers, js_bankBalance: '600000' } }, fx).issues.join(' ')).toMatch(/short by/)
+  expect(evaluate({ program: 'job-seeking', answers: { ...answers, js_bankBalance: '700000' } }, fx).issues).toEqual([])
+  expect(evaluate({ program: 'job-seeking', answers: { ...answers, js_recognised: 'unknown' } }, fx).issues.join(' ')).toMatch(/Anabin/)
+  const offline = evaluate({ program: 'job-seeking', answers })
+  expect(offline.issues.join(' ')).toMatch(/currency rate is unavailable/)
+  expect(offline.note?.en).toMatch(/unavailable/)
+  // a balance already in the program currency needs no exchange rate
+  expect(evaluate({ program: 'job-seeking', answers: { ...answers, js_bankBalance: '14000', js_bankCurrency: 'EUR' } }).issues).toEqual([])
 })
 
 test('follow-up questions appear and stale answers are dropped when an earlier answer changes', () => {
