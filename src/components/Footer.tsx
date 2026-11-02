@@ -66,7 +66,7 @@ export function Footer() {
         <div>
           <p className="mb-4 text-sm font-semibold text-white">{t('footer.branches')}</p>
           <ul className="grid gap-6 sm:grid-cols-3">
-            {branches.map(b => (
+            {branches.filter(b => !b.comingSoon).map(b => (
               <li key={b.id} className="text-sm leading-relaxed">
                 <p className="font-display text-base font-semibold text-white">{l(b.name)}</p>
                 <p className="mb-2 text-xs text-mist/80">{l(b.city)}</p>

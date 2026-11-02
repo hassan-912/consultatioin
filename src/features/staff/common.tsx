@@ -22,6 +22,7 @@ export function BookingMeta({ b, showStatus = true }: { b: Booking; showStatus?:
       </div>
       <p className="mt-1 text-sm font-semibold text-slate">{b.customer.name} — <Ltr>{b.customer.phone}</Ltr></p>
       {b.customer.email && <p className="mt-0.5 text-sm text-muted"><Ltr>{b.customer.email}</Ltr></p>}
+      {b.salesName && <p className="mt-0.5 inline-flex items-center gap-1.5 text-sm text-slate"><Icon name="user" size={14} className="text-gold-deep" />{t('sales.soldBy', { name: b.salesName })}</p>}
       <p className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm text-muted">
         <span className="inline-flex items-center gap-1"><Icon name={b.format === 'online' ? 'video' : 'building'} size={14} />{l(c.name)}, {l(branchById(b.branchId).name)}</span>
         <span>{formatInZone(b.startIso, b.tz, lang, 'full')}</span>

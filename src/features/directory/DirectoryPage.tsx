@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { useT, pluralCategory } from '../../i18n'
 import { useAppStore } from '../../store/useAppStore'
-import { getConsultants, getRules } from '../../store/actions'
+import { getConsultants } from '../../store/actions'
 import { Header } from '../../components/Header'
 import { Footer } from '../../components/Footer'
 import { Button, DemoBadge } from '../../components/ui'
@@ -15,13 +15,16 @@ import { isLive } from '../../data/mode'
 import { usePublicMetadata } from '../../data/hooks'
 import { useLiveData } from '../../data/liveState'
 import { DataStatus } from '../../data/feedback'
+import { LocationGate, locationName } from './LocationGate'
+import { branchById } from '../../config/branches'
 
 export function DirectoryPage() {
-  const { t, lang } = useT()
+  const { t, l, lang } = useT()
   const [phase, cycle] = useRoutePhase()
   const filters = useAppStore(s => s.filters)
   const overrides = useAppStore(s => s.consultantOverrides)
-  const scheduleOverrides = useAppStore(s => s.scheduleOverrides)
+  const location = useAppStore(s => s.location)
+  const setLocation = useAppStore(s => s.setLocation)
   const resetFilters = useAppStore(s => s.resetFilters)
   const metadata = usePublicMetadata()
   const metadataError = useLiveData(s => s.metadataError)
@@ -29,16 +32,19 @@ export function DirectoryPage() {
   const list = useMemo(
     () =>
       getConsultants(overrides).filter(c => {
-        if (filters.branch !== 'all' && c.branchId !== filters.branch) return false
+        // Branch comes from the welcome screen; online vs in person is chosen while booking.
+        if (location && c.branchId !== location) return false
         if (filters.program !== 'all' && !c.programs.includes(filters.program)) return false
-        if (filters.format !== 'any' && !(isLive ? metadata?.find(m => m.consultantId === c.id)?.formats ?? [] : getRules(c.id, scheduleOverrides).formats).includes(filters.format)) return false
         return true
       }),
-    [filters, overrides, scheduleOverrides, metadata],
+    [filters.program, location, overrides],
   )
+
+  const comingSoon = location ? branchById(location).comingSoon : false
 
   return (
     <>
+      {!location && <LocationGate />}
       <div className="relative overflow-hidden bg-slate-deep pb-20 text-white">
         <div className="grain absolute inset-0" aria-hidden />
         <div className="absolute -end-40 -top-40 size-[520px] rounded-full bg-navy/60 blur-3xl" aria-hidden />
@@ -54,6 +60,14 @@ export function DirectoryPage() {
 
       <main id="main" className="mx-auto max-w-6xl px-4 sm:px-6">
         <Filters resultCount={list.length} />
+
+        {location && (
+          <div className="mt-6 flex flex-wrap items-center gap-3 rounded-2xl bg-white px-4 py-3 ring-1 ring-line">
+            <Icon name="pin" size={18} className="text-gold-deep" />
+            <p className="text-sm text-slate">{t('gate.showing')} <span className="font-semibold text-ink">{l(locationName(location))}</span></p>
+            <Button variant="ghost" size="sm" className="ms-auto" onClick={() => setLocation(null)}>{t('gate.change')}</Button>
+          </div>
+        )}
 
         <div className="mt-10 mb-4 flex flex-wrap items-end justify-between gap-3">
           <div>
@@ -72,9 +86,12 @@ export function DirectoryPage() {
         ) : (
           <div className="rounded-3xl border border-dashed border-mist bg-white px-6 py-14 text-center">
             <Icon name="search" size={28} className="mx-auto text-mist" />
-            <p className="mt-3 text-lg font-semibold text-ink">{t('directory.empty')}</p>
-            <p className="mt-1 text-muted">{t('directory.emptyHint')}</p>
-            <Button variant="primary" className="mt-5" onClick={resetFilters}>{t('directory.clearFilters')}</Button>
+            <p className="mt-3 text-lg font-semibold text-ink">{comingSoon ? t('gate.soonTitle', { place: l(locationName(location!)) }) : t('directory.empty')}</p>
+            <p className="mt-1 text-muted">{comingSoon ? t('gate.soonHint') : t('directory.emptyHint')}</p>
+            <div className="mt-5 flex flex-wrap justify-center gap-2">
+              {filters.program !== 'all' && <Button variant="ghost" onClick={resetFilters}>{t('directory.clearFilters')}</Button>}
+              <Button variant="primary" onClick={() => setLocation(null)}>{t('gate.change')}</Button>
+            </div>
           </div>
         )}
 

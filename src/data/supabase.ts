@@ -8,7 +8,7 @@ import type { ConsultationRecord } from '../store/useAppStore'
 import type { StoredAssessment } from '../assessment/questions'
 
 type Row = Record<string, any> // JSON returned by RPCs and explicitly selected table columns.
-export const STAFF_BOOKING_COLUMNS = 'id,reference,consultant_id,branch_id,format,starts_at,ends_at,tz,price_amount,price_currency,customer_name,customer_phone,customer_email,channel,lang,program,note,status,hold_expires_at,reject_reason,meeting_url,checked_in_at,ticket_sent_at,ticket_sent_via,created_at'
+export const STAFF_BOOKING_COLUMNS = 'id,reference,consultant_id,branch_id,format,starts_at,ends_at,tz,price_amount,price_currency,customer_name,customer_phone,customer_email,channel,lang,program,note,status,hold_expires_at,reject_reason,meeting_url,checked_in_at,ticket_sent_at,ticket_sent_via,sales_name,created_at'
 const mapReview = (r: Row): Review => ({ rating: Number(r.rating), comment: r.comment ?? '', name: r.name, at: Date.parse(r.created_at) })
 const ms = (v: unknown) => v == null ? undefined : Date.parse(String(v))
 export function mapBooking(r: Row, audience: 'customer' | 'staff' = 'customer'): Booking {
@@ -24,6 +24,7 @@ export function mapBooking(r: Row, audience: 'customer' | 'staff' = 'customer'):
     customer: { name: c.name, phone: c.phone, email: c.email ?? '', channel: c.channel, consultationLang: c.lang, program: c.program ?? '', note: c.note ?? '' } as CustomerDetails,
     holdExpiresAt: ms(r.hold_expires_at) ?? 0, createdAt: ms(r.created_at)!, rejectReason: r.reject_reason ?? undefined,
     checkedInAt: ms(r.checked_in_at), ticketSentAt: ms(r.ticket_sent_at), ticketSentVia: r.ticket_sent_via ?? undefined, meetingUrl,
+    salesName: r.sales_name ?? undefined,
     payment: p ? { method: p.method, txnRef: p.txn_ref, submittedAt: ms(p.submitted_at)!, hasReceipt: p.has_receipt ?? !!p.receipt_path, receiptPath: p.receipt_path ?? undefined } : undefined,
   }
 }
@@ -194,6 +195,14 @@ export function createSupabaseRepo(clients: BackendClients): BookingRepo {
       await requireStaff()
       const rows = await allRows(staff.from('booking_assessments').select('booking_id,program,answers').order('booking_id'))
       return Object.fromEntries(rows.map(r => [r.booking_id, { program: r.program, answers: r.answers ?? {} }])) as Record<string, StoredAssessment>
+    },
+    async myReferralCode() { await requireStaff(); return result<string>(staff.rpc('my_referral_code')) },
+    async setReferral(token, code) { return result<boolean>(customer.rpc('set_booking_referral', { p_manage_token: token, p_code: code })) },
+    async reassignConsultant(id, consultantId) {
+      await requireStaff()
+      await result(staff.rpc('staff_reassign_consultant', { p_booking_id: id, p_consultant_id: consultantId }))
+      changed()
+      return staffRow(id)
     },
     async staffReviews() {
       await requireStaff()

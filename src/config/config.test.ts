@@ -8,9 +8,9 @@ import { contact } from './contact'
 const allText = (o: unknown) => JSON.stringify(o)
 
 describe('branches', () => {
-  test('exactly three, no Qena', () => {
-    expect(branches.map(b => b.id)).toEqual(['nasr-city', 'sheikh-zayed', 'dubai'])
-    expect(allText(branches)).not.toMatch(/Qena|قنا/)
+  test('three open branches plus Qena opening soon', () => {
+    expect(branches.map(b => b.id)).toEqual(['nasr-city', 'sheikh-zayed', 'dubai', 'qena'])
+    expect(branches.filter(b => b.comingSoon).map(b => b.id)).toEqual(['qena'])
   })
   test('timezones', () => {
     expect(branches.find(b => b.id === 'dubai')!.timeZone).toBe('Asia/Dubai')

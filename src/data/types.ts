@@ -63,6 +63,12 @@ export interface BookingRepo {
   saveAssessment(manageToken: string, assessment: StoredAssessment): Promise<void>
   /** Admin and the booking's consultant: answers keyed by booking id. */
   staffAssessments(): Promise<Record<string, StoredAssessment>>
+  /** Sales: the caller's personal referral code (created on first use). */
+  myReferralCode(): Promise<string>
+  /** Customer: attach the sales person whose link they arrived with. Unknown or late codes are ignored (false). */
+  setReferral(manageToken: string, code: string): Promise<boolean>
+  /** Reception/admin: move a confirmed or checked-in booking to another consultant who is free at that time. */
+  reassignConsultant(bookingId: string, consultantId: string): Promise<Booking>
   /** Admin: every review, newest first, hidden ones included. */
   staffReviews(): Promise<StaffReview[]>
   /** Admin: hide a review from the public profile, or restore it. */

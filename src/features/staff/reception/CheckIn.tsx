@@ -14,6 +14,7 @@ import { TextField } from '../../../components/fields'
 import { Icon } from '../../../components/Icon'
 import { ScreenTitle } from '../StaffApp'
 import { BookingMeta } from '../common'
+import { ConsultantSwap } from './ConsultantSwap'
 
 type Detector = { detect: (src: CanvasImageSource) => Promise<{ rawValue: string }[]> }
 declare global { interface Window { BarcodeDetector?: new (o: { formats: string[] }) => Detector } }
@@ -131,6 +132,9 @@ export function CheckIn() {
                 <div className="rounded-2xl bg-white p-4 ring-1 ring-line">
                   <BookingMeta b={booking} />
                 </div>
+              )}
+              {booking && (verdict === 'ok' || verdict === 'already-used') && (
+                <ConsultantSwap key={booking.id} b={booking} onChanged={next => { if (isLive) setRemote(r => r && { ...r, booking: next }) }} />
               )}
               {!isLive && verdict === 'ok' && booking && (
                 <Button size="lg" variant="primary" onClick={() => repo.checkIn(booking.qrToken || booking.reference).catch(reportActionError)}>

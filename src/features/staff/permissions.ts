@@ -2,11 +2,13 @@ import type { StaffRole } from '../../domain/types'
 import type { IconName } from '../../components/Icon'
 
 export type StaffScreen =
-  | 'overview' | 'payments' | 'checkin' | 'arrivals' | 'myCalendar' | 'myBookings' | 'records'
+  | 'overview' | 'salesLink' | 'myClients' | 'payments' | 'checkin' | 'arrivals' | 'myCalendar' | 'myBookings' | 'records'
   | 'consultants' | 'availability' | 'bookings' | 'paymentSettings' | 'kpi' | 'reviews' | 'audit' | 'decisions' | 'staffAccounts'
 
 export const screens: { id: StaffScreen; path: string; icon: IconName }[] = [
   { id: 'overview', path: '', icon: 'layers' },
+  { id: 'salesLink', path: 'my-link', icon: 'copy' },
+  { id: 'myClients', path: 'my-clients', icon: 'user' },
   { id: 'payments', path: 'payments', icon: 'card' },
   { id: 'checkin', path: 'checkin', icon: 'qr' },
   { id: 'arrivals', path: 'arrivals', icon: 'user' },
@@ -25,10 +27,11 @@ export const screens: { id: StaffScreen; path: string; icon: IconName }[] = [
 ]
 
 export const permissions: Record<StaffRole, StaffScreen[]> = {
-  admin: screens.map(s => s.id),
+  admin: screens.map(s => s.id).filter(id => id !== 'salesLink' && id !== 'myClients'),
   finance: ['overview', 'payments', 'bookings', 'paymentSettings', 'audit'],
   reception: ['overview', 'checkin', 'arrivals', 'bookings'],
   consultant: ['overview', 'myCalendar', 'myBookings', 'records'],
+  sales: ['salesLink', 'myClients'],
 }
 
 export const can = (role: StaffRole, s: StaffScreen) => permissions[role].includes(s)

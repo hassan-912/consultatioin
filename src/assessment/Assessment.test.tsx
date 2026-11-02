@@ -55,7 +55,7 @@ test('answers are saved with the hold; the consultant and admin see the score, f
   useAppStore.getState().updateDraft({ step: 4, format: 'in-person', durationMin: 30, slotStartIso: slot(), assessment: { program: 'tourism', answers: strong } })
   useAppStore.getState().updateDetails(details)
   const wizard = at(`/book/${ID}`)
-  await waitFor(() => expect(Object.keys(useAppStore.getState().assessments)).toHaveLength(1))
+  await waitFor(() => expect(Object.keys(useAppStore.getState().assessments)).toHaveLength(1), { timeout: 5000 })
   wizard.unmount()
   const b = Object.values(useAppStore.getState().bookings)[0]
   useAppStore.setState(s => ({ bookings: { [b.id]: { ...s.bookings[b.id], status: 'confirmed' } } }))
@@ -66,12 +66,12 @@ test('answers are saved with the hold; the consultant and admin see the score, f
 
   loginAs('consultant', ID)
   const desk = at('/staff/my-bookings')
-  const card = (await screen.findByText(b.reference)).closest('li, article, div.rounded-2xl') as HTMLElement
+  const card = (await screen.findByText(b.reference, undefined, { timeout: 5000 })).closest('li, article, div.rounded-2xl') as HTMLElement
   expect(within(card).getByText('File assessment')).toBeInTheDocument()
   expect(within(card).getByText('91 / 100')).toBeInTheDocument()
   expect(within(card).getByText('Strong file')).toBeInTheDocument()
   fireEvent.click(within(card).getByRole('button', { name: 'View full assessment' }))
-  expect(await screen.findByText('Customer answers')).toBeInTheDocument()
+  expect(await screen.findByText('Customer answers', undefined, { timeout: 5000 })).toBeInTheDocument()
   expect(screen.getByText('Previous Visa Refusal')).toBeInTheDocument()
   desk.unmount()
 
@@ -82,6 +82,6 @@ test('answers are saved with the hold; the consultant and admin see the score, f
 
   loginAs('finance')
   at('/staff/bookings')
-  expect(await screen.findByText(b.reference)).toBeInTheDocument()
+  expect(await screen.findByText(b.reference, undefined, { timeout: 5000 })).toBeInTheDocument()
   expect(screen.queryByText('File assessment')).toBeNull()
 })

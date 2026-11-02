@@ -39,6 +39,17 @@ export const branches: Branch[] = [
     mapsUrl: maps('City Bay Business Center Abu Hail Dubai'),
     country: 'AE',
   },
+  {
+    // PENDING: address and consultants to be supplied by MG.
+    id: 'qena',
+    name: { en: 'Qena', ar: 'قنا' },
+    city: { en: 'Qena, Egypt', ar: 'قنا، مصر' },
+    address: { en: 'Address coming soon', ar: 'العنوان قريبًا' },
+    timeZone: 'Africa/Cairo',
+    mapsUrl: maps('Qena Egypt'),
+    country: 'EG',
+    comingSoon: true,
+  },
 ]
 
 export const branchById = (id: BranchId): Branch => branches.find(b => b.id === id)!

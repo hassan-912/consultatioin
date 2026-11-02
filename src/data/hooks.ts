@@ -8,6 +8,7 @@ import { consultants } from '../config/consultants'
 import type { Format } from '../domain/types'
 import type { Slot } from '../domain/availability'
 import { slotsFor } from '../features/shared/availability'
+import { localReferralCode } from './referral'
 
 export function useStaffBookings() {
   const local = useAppStore(s => s.bookings)
@@ -26,8 +27,10 @@ export function useStaffAssessments() {
   const live = useLiveData(s => s.assessments)
   if (isLive) return live
   // Prototype mirrors the database rule: admin sees all, a consultant only their own bookings.
-  if (!session || (session.role !== 'admin' && session.role !== 'consultant')) return {}
-  return session.role === 'admin' ? local : Object.fromEntries(Object.entries(local).filter(([id]) => bookings[id]?.consultantId === session.consultantId))
+  if (!session || !['admin', 'consultant', 'sales'].includes(session.role)) return {}
+  if (session.role === 'admin') return local
+  const code = session.role === 'sales' ? localReferralCode(session.username) : null
+  return Object.fromEntries(Object.entries(local).filter(([id]) => code !== null ? bookings[id]?.salesCode === code : bookings[id]?.consultantId === session.consultantId))
 }
 export function useStaffAudit() {
   const local = useAppStore(s => s.audit)
@@ -56,7 +59,7 @@ export function useStaffHydration() {
           session.role === 'admin' || session.role === 'consultant' ? repo.staffRecords() : Promise.resolve({}),
           session.role === 'admin' || session.role === 'finance' ? repo.staffAudit() : Promise.resolve([]),
           repo.staffSchedules(),
-          session.role === 'admin' || session.role === 'consultant' ? repo.staffAssessments() : Promise.resolve({}),
+          session.role === 'admin' || session.role === 'consultant' || session.role === 'sales' ? repo.staffAssessments() : Promise.resolve({}),
         ])
         if (active) useLiveData.setState({ bookings: Object.fromEntries(bookings.map(b => [b.id, b])), records, audit, schedules, assessments, error: null, loading: false })
       } catch (error) {

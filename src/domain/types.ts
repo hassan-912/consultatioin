@@ -1,7 +1,7 @@
 export type Lang = 'ar' | 'en'
 export type L10n = Record<Lang, string>
 
-export type BranchId = 'nasr-city' | 'sheikh-zayed' | 'dubai'
+export type BranchId = 'nasr-city' | 'sheikh-zayed' | 'dubai' | 'qena'
 export type Format = 'online' | 'in-person'
 export type ProgramId = 'investment' | 'job-seeking' | 'education' | 'tourism' | 'immigration'
 export type TimeZone = 'Africa/Cairo' | 'Asia/Dubai'
@@ -14,6 +14,8 @@ export interface Branch {
   timeZone: TimeZone
   mapsUrl: string
   country: 'EG' | 'AE'
+  /** Opening soon: no address or consultants published yet. */
+  comingSoon?: boolean
 }
 
 export interface Consultant {
@@ -137,6 +139,10 @@ export interface Booking {
   meetingUrl?: string
   ticketSentVia?: Channel
   ticketSentAt?: number
+  /** Sales person whose link the customer booked through. */
+  salesName?: string
+  /** Prototype only: the referral code the booking came in with. */
+  salesCode?: string
   createdAt: number
   demo?: boolean
 }
@@ -163,7 +169,7 @@ export interface ConsultantReviews {
   reviews: Review[]
 }
 
-export type StaffRole = 'admin' | 'consultant' | 'finance' | 'reception'
+export type StaffRole = 'admin' | 'consultant' | 'finance' | 'reception' | 'sales'
 export type Actor = StaffRole | 'customer' | 'system'
 
 export interface AuditEntry {

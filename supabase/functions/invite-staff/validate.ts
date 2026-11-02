@@ -1,5 +1,5 @@
 // Pure request validation shared by the invite Edge Function and the staff-accounts form. No imports, no I/O.
-export const staffRoles = ['admin', 'finance', 'reception', 'consultant'] as const
+export const staffRoles = ['admin', 'finance', 'reception', 'consultant', 'sales'] as const
 export type InviteRole = (typeof staffRoles)[number]
 export interface InviteRequest { email: string; displayName: string; role: InviteRole; consultantId: string | null }
 export type InviteField = 'email' | 'displayName' | 'role' | 'consultantId'

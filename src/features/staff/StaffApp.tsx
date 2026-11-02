@@ -25,6 +25,7 @@ import { AuditLog } from './admin/AuditLog'
 import { ReviewsAdmin } from './admin/ReviewsAdmin'
 import { PendingDecisions } from './admin/PendingDecisions'
 import { StaffAccounts } from './admin/StaffAccounts'
+import { SalesLink, MyClients } from './sales/Sales'
 import { useStaffHydration, staffSessionKey } from '../../data/hooks'
 import { useLiveData } from '../../data/liveState'
 import { isLive } from '../../data/mode'
@@ -32,6 +33,8 @@ import { DataStatus } from '../../data/feedback'
 
 const views: Record<StaffScreen, () => ReactNode> = {
   overview: () => <Overview />,
+  salesLink: () => <SalesLink />,
+  myClients: () => <MyClients />,
   payments: () => <PaymentQueue />,
   checkin: () => <CheckIn />,
   arrivals: () => <Arrivals />,
@@ -144,7 +147,10 @@ export function StaffApp() {
           {(!isLive || (!loading && !error && !staleSnapshot)) &&
           <Routes>
             {screens.map(s => {
-              const element = can(role, s.id) ? <>{views[s.id]()}</> : <Navigate to="/staff" replace />
+              // A role without the overview (sales) lands on its first screen instead of looping back to /staff.
+              const home = screens.find(x => can(role, x.id))!
+              const fallback = home.path ? `/staff/${home.path}` : '/staff'
+              const element = can(role, s.id) ? <>{views[s.id]()}</> : <Navigate to={fallback} replace />
               return s.path ? <Route key={s.id} path={s.path} element={element} /> : <Route key={s.id} index element={element} />
             })}
             <Route path="*" element={<Navigate to="/staff" replace />} />

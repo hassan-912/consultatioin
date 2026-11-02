@@ -108,6 +108,13 @@ export function checkInVerdict(b: Booking | undefined, todayInTz: string): Check
   }
 }
 
+/** Whether the consultant already has an active booking overlapping `b`'s time (other than `b`). */
+export function consultantBusy(all: Booking[], consultantId: string, b: Pick<Booking, 'id' | 'startIso' | 'endIso'>): boolean {
+  const start = Date.parse(b.startIso), end = Date.parse(b.endIso)
+  return all.some(x => x.id !== b.id && x.consultantId === consultantId && isActive(x.status) && x.status !== 'expired'
+    && Date.parse(x.startIso) < end && Date.parse(x.endIso) > start)
+}
+
 /** Customers within this many minutes either side of the start time count as on time. */
 export const ARRIVAL_GRACE_MIN = 15
 

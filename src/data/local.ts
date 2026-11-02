@@ -9,7 +9,10 @@ import { cleanPhone, normalizeDigits } from '../domain/phone'
 import { dateInZone } from '../domain/time'
 import { bookingConfig } from '../config/booking'
 import type { Booking } from '../domain/types'
-import { HoldExpired, RepoError, type BookingRepo } from './types'
+import { HoldExpired, RepoError, SlotTaken, type BookingRepo } from './types'
+import { staffAccounts } from '../config/staffAccounts'
+import { consultantBusy } from '../domain/bookingStatus'
+import { localReferralCode } from './referral'
 
 const get = () => useAppStore.getState()
 
@@ -133,8 +136,33 @@ export function createLocalRepo(): BookingRepo {
     },
     async staffAssessments() {
       const session = get().staffSession
-      if (!session || (session.role !== 'admin' && session.role !== 'consultant')) return {}
-      return Object.fromEntries(Object.entries(get().assessments).filter(([id]) => session.role === 'admin' || get().bookings[id]?.consultantId === session.consultantId))
+      if (!session || !['admin', 'consultant', 'sales'].includes(session.role)) return {}
+      const code = session.role === 'sales' ? localReferralCode(session.username) : null
+      return Object.fromEntries(Object.entries(get().assessments).filter(([id]) => session.role === 'admin'
+        || (session.role === 'consultant' && get().bookings[id]?.consultantId === session.consultantId)
+        || (code !== null && get().bookings[id]?.salesCode === code)))
+    },
+    // Prototype: one code per username, so links are stable between sessions.
+    async myReferralCode() { return localReferralCode(get().staffSession?.username ?? '') },
+    async setReferral(token, code) {
+      const b = mustFind(token)
+      if (!['reserved', 'on-hold'].includes(b.status) || b.salesCode) return false
+      if (!/^[a-z0-9]{8}$/.test(code)) return false
+      const account = staffAccounts.find(a => localReferralCode(a.username) === code)
+      useAppStore.setState(s => ({ bookings: { ...s.bookings, [b.id]: { ...b, salesCode: code, salesName: account?.username ?? `Sales ${code}` } } }))
+      return true
+    },
+    async reassignConsultant(id, consultantId) {
+      const b = get().bookings[id]
+      if (!b) throw new RepoError('NOT_FOUND')
+      if (!['confirmed', 'checked-in'].includes(b.status)) throw new RepoError('INVALID_TRANSITION')
+      const target = consultants.find(c => c.id === consultantId)
+      if (!target || (b.format === 'in-person' && target.branchId !== b.branchId)) throw new RepoError('INVALID_INPUT')
+      if (consultantBusy(Object.values(get().bookings), consultantId, b)) throw new SlotTaken()
+      const next = { ...b, consultantId }
+      useAppStore.setState(s => ({ bookings: { ...s.bookings, [id]: next } }))
+      get().addAudit({ actor: get().staffSession?.role ?? 'reception', action: 'consultant-changed', bookingRef: b.reference, from: b.consultantId, to: consultantId })
+      return next
     },
     async staffReviews() {
       return Object.entries(get().reviews)

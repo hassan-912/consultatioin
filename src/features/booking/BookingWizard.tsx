@@ -22,6 +22,7 @@ import { ReviewStep } from './steps/ReviewStep'
 import { PaymentStep } from './steps/PaymentStep'
 import { SummaryCard, validateDetails, type DetailErrors } from './shared'
 import { isAssessed, unanswered } from '../../assessment/questions'
+import { currentReferral } from '../../data/referral'
 
 const STEP_KEYS = ['format', 'time', 'details', 'review', 'payment'] as const
 
@@ -85,6 +86,9 @@ function Wizard({ id }: { id: string }) {
         // A failed save must not block payment; the consultant can still ask in person.
         const a = d.assessment
         if (a && a.program === d.details.program) await repo.saveAssessment(r.manageToken, a).catch(() => undefined)
+        // Sales link the customer arrived with; never blocks the booking.
+        const ref = currentReferral()
+        if (ref) await repo.setReferral(r.manageToken, ref).catch(() => false)
         if (isLive) {
           const booking = await repo.getByManageToken(r.manageToken)
           if (!booking) throw new Error('NOT_FOUND')

@@ -96,7 +96,7 @@ test('staff hydration uses authorized rows, clears snapshots on logout, and keep
 test('live UI persistence excludes bookings, records, audit, staff session and customer draft', () => {
   useAppStore.setState({ staffSession: { username: 'prototype', role: 'admin', consultantId: null }, records: { secret: { notes: 'private', outcome: 'none' } } })
   const stored = JSON.parse(localStorage.getItem('mg-live-ui-v1')!)
-  expect(Object.keys(stored.state).sort()).toEqual(['filters', 'lang', 'senderName'])
+  expect(Object.keys(stored.state).sort()).toEqual(['filters', 'lang', 'location', 'senderName'])
   expect(localStorage.getItem('mg-proto-v1')).toBeNull()
 })
 test('live rehydration ignores staff session/records and leaves existing prototype persistence untouched', async () => {

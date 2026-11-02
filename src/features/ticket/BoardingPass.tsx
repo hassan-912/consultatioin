@@ -87,6 +87,7 @@ export const BoardingPass = forwardRef<HTMLDivElement, { booking: Booking; lang?
       <div className="grid grid-cols-2 gap-x-4 gap-y-3.5 px-5 py-5 text-sm">
         {field(t('ticket.passenger'), b.customer.name)}
         {field(t('common.consultant'), l(consultant.name))}
+        {b.salesName && field(t('sales.advisor'), b.salesName, true)}
         {field(t('common.date'), formatInZone(b.startIso, b.tz, lang, 'date'), true)}
         {field(t('common.time'), <><Ltr>{formatInZone(b.startIso, b.tz, lang, 'time')}</Ltr> <span className="text-xs font-normal text-muted">{zoneLabel(b.tz, lang, Date.parse(b.startIso))}</span></>)}
         {field(t('common.duration'), t('common.durationRange', bookingConfig.durationRange))}

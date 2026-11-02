@@ -1,10 +1,9 @@
 import { useMemo, useState } from 'react'
 import { useT, pluralCategory } from '../../i18n'
 import { useAppStore, todayIn, type Filters as F } from '../../store/useAppStore'
-import { branches } from '../../config/branches'
 import { programs } from '../../config/programs'
 import { addDays, formatDate } from '../../domain/time'
-import { SelectField, Segmented } from '../../components/fields'
+import { SelectField } from '../../components/fields'
 import { BottomSheet } from '../../components/widgets'
 import { Button } from '../../components/ui'
 import { Icon } from '../../components/Icon'
@@ -44,25 +43,10 @@ function FilterControls({ value, onChange }: { value: F; onChange: (p: Partial<F
   const { t, l } = useT()
   return (
     <div className="grid gap-4">
-      <SelectField label={t('directory.filterBranch')} value={value.branch} onChange={e => onChange({ branch: e.target.value as F['branch'] })}>
-        <option value="all">{t('directory.allBranches')}</option>
-        {branches.map(b => <option key={b.id} value={b.id}>{l(b.name)}</option>)}
-      </SelectField>
       <SelectField label={t('directory.filterProgram')} value={value.program} onChange={e => onChange({ program: e.target.value as F['program'] })}>
         <option value="all">{t('directory.allPrograms')}</option>
         {programs.map(p => <option key={p.id} value={p.id}>{l(p.name)}</option>)}
       </SelectField>
-      <Segmented
-        name="format"
-        label={t('directory.filterFormat')}
-        value={value.format}
-        onChange={v => onChange({ format: v })}
-        options={[
-          { value: 'any', label: t('format.any') },
-          { value: 'online', label: t('format.onlineShort') },
-          { value: 'in-person', label: t('format.inPersonShort') },
-        ]}
-      />
     </div>
   )
 }
@@ -73,7 +57,7 @@ export function Filters({ resultCount }: { resultCount: number }) {
   const setFilters = useAppStore(s => s.setFilters)
   const resetFilters = useAppStore(s => s.resetFilters)
   const [open, setOpen] = useState(false)
-  const active = (filters.branch !== 'all' ? 1 : 0) + (filters.program !== 'all' ? 1 : 0) + (filters.format !== 'any' ? 1 : 0)
+  const active = filters.program !== 'all' ? 1 : 0
 
   const chip = (label: string, clear: () => void) => (
     <button key={label} type="button" onClick={clear} className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-slate/8 px-3 text-sm font-semibold text-slate ring-1 ring-slate/15 hover:bg-slate/12">
@@ -94,33 +78,16 @@ export function Filters({ resultCount }: { resultCount: number }) {
       </div>
       <DateStrip label={t('directory.filterDate')} value={filters.date} onChange={date => setFilters({ date })} />
 
-      <div className="mt-5 hidden grid-cols-[1fr_1fr_auto] items-end gap-4 border-t border-line pt-5 md:grid">
-        <SelectField label={t('directory.filterBranch')} value={filters.branch} onChange={e => setFilters({ branch: e.target.value as F['branch'] })}>
-          <option value="all">{t('directory.allBranches')}</option>
-          {branches.map(b => <option key={b.id} value={b.id}>{l(b.name)}</option>)}
-        </SelectField>
+      <div className="mt-5 hidden max-w-sm items-end gap-4 border-t border-line pt-5 md:grid">
         <SelectField label={t('directory.filterProgram')} value={filters.program} onChange={e => setFilters({ program: e.target.value as F['program'] })}>
           <option value="all">{t('directory.allPrograms')}</option>
           {programs.map(p => <option key={p.id} value={p.id}>{l(p.name)}</option>)}
         </SelectField>
-        <Segmented
-          name="format-desktop"
-          label={t('directory.filterFormat')}
-          value={filters.format}
-          onChange={v => setFilters({ format: v })}
-          options={[
-            { value: 'any', label: t('format.any') },
-            { value: 'online', label: t('format.onlineShort') },
-            { value: 'in-person', label: t('format.inPersonShort') },
-          ]}
-        />
       </div>
 
       {active > 0 && (
         <div className="mt-4 flex flex-wrap items-center gap-2 md:hidden">
-          {filters.branch !== 'all' && chip(l(branches.find(b => b.id === filters.branch)!.name), () => setFilters({ branch: 'all' }))}
           {filters.program !== 'all' && chip(l(programs.find(p => p.id === filters.program)!.name), () => setFilters({ program: 'all' }))}
-          {filters.format !== 'any' && chip(t(filters.format === 'online' ? 'format.onlineShort' : 'format.inPersonShort'), () => setFilters({ format: 'any' }))}
         </div>
       )}
 

@@ -6,7 +6,7 @@ import { useAppStore } from './useAppStore'
 /** Real staff authentication (live mode only). Every function takes the client so tests can inject a mock. */
 export type StaffAuthResult = 'ok' | 'invalid' | 'inactive' | 'unavailable'
 
-const roles: StaffRole[] = ['admin', 'finance', 'reception', 'consultant']
+const roles: StaffRole[] = ['admin', 'finance', 'reception', 'consultant', 'sales']
 type ProfileRow = { role: string; consultant_id: string | null; display_name: string; active: boolean }
 
 const clearSession = () => useAppStore.setState({ staffSession: null })
