@@ -1,0 +1,242 @@
+/* Copied from hassan-912/Visa-File-Strength-Calculator components/client-report.css (commit 208cc69).
+ * Local changes: font variables mapped to this app's fonts; notes keep line breaks; RTL text allowed. */
+/* ─────────────────────────────────────────────────────────────────
+ * MG client assessment summary (Tourism, Immigration, Job Seeker) — A4 print.
+ * Rendered by components/ClientReport.tsx; hidden on screen.
+ * ───────────────────────────────────────────────────────────────── */
+
+.cr-report { display: none; }
+
+@page client-report {
+  size: A4;
+  margin: 15mm 16mm 18mm;
+  @bottom-left {
+    content: "MG International Visa Consultancy  ·  Confidential client summary";
+    font: 600 7pt "Montserrat", "Segoe UI", sans-serif;
+    color: #64748b;
+    letter-spacing: 0.04em;
+  }
+  @bottom-right {
+    content: "Page " counter(page) " of " counter(pages);
+    font: 600 7pt "Montserrat", "Segoe UI", sans-serif;
+    color: #64748b;
+  }
+}
+
+@media print {
+  /* Show the report alone: remove the calculator from layout instead of
+     hiding it, so it no longer pushes the report down the first page. */
+  body:has(> .cr-report) > :not(.cr-report) { display: none !important; }
+  /* Several calculators can hold a prepared report; print only the requested one. */
+  body:has(> .cr-report[data-printing]) > .cr-report:not([data-printing]) { display: none !important; }
+  body:has(> .cr-report) { margin: 0 !important; padding: 0 !important; background: #fff !important; }
+
+  .cr-report,
+  .cr-report * { visibility: visible !important; }
+
+  .cr-report {
+    --cr-ink: #141c21;
+    --cr-brand: #283840;
+    --cr-brand-soft: #3a505c;
+    --cr-body: #334155;
+    --cr-muted: #5b6b7e;
+    --cr-rule: #dfe5e9;
+    --cr-tint: #f3f5f7;
+    --cr-track: #e3e8ec;
+
+    page: client-report;
+    display: block !important;
+    width: 100%;
+    color: var(--cr-body);
+    background: #fff;
+    font-family: var(--font-body), "Segoe UI", ui-sans-serif, system-ui, sans-serif;
+    font-size: 9pt;
+    line-height: 1.45;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .cr-report h1,
+  .cr-report h2,
+  .cr-report h3,
+  .cr-firm,
+  .cr-score-value,
+  .cr-section-total,
+  .cr-grand-figure strong {
+    font-family: var(--font-display), "Segoe UI", sans-serif;
+    color: var(--cr-ink);
+  }
+
+  .cr-report small { font-size: 0.78em; font-weight: 600; color: var(--cr-muted); }
+
+  /* ── Letterhead ── */
+  .cr-letterhead {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 10mm;
+    padding-bottom: 5mm;
+    border-bottom: 1.5pt solid var(--cr-brand);
+  }
+  .cr-brand { display: flex; align-items: center; gap: 4mm; }
+  .cr-logo { width: 13mm; height: 13mm; object-fit: contain; filter: invert(1); }
+  .cr-firm { font-size: 11pt; font-weight: 800; letter-spacing: -0.01em; }
+  .cr-firm-meta { margin-top: 1mm; font-size: 7.5pt; color: var(--cr-muted); }
+  .cr-docmeta { display: grid; gap: 0.8mm; font-size: 7.5pt; text-align: right; }
+  .cr-docmeta > div { display: flex; justify-content: flex-end; gap: 3mm; }
+  .cr-docmeta dt { color: var(--cr-muted); }
+  .cr-docmeta dd { min-width: 34mm; font-weight: 700; color: var(--cr-ink); font-variant-numeric: tabular-nums; }
+
+  /* ── Title ── */
+  .cr-title { padding: 9mm 0 6mm; }
+  .cr-title h1 { font-size: 22pt; font-weight: 800; line-height: 1.1; letter-spacing: -0.025em; }
+  .cr-programme { margin-top: 1.5mm; font-size: 10.5pt; font-weight: 600; color: var(--cr-brand-soft); }
+  .cr-client { margin-top: 4mm; font-size: 10pt; color: var(--cr-muted); }
+  .cr-client strong { color: var(--cr-ink); font-weight: 700; }
+
+  /* ── Score band ── */
+  .cr-score {
+    display: grid;
+    grid-template-columns: 52mm 1fr;
+    gap: 5mm 9mm;
+    padding: 7mm 8mm 6mm;
+    border-radius: 3mm;
+    background: var(--cr-brand) !important;
+    color: #dbe3e7;
+    break-inside: avoid;
+  }
+  .cr-score-value { font-size: 40pt; font-weight: 800; line-height: 1; letter-spacing: -0.03em; color: #fff !important; font-variant-numeric: tabular-nums; }
+  .cr-score-context { margin-top: 2mm; font-size: 8pt; color: #b9c6cd; }
+  .cr-score-verdict { align-self: center; }
+  .cr-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 2mm;
+    padding: 1.4mm 3.2mm;
+    border-radius: 99px;
+    background: #fff !important;
+    color: var(--cr-ink);
+    font-family: var(--font-display), "Segoe UI", sans-serif;
+    font-size: 9pt;
+    font-weight: 800;
+  }
+  .cr-status > span { width: 2.2mm; height: 2.2mm; border-radius: 50%; }
+  .cr-status-text { margin-top: 2.5mm; max-width: 95mm; font-size: 8.5pt; line-height: 1.5; color: #dbe3e7; }
+
+  .cr-scale { grid-column: 1 / -1; padding-top: 1mm; }
+  .cr-scale-track { position: relative; height: 2mm; margin-top: 6mm; border-radius: 99px; background: rgba(255, 255, 255, 0.16) !important; }
+  .cr-scale-fill { position: absolute; inset: 0 auto 0 0; border-radius: 99px; background: #fff !important; }
+  .cr-scale-mark { position: absolute; top: -5.5mm; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; }
+  .cr-scale-mark b { order: -1; font-size: 6.5pt; font-weight: 600; white-space: nowrap; color: #b9c6cd; }
+  .cr-scale-mark i { width: 0.35mm; height: 5mm; margin-top: 0.8mm; background: #b9c6cd !important; }
+  .cr-scale-ends { display: flex; justify-content: space-between; margin-top: 1.5mm; font-size: 6.5pt; color: #8fa1ab; font-variant-numeric: tabular-nums; }
+
+  /* ── Overview ── */
+  .cr-overview { display: grid; grid-template-columns: 1fr 1fr; gap: 10mm; margin-top: 8mm; break-inside: avoid; }
+  .cr-report h2 { font-size: 10pt; font-weight: 800; letter-spacing: -0.01em; padding-bottom: 2mm; margin-bottom: 3mm; border-bottom: 0.75pt solid var(--cr-rule); break-after: avoid; }
+
+  .cr-overview > section:only-child { grid-column: 1 / -1; }
+
+  .cr-composition { list-style: none; margin: 0; padding: 0; display: grid; gap: 3.2mm; }
+  .cr-composition li > div { display: flex; justify-content: space-between; gap: 4mm; margin-bottom: 1.3mm; }
+  .cr-composition span { font-weight: 600; color: var(--cr-ink); }
+  .cr-composition strong { font-weight: 800; color: var(--cr-ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  .cr-meter { display: block; height: 1.6mm; border-radius: 99px; overflow: hidden; background: var(--cr-track) !important; }
+  .cr-meter > span { display: block; height: 100%; border-radius: 99px; background: var(--cr-brand) !important; }
+
+  .cr-facts { display: grid; gap: 0; margin: 0; }
+  .cr-facts > div { display: grid; grid-template-columns: 36mm 1fr; gap: 3mm; padding: 1.6mm 0; border-bottom: 0.5pt solid var(--cr-rule); }
+  .cr-facts > div:last-child { border-bottom: 0; }
+  .cr-facts dt { color: var(--cr-muted); }
+  .cr-facts dd { margin: 0; font-weight: 600; color: var(--cr-ink); }
+
+  /* ── Detailed breakdown (starts on its own page) ── */
+  .cr-details { break-before: page; }
+  .cr-details-heading { font-size: 14pt !important; border-bottom: 1.5pt solid var(--cr-brand) !important; padding-bottom: 3mm !important; margin-bottom: 6mm !important; }
+
+  .cr-section { margin-bottom: 5mm; break-inside: avoid; }
+  .cr-section-head { display: flex; justify-content: space-between; align-items: center; gap: 6mm; margin-bottom: 2mm; }
+  .cr-section-head h3 { display: flex; align-items: center; gap: 2.5mm; font-size: 10pt; font-weight: 800; }
+  .cr-section-head h3 > span {
+    display: grid; place-items: center; width: 5.5mm; height: 5.5mm; border-radius: 1.2mm;
+    background: var(--cr-brand) !important; color: #fff; font-size: 7.5pt;
+  }
+  .cr-section-head p { margin-top: 0.8mm; padding-left: 8mm; font-size: 7.5pt; color: var(--cr-muted); }
+  .cr-section-head .cr-section-total { padding: 0; font-size: 12pt; font-weight: 800; color: var(--cr-ink); white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+  .cr-report .cr-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  .cr-report .cr-table thead th {
+    padding: 1.8mm 2.5mm;
+    background: var(--cr-tint) !important;
+    color: var(--cr-muted) !important;
+    font-size: 6.8pt;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-align: left;
+    border-top: 0.75pt solid var(--cr-rule);
+    border-bottom: 0.75pt solid var(--cr-rule);
+  }
+  .cr-table thead th:nth-child(2) { width: 24mm; text-align: right; }
+  .cr-table thead th:nth-child(3) { width: 34mm; }
+  .cr-table tbody tr { break-inside: avoid; }
+  .cr-table tbody th,
+  .cr-table tbody td { padding: 1.7mm 2.5mm; vertical-align: middle; border-bottom: 0.5pt solid var(--cr-rule); text-align: left; font-weight: 400; }
+  .cr-factor { display: block; font-weight: 700; color: var(--cr-ink); }
+  .cr-claim { display: block; margin-top: 0.6mm; font-size: 8pt; color: var(--cr-muted); }
+  .cr-points { text-align: right !important; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .cr-points strong { font-size: 10pt; font-weight: 800; color: var(--cr-ink); }
+  .cr-table tr.is-adjustment .cr-factor,
+  .cr-table tr.is-adjustment .cr-points strong { color: #9a3412; }
+
+  .cr-grand-total {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 2mm; padding: 3.5mm 5mm; border-radius: 2mm;
+    background: var(--cr-tint) !important;
+    border: 0.75pt solid var(--cr-rule);
+    break-inside: avoid;
+    break-before: avoid;
+  }
+  .cr-grand-total > span:first-child { font-family: var(--font-display), "Segoe UI", sans-serif; font-size: 10.5pt; font-weight: 800; color: var(--cr-ink); }
+  .cr-grand-figure { display: flex; align-items: baseline; gap: 2mm; }
+  .cr-grand-figure strong { font-size: 20pt; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+
+  /* ── Notes & sign-off ── */
+  .cr-notes { margin-top: 10mm; break-inside: avoid; }
+  .cr-notes p { font-size: 7.8pt; line-height: 1.6; color: var(--cr-muted); max-width: 165mm; }
+  .cr-notes p + p { margin-top: 1.8mm; }
+
+  .cr-signoff { display: grid; grid-template-columns: 1fr 0.6fr 1.2fr; gap: 8mm; align-items: end; margin-top: 11mm; break-inside: avoid; }
+  .cr-line { display: block; height: 0; border-bottom: 0.75pt solid var(--cr-body); margin-bottom: 1.5mm; }
+  .cr-signoff p { font-size: 7.5pt; color: var(--cr-muted); }
+  .cr-contact { text-align: right; }
+  .cr-contact p + p { margin-top: 0.6mm; }
+  .cr-contact strong { color: var(--cr-ink); }
+  /* ── Points-free rows, row notes and deductions ── */
+  .cr-note { display: block; margin-top: 1mm; font-size: 7.5pt; line-height: 1.5; color: var(--cr-muted); }
+  .cr-points .cr-text { font-size: 8pt; font-weight: 600; color: var(--cr-muted); }
+
+  /* ── Score band without a number (requirements-based screening) ── */
+  .cr-score.is-verdict { grid-template-columns: 1fr; }
+
+  /* ── Items requiring attention ── */
+  .cr-attention {
+    margin-top: 8mm; padding: 4mm 5mm; border-radius: 2mm;
+    border: 0.75pt solid #f3c99c; background: #fff7ed !important;
+    break-inside: avoid;
+  }
+  .cr-report .cr-attention h2 { border-bottom-color: #f3c99c; color: #7c2d12; }
+  .cr-attention ul { margin: 0; padding-left: 4.5mm; display: grid; gap: 1.2mm; }
+  .cr-attention li { font-size: 8.5pt; color: #7c2d12; }
+
+  /* ── Supporting detail panels ── */
+  .cr-panel { margin-top: 9mm; break-inside: avoid; }
+  .cr-panel .cr-facts > div { grid-template-columns: 52mm 1fr; }
+  .cr-panel-note { margin-top: 2mm; font-size: 7.5pt; line-height: 1.55; color: var(--cr-muted); }
+}
+
+@media print {
+  .cr-report .cr-panel-note.is-notes { white-space: pre-wrap; unicode-bidi: plaintext; font-size: 9.5pt; color: var(--cr-ink); }
+  .cr-report [dir="auto"] { unicode-bidi: plaintext; }
+}

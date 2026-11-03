@@ -9,6 +9,7 @@ import { formatMoney } from '../../domain/pricing'
 import { Ltr, StatusChip } from '../../components/ui'
 import { Icon } from '../../components/Icon'
 import { StaffAssessment } from '../../assessment/StaffAssessment'
+import { programName } from '../../config/programs'
 
 export function BookingMeta({ b, showStatus = true }: { b: Booking; showStatus?: boolean }) {
   const { t, l, lang } = useT()
@@ -22,6 +23,11 @@ export function BookingMeta({ b, showStatus = true }: { b: Booking; showStatus?:
       </div>
       <p className="mt-1 text-sm font-semibold text-slate">{b.customer.name} — <Ltr>{b.customer.phone}</Ltr></p>
       {b.customer.email && <p className="mt-0.5 text-sm text-muted"><Ltr>{b.customer.email}</Ltr></p>}
+      <p className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-sm text-slate">
+        {b.customer.program && <span><span className="text-muted">{t('booking.program')}:</span> <span className="font-semibold">{l(programName(b.customer.program))}</span></span>}
+        <span><span className="text-muted">{t('staff.booking.language')}:</span> <span className="font-semibold">{b.customer.consultationLang === 'ar' ? 'العربية' : 'English'}</span></span>
+      </p>
+      {b.customer.note && <p dir="auto" className="mt-1 rounded-lg bg-paper px-2.5 py-1.5 text-sm text-slate"><span className="text-muted">{t('staff.booking.customerNote')}:</span> {b.customer.note}</p>}
       {b.salesName && <p className="mt-0.5 inline-flex items-center gap-1.5 text-sm text-slate"><Icon name="user" size={14} className="text-gold-deep" />{t('sales.soldBy', { name: b.salesName })}</p>}
       <p className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm text-muted">
         <span className="inline-flex items-center gap-1"><Icon name={b.format === 'online' ? 'video' : 'building'} size={14} />{l(c.name)}, {l(branchById(b.branchId).name)}</span>

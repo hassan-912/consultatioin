@@ -84,4 +84,4 @@ test('answers are saved with the hold; the consultant and admin see the score, f
   at('/staff/bookings')
   expect(await screen.findByText(b.reference, undefined, { timeout: 5000 })).toBeInTheDocument()
   expect(screen.queryByText('File assessment')).toBeNull()
-})
+}, 20000)

@@ -4,7 +4,7 @@ import { useStaffAssessments } from '../data/hooks'
 import { BottomSheet } from '../components/widgets'
 import { Notice } from '../components/ui'
 import { Icon } from '../components/Icon'
-import { evaluate, type AssessmentResult, type Tone } from './evaluate'
+import { evaluate, ringValue, type AssessmentResult, type Tone } from './evaluate'
 import { useEgpRates } from './useEgpRates'
 
 const toneClass: Record<Tone, string> = { ok: 'bg-ok-soft text-ok', warn: 'bg-warn-soft text-warn', bad: 'bg-bad-soft text-bad' }
@@ -24,11 +24,49 @@ function ScoreLine({ r }: { r: AssessmentResult }) {
  * Under the customer's name and contact details: the booking-form assessment scored with MG's calculator.
  * Renders nothing unless the viewer may see it (admin, or the booking's consultant) and answers exist.
  */
-export function StaffAssessment({ bookingId }: { bookingId: string }) {
-  const { t, l } = useT()
+/** The scored assessment for a booking, or null when there is none or the viewer may not see it. */
+export function useAssessmentResult(bookingId: string): AssessmentResult | null {
   const stored = useStaffAssessments()[bookingId]
   const { rates } = useEgpRates(stored?.program === 'job-seeking')
-  const r = useMemo(() => (stored ? evaluate(stored, rates) : null), [stored, rates])
+  return useMemo(() => (stored ? evaluate(stored, rates) : null), [stored, rates])
+}
+
+const ringColor: Record<Tone, string> = { ok: 'var(--color-ok)', warn: 'var(--color-warn)', bad: 'var(--color-bad)' }
+
+/** Circular score badge (staff only). Opens the full assessment when clicked. */
+export function AssessmentRing({ bookingId, size = 64 }: { bookingId: string; size?: number }) {
+  const { t, l } = useT()
+  const r = useAssessmentResult(bookingId)
+  const [open, setOpen] = useState(false)
+  if (!r) return null
+  const { fill, text, unit } = ringValue(r)
+  const stroke = 6, radius = (size - stroke) / 2, length = 2 * Math.PI * radius
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)} className="group relative shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-gold/40"
+        aria-label={`${t('assessment.staffTitle')}: ${l(r.title)} ${text} ${unit} – ${l(r.verdict.label)}. ${t('assessment.viewFull')}`}>
+        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden className="-rotate-90">
+          <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="var(--color-line)" strokeWidth={stroke} />
+          <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke={ringColor[r.verdict.tone]} strokeWidth={stroke} strokeLinecap="round"
+            strokeDasharray={length} strokeDashoffset={length * (1 - fill)} className="transition-[stroke-dashoffset] duration-700" />
+        </svg>
+        <span dir="ltr" className="absolute inset-0 grid place-items-center text-center leading-none">
+          <span>
+            <span className="block font-display text-[15px] font-semibold text-ink">{text}</span>
+            {unit && <span className="block text-[9px] font-semibold uppercase tracking-wide text-muted">{unit}</span>}
+          </span>
+        </span>
+      </button>
+      <BottomSheet open={open} onClose={() => setOpen(false)} title={`${t('assessment.staffTitle')} · ${l(r.title)}`}>
+        <AssessmentReport r={r} />
+      </BottomSheet>
+    </>
+  )
+}
+
+export function StaffAssessment({ bookingId }: { bookingId: string }) {
+  const { t, l } = useT()
+  const r = useAssessmentResult(bookingId)
   const [open, setOpen] = useState(false)
   if (!r) return null
   return (

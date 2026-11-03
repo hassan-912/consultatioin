@@ -6,8 +6,15 @@ import { dateInZone } from '../../domain/time'
 import { pendingDecisions } from '../../config/pendingDecisions'
 import { can } from './permissions'
 import { ScreenTitle } from './StaffApp'
+import { ConsultantOverview } from './consultant/ConsultantOverview'
 
 export function Overview() {
+  const role = useAppStore(s => s.role)
+  // Consultants get their own day view; the shared tiles are for the other roles.
+  return role === 'consultant' ? <ConsultantOverview /> : <TeamOverview />
+}
+
+function TeamOverview() {
   const { t } = useT()
   const role = useAppStore(s => s.role)
   const bookings = Object.values(useStaffBookings())

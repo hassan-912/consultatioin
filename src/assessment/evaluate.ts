@@ -178,3 +178,16 @@ export function evaluate(s: StoredAssessment, fx: EgpRates | null = null): Asses
   const note = base.note && converted ? L(`${base.note.en} ${ratesNote(fx).en}`, `${base.note.ar} ${ratesNote(fx).ar}`) : base.note ?? (converted ? ratesNote(fx) : undefined)
   return { ...base, note, answers: answerList(s), complete: unanswered(s.program, a).length === 0 }
 }
+
+/**
+ * Compact figure for a score ring. Tourism is already a percentage; Canada CRS fills against 600 (recent draws
+ * sit around 470); Australia against 100 (65 is the minimum); job seeker routes against their own threshold.
+ */
+export function ringValue(r: AssessmentResult): { fill: number; text: string; unit: string } {
+  const clamp = (n: number) => Math.max(0, Math.min(1, n))
+  if (r.score === null) return { fill: 1, text: r.verdict.tone === 'ok' ? '✓' : '!', unit: '' }
+  if (r.max === 100) return { fill: clamp(r.score / 100), text: `${r.score}%`, unit: '' }
+  if (r.max === 1200) return { fill: clamp(r.score / 600), text: String(r.score), unit: 'CRS' }
+  if (r.title.en.startsWith('Australia')) return { fill: clamp(r.score / 100), text: String(r.score), unit: 'pts' }
+  return { fill: clamp(r.threshold ? r.score / r.threshold : 0), text: r.threshold ? `${r.score}/${r.threshold}` : String(r.score), unit: 'pts' }
+}

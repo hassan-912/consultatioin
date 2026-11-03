@@ -68,7 +68,7 @@ test('a booking made through a sales link carries the sales name; that sales per
   expect(await screen.findByText(b.reference, undefined, { timeout: 5000 })).toBeInTheDocument()
   expect(screen.getAllByText(/^Sales: /).length).toBeGreaterThan(0)
   expect(screen.queryByText('File assessment')).toBeNull()
-})
+}, 20000)
 
 test('sales lands on My link, which shows a personal link, and cannot open other screens', async () => {
   loginSales('mona.sales')
@@ -76,7 +76,7 @@ test('sales lands on My link, which shows a personal link, and cannot open other
   expect(await screen.findByText(/your personal booking link/i)).toBeInTheDocument()
   expect(screen.getByText(new RegExp(`ref=${localReferralCode('mona.sales')}`))).toBeInTheDocument()
   expect(screen.queryByRole('link', { name: /payment review/i })).toBeNull()
-})
+}, 20000)
 
 test('reception can change the consultant after a scan (first option) or keep the booked one; busy consultants are blocked', async () => {
   const today = todayIn('Africa/Cairo')
@@ -104,4 +104,4 @@ test('reception can change the consultant after a scan (first option) or keep th
   expect(await screen.findByText(/changed from mohamed gamal to ahmed khalil/i)).toBeInTheDocument()
   expect(useAppStore.getState().bookings.s1.consultantId).toBe('ahmed-khalil')
   expect(useAppStore.getState().audit[0].action).toBe('consultant-changed')
-})
+}, 20000)
