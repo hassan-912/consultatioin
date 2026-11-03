@@ -75,3 +75,26 @@ test('consultant overview shows today as cards with a score ring; the assessment
   fireEvent.click(ring)
   expect(screen.getByText('Customer answers')).toBeInTheDocument()
 })
+
+test('clicking an overview card opens the client file with details, assessment, notes and a PDF download', async () => {
+  const print = vi.spyOn(window, 'print').mockImplementation(() => {})
+  act(() => { useAppStore.setState(s => ({ bookings: { ...s.bookings, a: { ...s.bookings.a, status: 'confirmed' } } })) })
+  open('/staff')
+  fireEvent.click(screen.getByRole('link', { name: 'Sara Ali' }))
+  expect(screen.getByRole('heading', { level: 1, name: 'Sara Ali' })).toBeInTheDocument()
+  for (const text of ['Client details', 'c@example.com', 'Wants Schengen', 'Mona', 'Customer answers', 'Previous Visa Refusal']) {
+    expect(screen.getAllByText(new RegExp(text)).length).toBeGreaterThan(0)
+  }
+  fireEvent.change(screen.getByLabelText(/consultation notes/i), { target: { value: 'Bring payslips.' } })
+  fireEvent.click(screen.getByRole('button', { name: /download pdf/i }))
+  await waitFor(() => expect(print).toHaveBeenCalled(), { timeout: 3000 })
+  expect(useAppStore.getState().records.a?.notes).toBe('Bring payslips.')
+  expect(document.querySelector('body > .cr-report')?.textContent).toContain('Bring payslips.')
+}, 20000)
+
+test('a consultant cannot open another consultant’s client file', () => {
+  act(() => { useAppStore.setState(s => ({ bookings: { ...s.bookings, a: { ...s.bookings.a, consultantId: 'ahmed-salama' } } })) })
+  open('/staff/client/a')
+  expect(screen.getByText(/isn’t in your bookings/i)).toBeInTheDocument()
+  expect(screen.queryByText('Customer answers')).toBeNull()
+})

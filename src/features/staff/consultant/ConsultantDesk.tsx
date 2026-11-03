@@ -1,6 +1,5 @@
 import { useStaffBookings, useStaffRecords } from '../../../data/hooks'
 import { useMemo, useState } from 'react'
-import { reportActionError } from '../../../data/feedback'
 import type { ConsultationRecord } from '../../../store/useAppStore'
 import { useT } from '../../../i18n'
 import { useAppStore, type Outcome } from '../../../store/useAppStore'
@@ -12,9 +11,9 @@ import { SelectField, TextArea, TextField } from '../../../components/fields'
 import { Icon } from '../../../components/Icon'
 import { normalizeDigits } from '../../../domain/phone'
 import type { Booking } from '../../../domain/types'
-import { AssessmentRing, useAssessmentResult } from '../../../assessment/StaffAssessment'
-import { ClientReport, printReport, type ClientReportProps } from '../../../assessment/report/ClientReport'
-import { buildConsultationReport, reportFileName } from './consultationReport'
+import { AssessmentRing } from '../../../assessment/StaffAssessment'
+import { ClientReport } from '../../../assessment/report/ClientReport'
+import { isSubmitted, useRecordDraft } from './recordDraft'
 import { ScreenTitle } from '../StaffApp'
 import { BookingMeta, Empty, Tabs } from '../common'
 import { AvailabilityBoard } from './AvailabilityBoard'
@@ -84,7 +83,6 @@ export function MyBookings() {
   )
 }
 
-const isSubmitted = (r?: ConsultationRecord) => !!r && (r.notes.trim().length > 0 || r.outcome !== 'none')
 const digits = (s: string) => normalizeDigits(s).replace(/\D/g, '')
 
 /**
@@ -125,38 +123,28 @@ export function Records() {
 const outcomes: Outcome[] = ['none', 'pending', 'approved', 'refused', 'withdrawn']
 
 function RecordCard({ b, record }: { b: Booking; record?: ConsultationRecord }) {
-  const { t } = useT()
-  const [notes, setNotes] = useState(record?.notes ?? '')
-  const [outcome, setOutcome] = useState<Outcome>(record?.outcome ?? 'none')
-  const [busy, setBusy] = useState(false)
-  const [justSaved, setJustSaved] = useState(false)
-  const [report, setReport] = useState<ClientReportProps | null>(null)
-  const result = useAssessmentResult(b.id)
-  const submitted = isSubmitted(record)
-  const dirty = notes !== (record?.notes ?? '') || outcome !== (record?.outcome ?? 'none')
-
-  const save = async () => {
-    setBusy(true)
-    try { await repo.saveRecord(b.id, { notes, outcome }); setJustSaved(true); return true }
-    catch (e) { reportActionError(e); return false }
-    finally { setBusy(false) }
-  }
-  const pdf = async () => {
-    if (dirty && !(await save())) return
-    setReport(buildConsultationReport(b, { notes, outcome }, result))
-    printReport('consultation', reportFileName(b))
-  }
-
+  const draft = useRecordDraft(b, record)
   return (
     <article aria-label={b.reference} className="rounded-2xl bg-white p-4 ring-1 ring-line">
       <div className="flex items-start gap-4">
         <div className="min-w-0 flex-1"><BookingMeta b={b} /></div>
         <AssessmentRing bookingId={b.id} />
       </div>
-      <div className="mt-4 grid gap-4 sm:grid-cols-[1fr_220px]">
+      <div className="mt-4"><RecordFields draft={draft} /></div>
+    </article>
+  )
+}
+
+/** Notes, outcome, Submit and the PDF button for one consultation record. */
+export function RecordFields({ draft }: { draft: ReturnType<typeof useRecordDraft> }) {
+  const { t } = useT()
+  const { notes, setNotes, outcome, setOutcome, busy, justSaved, submitted, dirty, report, save, pdf } = draft
+  return (
+    <>
+      <div className="grid gap-4 sm:grid-cols-[1fr_220px]">
         <TextArea label={t('staff.consultant.notes')} placeholder={t('staff.consultant.notesPlaceholder')} rows={5} dir="auto"
-          value={notes} onChange={e => { setNotes(e.target.value); setJustSaved(false) }} />
-        <SelectField label={t('staff.consultant.outcome')} value={outcome} onChange={e => { setOutcome(e.target.value as Outcome); setJustSaved(false) }}>
+          value={notes} onChange={e => setNotes(e.target.value)} />
+        <SelectField label={t('staff.consultant.outcome')} value={outcome} onChange={e => setOutcome(e.target.value as Outcome)}>
           {outcomes.map(o => <option key={o} value={o}>{t(`staff.consultant.outcomes.${o}`)}</option>)}
         </SelectField>
       </div>
@@ -164,7 +152,7 @@ function RecordCard({ b, record }: { b: Booking; record?: ConsultationRecord }) 
         <Button disabled={busy || (!dirty && submitted)} onClick={() => void save()}>
           <Icon name="check" size={16} />{submitted && !dirty ? t('staff.records.submitted') : t('staff.records.submit')}
         </Button>
-        <Button variant="ghost" disabled={busy || (!notes.trim() && outcome === 'none')} onClick={() => void pdf()}>
+        <Button variant="ghost" disabled={busy} onClick={() => void pdf()}>
           <Icon name="download" size={16} />{t('staff.records.pdf')}
         </Button>
         <span role="status" className={`text-xs font-semibold ${dirty ? 'text-warn' : submitted ? 'text-ok' : 'text-muted'}`}>
@@ -172,6 +160,6 @@ function RecordCard({ b, record }: { b: Booking; record?: ConsultationRecord }) 
         </span>
       </div>
       {report && <ClientReport {...report} />}
-    </article>
+    </>
   )
 }

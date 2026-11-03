@@ -17,6 +17,7 @@ import { ConnectionIndicator, NewPaymentNotice, PaymentBadge } from './finance/p
 import { CheckIn } from './reception/CheckIn'
 import { Arrivals } from './reception/Arrivals'
 import { MyCalendar, MyBookings, Records } from './consultant/ConsultantDesk'
+import { ClientFile } from './consultant/ClientFile'
 import { ConsultantsAdmin } from './admin/ConsultantsAdmin'
 import { AvailabilityAdmin } from './admin/AvailabilityAdmin'
 import { BookingsAdmin } from './admin/BookingsAdmin'
@@ -153,6 +154,8 @@ export function StaffApp() {
               const element = can(role, s.id) ? <>{views[s.id]()}</> : <Navigate to={fallback} replace />
               return s.path ? <Route key={s.id} path={s.path} element={element} /> : <Route key={s.id} index element={element} />
             })}
+            {/* A client's full file, opened from the consultant's overview cards. */}
+            <Route path="client/:id" element={can(role, 'records') ? <ClientFile /> : <Navigate to="/staff" replace />} />
             <Route path="*" element={<Navigate to="/staff" replace />} />
           </Routes>
           }

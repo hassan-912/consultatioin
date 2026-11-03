@@ -76,16 +76,16 @@ export function ConsultantOverview() {
           <h2 id="week-title" className="mb-3 text-lg font-semibold text-ink">{t('staff.consultantHome.weekTitle')}</h2>
           <ul className="divide-y divide-line overflow-hidden rounded-2xl bg-white ring-1 ring-line">
             {week.map(b => (
-              <li key={b.id} className="flex items-center gap-4 px-4 py-3">
+              <li key={b.id} className="relative flex items-center gap-4 px-4 py-3 hover:bg-paper">
                 <div className="w-28 shrink-0 text-sm">
                   <p className="font-semibold text-ink">{formatDate(dateInZone(b.startIso, b.tz), lang, 'short')}</p>
                   <p dir="ltr" className="text-start text-muted rtl:text-end">{formatInZone(b.startIso, b.tz, lang, 'time')}</p>
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-semibold text-ink" dir="auto">{b.customer.name}</p>
+                  <Link to={`/staff/client/${b.id}`} dir="auto" className="block truncate font-semibold text-ink after:absolute after:inset-0 focus-visible:outline-none focus-visible:after:ring-4 focus-visible:after:ring-gold/40">{b.customer.name}</Link>
                   <p className="truncate text-xs text-muted">{b.customer.program ? l(programName(b.customer.program)) : '—'} · {t(`format.${b.format}`)}</p>
                 </div>
-                <AssessmentRing bookingId={b.id} size={48} />
+                <span className="relative z-10"><AssessmentRing bookingId={b.id} size={48} /></span>
               </li>
             ))}
           </ul>
@@ -98,7 +98,7 @@ export function ConsultantOverview() {
 function AppointmentCard({ b, next }: { b: Booking; next: boolean }) {
   const { t, l, lang } = useT()
   return (
-    <li className={`relative flex gap-4 rounded-2xl bg-white p-4 ring-1 ${next ? 'ring-2 ring-gold' : 'ring-line'}`}>
+    <li className={`relative flex gap-4 rounded-2xl bg-white p-4 ring-1 transition-shadow hover:shadow-[var(--shadow-card)] ${next ? 'ring-2 ring-gold' : 'ring-line'}`}>
       {next && <span className="absolute -top-2.5 start-4 rounded-full bg-gold px-2 py-0.5 text-[11px] font-bold text-ink">{t('staff.consultantHome.next')}</span>}
       <div className="w-16 shrink-0 border-e border-line pe-3 text-center">
         <p dir="ltr" className="font-display text-xl font-semibold leading-tight text-ink">{formatInZone(b.startIso, b.tz, lang, 'time')}</p>
@@ -106,7 +106,7 @@ function AppointmentCard({ b, next }: { b: Booking; next: boolean }) {
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2"><StatusChip status={b.status} /></div>
-        <p className="mt-1.5 truncate text-base font-semibold text-ink" dir="auto">{b.customer.name}</p>
+        <Link to={`/staff/client/${b.id}`} dir="auto" className="mt-1.5 block truncate text-base font-semibold text-ink after:absolute after:inset-0 after:rounded-2xl focus-visible:outline-none focus-visible:after:ring-4 focus-visible:after:ring-gold/40">{b.customer.name}</Link>
         <p dir="ltr" className="text-start text-sm text-muted rtl:text-end">{b.customer.phone}</p>
         <div className="mt-2 flex flex-wrap gap-1.5 text-xs">
           {b.customer.program && <span className="rounded-full bg-paper px-2 py-0.5 font-semibold text-slate ring-1 ring-line">{l(programName(b.customer.program))}</span>}
@@ -115,7 +115,10 @@ function AppointmentCard({ b, next }: { b: Booking; next: boolean }) {
         </div>
         {b.customer.note && <p dir="auto" className="mt-2 line-clamp-2 text-sm text-slate">{b.customer.note}</p>}
       </div>
-      <AssessmentRing bookingId={b.id} size={68} />
+      <div className="relative z-10 flex flex-col items-center justify-between gap-2">
+        <AssessmentRing bookingId={b.id} size={68} />
+        <span aria-hidden className="inline-flex items-center gap-1 text-xs font-semibold text-navy">{t('staff.client.open')}<Icon name="arrow" size={12} className="rtl:rotate-180" /></span>
+      </div>
     </li>
   )
 }
