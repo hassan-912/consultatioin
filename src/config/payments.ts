@@ -17,7 +17,10 @@ export const paymentConfig: PaymentConfig = {
       region: 'egypt',
       label: { en: 'Vodafone Cash', ar: 'فودافون كاش' },
       currency: 'EGP',
-      fields: [{ label: { en: 'Wallet number', ar: 'رقم المحفظة' }, value: '01032935257' }],
+      fields: [
+        { label: { en: 'Wallet number', ar: 'رقم المحفظة' }, value: '01032935257' },
+        { label: { en: 'Name on the wallet', ar: 'اسم صاحب المحفظة' }, value: 'جمال مصطفي السيد', mono: false },
+      ],
       placeholder: false,
     },
     {
