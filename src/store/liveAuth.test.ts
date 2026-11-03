@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { signUpWithEmail, openRecoveryLink, requestPasswordReset, restoreStaffSession, setNewPassword, signInWithEmail, watchStaffAuth } from './liveAuth'
+import { chooseStaffUsername, signUpWithEmail, openRecoveryLink, requestPasswordReset, restoreStaffSession, setNewPassword, signInWithEmail, watchStaffAuth } from './liveAuth'
 import { useAppStore } from './useAppStore'
 
 type Profile = { role: string; consultant_id: string | null; display_name: string; active: boolean } | null
@@ -30,7 +30,7 @@ test('active profile signs in with the profile role, not anything the browser su
   expect(auth.signInWithPassword).toHaveBeenCalledWith({ email: 'staff@example.com', password: 'pw' })
   expect(select).toHaveBeenCalledWith('role,consultant_id,display_name,active')
   expect(eq).toHaveBeenCalledWith('user_id', 'u1')
-  expect(useAppStore.getState().staffSession).toEqual({ username: 'staff@example.com', role: 'finance', consultantId: null })
+  expect(useAppStore.getState().staffSession).toEqual({ username: 'Fin', role: 'finance', consultantId: null })
   expect(useAppStore.getState().role).toBe('finance')
 })
 
@@ -56,7 +56,22 @@ test('no profile yet: an access request is filed and the person waits for approv
   expect(rpc).toHaveBeenCalledWith('request_staff_access', { p_display_name: '' })
   expect(auth.signOut).not.toHaveBeenCalled()
   expect(useAppStore.getState().staffSession).toBeNull()
-  expect(useAppStore.getState().staffPending).toEqual({ email: 'staff@example.com', name: '' })
+  expect(useAppStore.getState().staffPending).toEqual({ email: 'staff@example.com', name: '', needsName: false, taken: false })
+})
+
+test('no request yet: the person is asked for a username, then it files the request', async () => {
+  const { client } = mockClient(null)
+  const rpc = vi.fn().mockResolvedValue({ data: 'needs-name', error: null })
+  Object.assign(client, { rpc })
+  expect(await signInWithEmail('x@example.com', 'pw', client)).toBe('pending')
+  expect(useAppStore.getState().staffPending).toMatchObject({ needsName: true, taken: false })
+  expect(await chooseStaffUsername('A', client)).toBe('invalid')
+  rpc.mockResolvedValueOnce({ data: 'taken', error: null })
+  expect(await chooseStaffUsername('Boss', client)).toBe('taken')
+  rpc.mockResolvedValueOnce({ data: 'pending', error: null })
+  expect(await chooseStaffUsername('  Aya ', client)).toBe('pending')
+  expect(rpc).toHaveBeenLastCalledWith('request_staff_access', { p_display_name: 'Aya' })
+  expect(useAppStore.getState().staffPending).toMatchObject({ name: 'Aya', needsName: false })
 })
 
 test('wrong password is invalid; a network failure is unavailable; neither opens a session', async () => {
@@ -126,7 +141,7 @@ test('self sign-up: a new login waits for approval, confirmation emails and exis
   expect(await signUpWithEmail('Aya', 'Aya@Example.com', 'longpassword', ok.client)).toBe('pending')
   expect(ok.auth.signUp).toHaveBeenCalledWith({ email: 'aya@example.com', password: 'longpassword',
     options: { data: { display_name: 'Aya' }, emailRedirectTo: 'https://mg.example.com/#/staff/oauth' } })
-  expect(useAppStore.getState().staffPending).toEqual({ email: 'aya@example.com', name: 'Aya' })
+  expect(useAppStore.getState().staffPending).toEqual({ email: 'aya@example.com', name: 'Aya', needsName: false, taken: false })
   expect(useAppStore.getState().staffSession).toBeNull()
 
   expect(await signUpWithEmail('Aya', 'aya@example.com', 'longpassword', make({ data: { user, session: null }, error: null }).client)).toBe('confirm')

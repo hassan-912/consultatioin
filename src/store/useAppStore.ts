@@ -78,8 +78,11 @@ export interface AppState {
   role: StaffRole
   setRole: (r: StaffRole) => void
   staffSession: { username: string; role: StaffRole; consultantId: string | null } | null
-  /** Live only: signed up (email or Google) but not approved by an admin yet. */
-  staffPending: { email: string; name: string } | null
+  /**
+   * Live only: signed up (email or Google) but not approved by an admin yet. needsName: no request is filed until
+   * they choose a username (taken: their pick was already in use).
+   */
+  staffPending: { email: string; name: string; needsName: boolean; taken: boolean } | null
   /** Name finance staff sign WhatsApp confirmations with. */
   senderName: string
   staffConsultantId: string

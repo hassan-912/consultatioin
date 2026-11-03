@@ -43,7 +43,7 @@ select is(pg_temp.q('00000000-0000-0000-0000-0000000000e1', $q$select public.app
 select is((select role::text || '|' || display_name || '|' || (select count(*) from staff_access_requests)::text from staff_profiles where user_id = '00000000-0000-0000-0000-0000000000e2'),
   'sales|Aya Ashraf|0', 'approved: profile created, request removed');
 
-select pg_temp.q('00000000-0000-0000-0000-0000000000e3', $q$select public.request_staff_access('')$q$);
+select pg_temp.q('00000000-0000-0000-0000-0000000000e3', $q$select public.request_staff_access('Other One')$q$);
 select is(pg_temp.q('00000000-0000-0000-0000-0000000000e1', $q$select public.decline_staff_request('00000000-0000-0000-0000-0000000000e3')$q$), 'OK', 'admin declines');
 select is((select count(*) from staff_access_requests)::text || '|' || (select count(*) from staff_profiles where user_id = '00000000-0000-0000-0000-0000000000e3')::text,
   '0|0', 'declined: request removed, no access');

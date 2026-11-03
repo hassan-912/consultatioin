@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useT } from '../../i18n'
 import { useAppStore } from '../../store/useAppStore'
-import { finishOAuthReturn, restoreStaffSession, signInWithGoogle, signOutStaff, signUpWithEmail } from '../../store/liveAuth'
+import { chooseStaffUsername, finishOAuthReturn, restoreStaffSession, signInWithGoogle, signOutStaff, signUpWithEmail } from '../../store/liveAuth'
 import { Logo } from '../../components/Logo'
 import { LangSwitch } from '../../components/LangSwitch'
 import { TextField } from '../../components/fields'
@@ -77,13 +77,13 @@ export function SignupForm({ onBack }: { onBack: () => void }) {
         {result && <Notice tone={result === 'confirm' ? 'ok' : 'bad'}>{t(message)}</Notice>}
         {result !== 'confirm' && (
           <>
-            <TextField label={t('staff.login.name')} dir="auto" autoComplete="name" value={f.name} maxLength={100}
+            <TextField label={t('staff.login.username')} hint={t('staff.login.usernameHint')} dir="auto" autoComplete="username" value={f.name} maxLength={40}
               onChange={e => { setF(v => ({ ...v, name: e.target.value })); setResult(null) }} />
             <TextField label={t('staff.login.email')} dir="ltr" type="email" autoComplete="email" autoCapitalize="none" value={f.email}
               onChange={e => { setF(v => ({ ...v, email: e.target.value })); setResult(null) }} />
             <TextField label={t('staff.login.newPassword')} dir="ltr" type="password" autoComplete="new-password" value={f.password}
               onChange={e => { setF(v => ({ ...v, password: e.target.value })); setResult(null) }} />
-            <Button type="submit" size="lg" disabled={busy || !f.name.trim() || !f.email.trim() || !f.password}>
+            <Button type="submit" size="lg" disabled={busy || f.name.trim().length < 2 || !f.email.trim() || !f.password}>
               {busy ? t('staff.login.checking') : t('staff.login.signupSubmit')}
             </Button>
             <GoogleButton />
@@ -95,8 +95,50 @@ export function SignupForm({ onBack }: { onBack: () => void }) {
   )
 }
 
+/** First step after signing up: the username shown across the site. They keep signing in with their email. */
+function ChooseUsername() {
+  const { t } = useT()
+  const pending = useAppStore(s => s.staffPending)!
+  const [name, setName] = useState(pending.name)
+  const [busy, setBusy] = useState(false)
+  const [result, setResult] = useState<'taken' | 'invalid' | 'unavailable' | null>(pending.taken ? 'taken' : null)
+  const submit = async (e: FormEvent) => {
+    e.preventDefault()
+    setBusy(true); setResult(null)
+    try {
+      const r = await chooseStaffUsername(name)
+      if (r !== 'pending') setResult(r)
+    } finally { setBusy(false) }
+  }
+  const message = result === 'taken' ? 'staff.login.usernameTaken' : result === 'invalid' ? 'staff.login.usernameInvalid' : 'staff.login.unavailable'
+  return (
+    <AuthFrame>
+      <form onSubmit={submit} noValidate className="rounded-3xl bg-white p-6 text-ink shadow-2xl sm:p-8">
+        <span className="inline-flex size-12 items-center justify-center rounded-2xl bg-slate text-gold"><Icon name="user" size={22} /></span>
+        <h1 className="mt-4 text-2xl font-semibold">{t('staff.login.usernameTitle')}</h1>
+        <p className="mt-1 text-sm text-muted">{t('staff.login.usernameBody', { email: pending.email })}</p>
+        <div className="mt-6 grid gap-4">
+          {result && <Notice tone="bad">{t(message)}</Notice>}
+          <TextField label={t('staff.login.username')} hint={t('staff.login.usernameHint')} dir="auto" autoComplete="username" value={name} maxLength={40}
+            onChange={e => { setName(e.target.value); setResult(null) }} />
+          <Button type="submit" size="lg" disabled={busy || name.trim().length < 2}>
+            {busy ? t('staff.login.checking') : t('staff.login.usernameSubmit')}
+          </Button>
+          <button type="button" onClick={() => void signOutStaff()} className="min-h-11 text-start text-sm font-semibold text-slate hover:text-ink">{t('staff.login.signOut')}</button>
+        </div>
+      </form>
+    </AuthFrame>
+  )
+}
+
 /** Signed up but not approved yet: nothing in the staff app opens until an admin gives them a role. */
 export function StaffPending() {
+  const pending = useAppStore(s => s.staffPending)!
+  if (pending.needsName) return <ChooseUsername />
+  return <PendingApproval />
+}
+
+function PendingApproval() {
   const { t } = useT()
   const pending = useAppStore(s => s.staffPending)!
   const [busy, setBusy] = useState(false)

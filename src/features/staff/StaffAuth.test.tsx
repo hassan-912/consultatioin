@@ -118,8 +118,26 @@ test('live: a self-signed-up person without a profile waits on the approval scre
   fireEvent.click(screen.getByRole('button', { name: /^sign in$/i }))
   expect(await screen.findByRole('heading', { name: /waiting for approval/i })).toBeInTheDocument()
   expect(screen.getByText(/aya@example.com/)).toBeInTheDocument()
-  expect(client.rpc).toHaveBeenCalledWith('request_staff_access', { p_display_name: 'Aya Ashraf' })
+  expect(client.rpc).toHaveBeenCalledWith('request_staff_access', { p_display_name: '' })
   expect(screen.queryByRole('navigation')).toBeNull()
+})
+
+test('live: after Google, a new person chooses a username before the request reaches the admin', async () => {
+  client.rpc.mockResolvedValueOnce({ data: 'needs-name', error: null })
+  client.auth.getSession.mockResolvedValue({ data: { session: { user: { id: 'n1', email: 'aya@gmail.com', user_metadata: { full_name: 'Aya Ashraf' } } } } })
+  openStaff()
+  expect(await screen.findByRole('heading', { name: /choose your username/i })).toBeInTheDocument()
+  expect(screen.getByText(/aya@gmail.com/)).toBeInTheDocument()
+  const field = screen.getByLabelText('Username')
+  expect(field).toHaveValue('Aya Ashraf')
+  client.rpc.mockResolvedValueOnce({ data: 'taken', error: null })
+  fireEvent.click(screen.getByRole('button', { name: /continue/i }))
+  expect(await screen.findByText(/already in use/i)).toBeInTheDocument()
+  fireEvent.change(field, { target: { value: 'Aya A.' } })
+  client.rpc.mockResolvedValueOnce({ data: 'pending', error: null })
+  fireEvent.click(screen.getByRole('button', { name: /continue/i }))
+  expect(await screen.findByRole('heading', { name: /waiting for approval/i })).toBeInTheDocument()
+  expect(client.rpc).toHaveBeenLastCalledWith('request_staff_access', { p_display_name: 'Aya A.' })
 })
 
 test('live: the sign-in page offers Google and a request-account form', async () => {
@@ -127,7 +145,7 @@ test('live: the sign-in page offers Google and a request-account form', async ()
   expect(await screen.findByRole('button', { name: /continue with google/i })).toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: /request an account/i }))
   expect(screen.getByRole('heading', { name: /request a staff account/i })).toBeInTheDocument()
-  expect(screen.getByLabelText('Full name')).toBeInTheDocument()
+  expect(screen.getByLabelText('Username')).toBeInTheDocument()
 })
 
 test('live: admin approves an access request with a role', async () => {

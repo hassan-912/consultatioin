@@ -19,17 +19,22 @@ const siteOrigin = () => {
 }
 
 /**
- * Reads the caller's own profile. No profile yet: the person signed themselves up, so their access request is
- * (re)filed and they wait for an admin, still signed in. An inactive profile ends the session and is refused.
+ * Reads the caller's own profile. No profile yet: the person signed themselves up. Their request is filed once
+ * they choose a username (given here, or asked for on the pending screen); they wait for an admin, still signed in.
+ * An inactive profile ends the session and is refused.
  */
-async function adoptSession(client: SupabaseClient, user: AuthUser): Promise<'ok' | 'pending' | 'inactive' | 'unavailable'> {
+async function adoptSession(client: SupabaseClient, user: AuthUser, username = ''): Promise<'ok' | 'pending' | 'inactive' | 'unavailable'> {
   const { data, error } = await client.from('staff_profiles').select('role,consultant_id,display_name,active').eq('user_id', user.id).maybeSingle()
   if (error) return 'unavailable'
   const profile = data as ProfileRow | null
   if (!profile) {
-    const request = await client.rpc('request_staff_access', { p_display_name: metaName(user) ?? '' })
+    const request = await client.rpc('request_staff_access', { p_display_name: username.trim() })
     if (request.error) return 'unavailable'
-    useAppStore.setState({ staffSession: null, staffPending: { email: user.email ?? '', name: metaName(user) ?? '' } })
+    const filed = request.data === 'pending'
+    useAppStore.setState({ staffSession: null, staffPending: {
+      email: user.email ?? '', name: username.trim() || (metaName(user) ?? ''),
+      needsName: !filed, taken: request.data === 'taken',
+    } })
     return 'pending'
   }
   if (!profile.active || !roles.includes(profile.role as StaffRole)
@@ -41,7 +46,7 @@ async function adoptSession(client: SupabaseClient, user: AuthUser): Promise<'ok
   const role = profile.role as StaffRole
   const consultantId = role === 'consultant' ? profile.consultant_id : null
   useAppStore.setState(s => ({
-    staffSession: { username: user.email || profile.display_name, role, consultantId },
+    staffSession: { username: profile.display_name.trim() || user.email || '', role, consultantId },
     staffPending: null,
     role,
     staffConsultantId: consultantId ?? s.staffConsultantId,
@@ -105,8 +110,25 @@ export async function signUpWithEmail(name: string, email: string, password: str
     // Supabase hides existing addresses behind an empty identities list instead of an error.
     if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) return 'exists'
     if (!data.session || !data.user) return 'confirm'
-    const outcome = await adoptSession(client, data.user)
+    const outcome = await adoptSession(client, data.user, name)
     return outcome === 'pending' ? 'pending' : outcome === 'ok' ? 'pending' : 'unavailable'
+  } catch {
+    return 'unavailable'
+  }
+}
+
+/** Files the signed-up person's request under the username they chose; 'taken' when someone already has it. */
+export async function chooseStaffUsername(username: string, client: SupabaseClient | null = staffClient): Promise<'pending' | 'taken' | 'invalid' | 'unavailable'> {
+  const name = username.trim()
+  if (name.length < 2 || name.length > 40) return 'invalid'
+  if (!client) return 'unavailable'
+  try {
+    const { data, error } = await client.rpc('request_staff_access', { p_display_name: name })
+    if (error) return /INVALID_INPUT/.test(error.message) ? 'invalid' : 'unavailable'
+    if (data === 'taken') return 'taken'
+    if (data !== 'pending') return 'unavailable'
+    useAppStore.setState(s => ({ staffPending: s.staffPending && { ...s.staffPending, name, needsName: false, taken: false } }))
+    return 'pending'
   } catch {
     return 'unavailable'
   }

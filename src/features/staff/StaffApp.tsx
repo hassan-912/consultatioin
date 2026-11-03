@@ -60,7 +60,7 @@ function SessionCard({ dark = true }: { dark?: boolean }) {
   return (
     <div className={`rounded-xl p-3 ${dark ? 'bg-white/5 ring-1 ring-white/10' : 'bg-paper'}`}>
       <p className={`text-xs ${dark ? 'text-mist' : 'text-muted'}`}>{t('staff.login.signedInAs', { name: '' }).trim()}</p>
-      <p dir="ltr" className={`truncate text-start font-semibold rtl:text-end ${dark ? 'text-white' : 'text-ink'}`}>{session.username}</p>
+      <p dir="auto" className={`truncate text-start font-semibold ${dark ? 'text-white' : 'text-ink'}`}>{session.username}</p>
       <p className={`text-xs ${dark ? 'text-gold' : 'text-gold-deep'}`}>{t(`staff.roles.${session.role}`)}</p>
       <button
         type="button"
