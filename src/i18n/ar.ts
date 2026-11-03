@@ -199,6 +199,13 @@ export const ar: Dict = {
     fixErrors: 'من فضلك صحّح الحقول المحددة.',
   },
   payment: {
+    insideEgypt: 'داخل مصر',
+    outsideEgypt: 'من خارج مصر',
+    openLink: 'ادفع عبر {method}',
+    amountEgp: 'السعر بالجنيه المصري',
+    equivalent: 'المبلغ التقريبي للتحويل',
+    equivalentHint: 'ما يعادل {amount} بسعر صرف اليوم. يراجع قسم المالية المبلغ المستلم.',
+    rateLoading: 'جارٍ التحقق من سعر اليوم…',
     title: 'ادفع لتثبيت موعدك',
     reservedUntil: 'موعدك محجوز لمدة',
     deadlineNote: 'إذا لم تُرسل بيانات الدفع قبل انتهاء الوقت، ينتهي الحجز ويُتاح الموعد لغيرك.',

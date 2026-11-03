@@ -54,8 +54,9 @@ describe('booking & payments', () => {
     expect(bookingConfig.autoConfirm).toBe(false)
     expect(bookingConfig.holdMinutes).toBe(30)
   })
-  test('one shared payment config with two methods', () => {
-    expect(paymentConfig.methods.map(m => m.id)).toEqual(['instapay', 'vodafone-cash'])
+  test('Egypt wallets plus two bank accounts for customers abroad', () => {
+    expect(paymentConfig.methods.map(m => [m.id, m.region])).toEqual([['instapay', 'egypt'], ['vodafone-cash', 'egypt'], ['bank-aed', 'international'], ['bank-usd-eur', 'international']])
+    expect(paymentConfig.methods.filter(m => m.placeholder).map(m => m.id)).toEqual(['vodafone-cash'])
   })
 })
 

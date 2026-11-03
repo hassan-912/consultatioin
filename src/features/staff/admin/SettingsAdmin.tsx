@@ -21,8 +21,8 @@ export function PaymentsAdmin() {
         {paymentConfig.methods.map(m => (
           <section key={m.id} className="grid gap-2 rounded-2xl bg-white p-5 ring-1 ring-line">
             <h2 className="font-semibold text-ink">{l(m.label)}</h2>
-            <CopyField label={l(m.detailLabel)} value={m.detail} />
-            <CopyField label={t('payment.recipient')} value={m.recipient} mono={false} />
+            {m.fields.map(f => <CopyField key={f.value} label={l(f.label)} value={f.value} mono={f.mono !== false} />)}
+            {m.placeholder && <p className="text-xs font-semibold text-warn">{t('payment.pendingConfig')}</p>}
           </section>
         ))}
       </div>
@@ -35,7 +35,6 @@ export function PaymentsAdmin() {
           <span className="absolute start-1 top-1 size-5 rounded-full bg-white shadow" />
         </span>
       </section>
-      <Notice tone="warn" className="mt-4">{t('payment.pendingConfig')}</Notice>
     </>
   )
 }

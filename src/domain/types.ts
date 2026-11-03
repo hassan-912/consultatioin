@@ -49,16 +49,21 @@ export interface BookingConfig {
   slotStepMin: 15
 }
 
-export type PaymentMethodId = 'instapay' | 'vodafone-cash'
+export type PaymentMethodId = 'instapay' | 'vodafone-cash' | 'bank-aed' | 'bank-usd-eur'
 
 export interface PaymentMethod {
   id: PaymentMethodId
+  /** Inside Egypt (local wallets) or from abroad (bank transfer). */
+  region: 'egypt' | 'international'
   label: L10n
-  recipient: string
-  detail: string
-  detailLabel: L10n
+  /** Currency the customer sends; foreign ones get an approximate equivalent of the EGP price. */
+  currency: 'EGP' | 'AED' | 'USD/EUR'
+  /** Copyable account details, in display order. */
+  fields: { label: L10n; value: string; mono?: boolean }[]
+  /** Opens the provider's payment page. */
   link?: string
-  placeholder: true
+  /** Details still to be supplied by MG. */
+  placeholder: boolean
 }
 
 export interface PaymentConfig {

@@ -197,6 +197,13 @@ export const en = {
     fixErrors: 'Please fix the highlighted fields.',
   },
   payment: {
+    insideEgypt: 'Inside Egypt',
+    outsideEgypt: 'From outside Egypt',
+    openLink: 'Pay with {method}',
+    amountEgp: 'Price in Egyptian pounds',
+    equivalent: 'Approximate amount to transfer',
+    equivalentHint: 'Equivalent of {amount} at today’s exchange rate. Finance confirms the amount received.',
+    rateLoading: 'Checking today’s rate…',
     title: 'Pay to reserve your appointment',
     reservedUntil: 'Your appointment is held for',
     deadlineNote: 'If payment details are not submitted before the timer ends, the reservation expires and the time is released.',

@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import { useT } from '../../../i18n'
 import type { Booking, PaymentMethodId } from '../../../domain/types'
-import { paymentConfig } from '../../../config/payments'
+import { defaultPaymentMethod, paymentConfig } from '../../../config/payments'
+import { convertEgp, useEgpToForeign } from '../../../data/fxRates'
 import { useAppStore } from '../../../store/useAppStore'
 import { expireDue } from '../../../store/actions'
 import { SlotTaken, HoldExpired, type PaymentInput } from '../../../data'
@@ -22,7 +23,7 @@ export function PaymentStep({ booking, onSubmit, onExpiredRestart }: {
 }) {
   const { t, l, lang } = useT()
   const now = useAppStore(s => s.now)
-  const [method, setMethod] = useState<PaymentMethodId>('instapay')
+  const [method, setMethod] = useState<PaymentMethodId>(() => defaultPaymentMethod(booking.customer.phone))
   const [txnRef, setTxnRef] = useState('')
   const [receipt, setReceipt] = useState<string>()
   const [receiptImage, setReceiptImage] = useState<string>()
@@ -34,6 +35,11 @@ export function PaymentStep({ booking, onSubmit, onExpiredRestart }: {
   const m = paymentConfig.methods.find(x => x.id === method)!
   const expired = serverExpired || booking.status === 'expired' || (booking.status === 'reserved' && booking.holdExpiresAt <= now())
   const amount = formatMoney(booking.price, lang)
+  const rates = useEgpToForeign(m.currency !== 'EGP')
+  const money = (n: number, c: string) => new Intl.NumberFormat(lang === 'ar' ? 'ar-EG-u-nu-latn' : 'en-US', { style: 'currency', currency: c, maximumFractionDigits: 0 }).format(n)
+  const equivalent = m.currency === 'EGP' ? null : !rates ? '' : m.currency === 'AED'
+    ? money(convertEgp(booking.price.amount, rates.AED), 'AED')
+    : `${money(convertEgp(booking.price.amount, rates.USD), 'USD')} / ${money(convertEgp(booking.price.amount, rates.EUR), 'EUR')}`
 
   if (expired)
     return (
@@ -87,26 +93,45 @@ export function PaymentStep({ booking, onSubmit, onExpiredRestart }: {
 
       <fieldset>
         <legend className="mb-2 text-sm font-semibold text-ink">{t('payment.method')}</legend>
-        <div className="grid grid-cols-2 gap-2">
-          {paymentConfig.methods.map(pm => (
-            <label
-              key={pm.id}
-              className={`flex min-h-14 cursor-pointer items-center justify-center gap-2 rounded-2xl border-2 px-3 font-semibold has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-gold/40 ${
-                method === pm.id ? 'border-slate bg-white text-ink' : 'border-line bg-white text-muted hover:border-mist'
-              }`}
-            >
-              <input type="radio" name="method" className="sr-only" checked={method === pm.id} onChange={() => setMethod(pm.id)} />
-              <Icon name={pm.id === 'instapay' ? 'card' : 'phone'} size={18} />
-              {l(pm.label)}
-            </label>
-          ))}
-        </div>
+        {(['egypt', 'international'] as const).map(region => (
+          <div key={region} className="mb-3 last:mb-0">
+            <p className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted">
+              <Icon name={region === 'egypt' ? 'pin' : 'globe'} size={14} />{t(region === 'egypt' ? 'payment.insideEgypt' : 'payment.outsideEgypt')}
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {paymentConfig.methods.filter(pm => pm.region === region).map(pm => (
+                <label
+                  key={pm.id}
+                  className={`flex min-h-14 cursor-pointer items-center justify-center gap-2 rounded-2xl border-2 px-3 text-center text-sm font-semibold has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-gold/40 sm:text-base ${
+                    method === pm.id ? 'border-slate bg-white text-ink' : 'border-line bg-white text-muted hover:border-mist'
+                  }`}
+                >
+                  <input type="radio" name="method" className="sr-only" checked={method === pm.id} onChange={() => setMethod(pm.id)} />
+                  <Icon name={pm.id === 'instapay' ? 'card' : pm.id === 'vodafone-cash' ? 'phone' : 'building'} size={18} />
+                  {l(pm.label)}
+                </label>
+              ))}
+            </div>
+          </div>
+        ))}
       </fieldset>
 
       <div className="grid gap-2">
-        <CopyField label={t('payment.amount')} value={String(booking.price.amount)} />
-        <CopyField label={l(m.detailLabel)} value={m.detail} />
-        <CopyField label={t('payment.recipient')} value={m.recipient} mono={false} />
+        {m.link && (
+          <a href={m.link} target="_blank" rel="noopener noreferrer"
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-slate px-5 font-semibold text-white hover:brightness-110">
+            <Icon name="card" size={18} />{t('payment.openLink', { method: l(m.label) })}
+          </a>
+        )}
+        <CopyField label={m.currency === 'EGP' ? t('payment.amount') : t('payment.amountEgp')} value={String(booking.price.amount)} />
+        {equivalent !== null && (
+          <div className="rounded-xl border border-gold/40 bg-gold-soft px-3.5 py-2.5 text-sm">
+            <p className="text-xs text-gold-deep">{t('payment.equivalent')}</p>
+            <p className="font-semibold text-ink"><Ltr>{equivalent || t('payment.rateLoading')}</Ltr></p>
+            <p className="mt-0.5 text-xs text-muted">{t('payment.equivalentHint', { amount })}</p>
+          </div>
+        )}
+        {m.fields.map(f => <CopyField key={f.value} label={l(f.label)} value={f.value} mono={f.mono !== false} />)}
         <CopyField label={t('common.reference')} value={booking.reference} />
         {m.placeholder && <Notice tone="warn">{t('payment.pendingConfig')}</Notice>}
       </div>
