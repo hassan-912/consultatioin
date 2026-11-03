@@ -2,8 +2,9 @@ import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { isLive, uiStorageKey } from '../data/mode'
 import type {
-  AuditEntry, Booking, BranchId, Consultant, CustomerDetails, Format, Lang, ProgramId, Review, StaffRole,
+  AuditEntry, Booking, BranchId, Consultant, CustomerDetails, Format, Lang, PendingDecision, ProgramId, Review, StaffRole,
 } from '../domain/types'
+import { pendingDecisions } from '../config/pendingDecisions'
 import type { ScheduleRules } from '../domain/availability'
 import type { StoredAssessment } from '../assessment/questions'
 
@@ -90,6 +91,8 @@ export interface AppState {
   reviews: Record<string, Review & { consultantId: string; hidden?: boolean }>
   /** Prototype only: booking-form assessment answers keyed by booking id. */
   assessments: Record<string, StoredAssessment>
+  /** Prototype only: the admin's open decisions. */
+  decisions: PendingDecision[]
   consultantOverrides: Record<string, Partial<Consultant>>
   scheduleOverrides: Record<string, Partial<ScheduleRules>>
   kpiOverrides: Record<string, number>
@@ -135,6 +138,7 @@ export const useAppStore = create<AppState>()(
       records: {},
       reviews: {},
       assessments: {},
+      decisions: pendingDecisions,
       consultantOverrides: {},
       scheduleOverrides: {},
       kpiOverrides: {},

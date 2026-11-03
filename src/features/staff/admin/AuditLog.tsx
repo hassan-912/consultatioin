@@ -12,7 +12,7 @@ export function AuditLog() {
   const audit = useStaffAudit()
   const actor = (a: Actor) => (a === 'customer' || a === 'system' ? a : t(`staff.roles.${a}`))
   const label = (v?: string) => (v && statusKeys.has(v) ? t(`status.${v as 'confirmed'}`) : v)
-  const actionKey = (a: string) => (['created', 'submitted', 'transition', 'edited', 'sent', 'checkin', 'signin', 'reviewed', 'review-hidden', 'review-shown'].includes(a) ? t(`audit.${a as 'created'}`) : a)
+  const actionKey = (a: string) => (['created', 'submitted', 'transition', 'edited', 'sent', 'checkin', 'signin', 'reviewed', 'review-hidden', 'review-shown', 'decision-added', 'decision-resolved'].includes(a) ? t(`audit.${a as 'created'}`) : a)
   return (
     <>
       <ScreenTitle title={t('staff.screens.audit')} />

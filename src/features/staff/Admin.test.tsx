@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { pendingDecisions } from '../../config/pendingDecisions'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { StaffApp } from './StaffApp'
 import { useAppStore } from '../../store/useAppStore'
@@ -68,11 +69,36 @@ test('consultant role sees only their own bookings', () => {
   expect(refs.every(r => own.includes(r!))).toBe(true)
 })
 
-test('pending decisions board lists unresolved items', () => {
+test('pending decisions: admin edits, adds and resolves (resolve deletes and audits)', async () => {
+  useAppStore.setState({ decisions: pendingDecisions })
   loginAs('admin')
   openStaff('/staff/decisions')
-  expect(screen.getAllByText('Unresolved').length).toBeGreaterThanOrEqual(10)
-})
+  const item = await screen.findByRole('listitem', { name: /Meeting platform for online consultations/ })
+  expect(screen.getAllByRole('button', { name: /resolve/i })).toHaveLength(pendingDecisions.length)
+
+  fireEvent.click(within(item).getByRole('button', { name: /edit/i }))
+  fireEvent.change(screen.getByLabelText('Decision (English)'), { target: { value: 'Google Meet or Zoom?' } })
+  fireEvent.change(screen.getByLabelText('Owner'), { target: { value: 'Hassan' } })
+  fireEvent.click(screen.getByRole('button', { name: /^save$/i }))
+  const edited = await screen.findByRole('listitem', { name: 'Google Meet or Zoom?' })
+  expect(within(edited).getByText('Hassan')).toBeInTheDocument()
+
+  fireEvent.click(screen.getByRole('button', { name: /add decision/i }))
+  fireEvent.click(screen.getByRole('button', { name: /^save$/i }))
+  expect(screen.getByText(/write the decision in english or arabic/i)).toBeInTheDocument()
+  fireEvent.change(screen.getByLabelText('Decision (Arabic)'), { target: { value: 'عنوان فرع قنا' } })
+  fireEvent.change(screen.getByLabelText('Area (English)'), { target: { value: 'Operations' } })
+  expect(screen.getByLabelText('Area (Arabic)')).toHaveValue('التشغيل')
+  fireEvent.click(screen.getByRole('button', { name: /^save$/i }))
+  await screen.findByRole('listitem', { name: 'عنوان فرع قنا' })
+  expect(useAppStore.getState().decisions).toHaveLength(pendingDecisions.length + 1)
+
+  fireEvent.click(within(edited).getByRole('button', { name: /resolve/i }))
+  fireEvent.click(screen.getByRole('button', { name: /^confirm$/i }))
+  await waitFor(() => expect(screen.queryByRole('listitem', { name: 'Google Meet or Zoom?' })).toBeNull())
+  expect(useAppStore.getState().decisions.some(d => d.question.en === 'Google Meet or Zoom?')).toBe(false)
+  expect(useAppStore.getState().audit[0]).toMatchObject({ actor: 'admin', action: 'decision-resolved', to: 'Google Meet or Zoom?' })
+}, 20000)
 
 test('audit log shows actions', () => {
   useAppStore.getState().addAudit({ actor: 'finance', action: 'transition', bookingRef: 'MG-AAAA-BBBB', from: 'on-hold', to: 'confirmed' })

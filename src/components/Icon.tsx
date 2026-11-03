@@ -12,6 +12,7 @@ const paths = {
   copy: 'M9 9h11a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-9a2 2 0 0 1-2-2zM5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1',
   check: 'M20 6 9 17l-5-5',
   x: 'M18 6 6 18M6 6l12 12',
+  plus: 'M12 5v14M5 12h14',
   chevron: 'm9 18 6-6-6-6',
   arrow: 'M5 12h14M13 5l7 7-7 7',
   filter: 'M22 3H2l8 9.5V19l4 2v-8.5z',

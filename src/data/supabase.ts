@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { BackendClients } from '../lib/supabase'
-import type { Booking, CustomerDetails, Format, AuditEntry, Review, StaffReview } from '../domain/types'
+import type { Booking, CustomerDetails, Format, AuditEntry, PendingDecision, Review, StaffReview } from '../domain/types'
 import type { ScheduleRules } from '../domain/availability'
 import { dateInZone, addDays } from '../domain/time'
 import { HoldExpired, RepoError, SlotTaken, type BookingRepo, type PaymentInput } from './types'
@@ -216,6 +216,21 @@ export function createSupabaseRepo(clients: BackendClients): BookingRepo {
       await requireStaff()
       await result(staff.rpc('staff_set_review_hidden', { p_review_id: id, p_hidden: hidden }))
       changed()
+    },
+    async staffDecisions() {
+      await requireStaff()
+      const rows = await allRows(staff.from('pending_decisions').select('id,area_en,area_ar,question_en,question_ar,owner,position').order('position').order('id'))
+      return rows.map(r => ({ id: r.id, area: { en: r.area_en, ar: r.area_ar }, question: { en: r.question_en, ar: r.question_ar }, owner: r.owner ?? '' })) as PendingDecision[]
+    },
+    async saveDecision(d) {
+      await requireStaff()
+      await result(staff.rpc('staff_save_decision', {
+        p_id: d.id ?? null, p_area_en: d.area.en, p_area_ar: d.area.ar, p_question_en: d.question.en, p_question_ar: d.question.ar, p_owner: d.owner,
+      }))
+    },
+    async resolveDecision(id) {
+      await requireStaff()
+      await result(staff.rpc('staff_resolve_decision', { p_id: id }))
     },
     async staffRecords() {
       await requireStaff()

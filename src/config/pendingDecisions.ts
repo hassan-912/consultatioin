@@ -4,7 +4,7 @@ const d = (id: string, area: [string, string], question: [string, string]): Pend
   id,
   area: { en: area[0], ar: area[1] },
   question: { en: question[0], ar: question[1] },
-  owner: null,
+  owner: '',
 })
 
 const SCHED: [string, string] = ['Schedules', 'المواعيد']

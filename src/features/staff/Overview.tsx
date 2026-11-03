@@ -1,9 +1,10 @@
+import { useEffect, useState } from 'react'
 import { useStaffBookings } from '../../data/hooks'
+import { repo } from '../../data'
 import { Link } from 'react-router-dom'
 import { useT } from '../../i18n'
 import { useAppStore, todayIn } from '../../store/useAppStore'
 import { dateInZone } from '../../domain/time'
-import { pendingDecisions } from '../../config/pendingDecisions'
 import { can } from './permissions'
 import { ScreenTitle } from './StaffApp'
 import { ConsultantOverview } from './consultant/ConsultantOverview'
@@ -20,11 +21,12 @@ function TeamOverview() {
   const bookings = Object.values(useStaffBookings())
   const today = todayIn('Africa/Cairo')
   const todays = bookings.filter(b => dateInZone(b.startIso, b.tz) === today && ['confirmed', 'checked-in', 'completed'].includes(b.status))
+  const decisions = useDecisionCount(can(role, 'decisions'))
   const tiles = [
     { label: t('staff.overview.awaitingReview'), value: bookings.filter(b => ['on-hold', 'wrong-amount', 'duplicate', 'late-transfer'].includes(b.status)).length, to: 'payments' as const },
     { label: t('staff.overview.todayAppointments'), value: todays.length, to: 'arrivals' as const },
     { label: t('staff.overview.checkedIn'), value: todays.filter(b => b.status === 'checked-in').length, to: 'checkin' as const },
-    { label: t('staff.overview.unresolved'), value: pendingDecisions.length, to: 'decisions' as const },
+    { label: t('staff.overview.unresolved'), value: decisions ?? '–', to: 'decisions' as const },
   ]
   return (
     <>
@@ -47,4 +49,16 @@ function TeamOverview() {
       </div>
     </>
   )
+}
+
+/** How many decisions are still open (admin only; the list lives in the database). */
+function useDecisionCount(enabled: boolean) {
+  const [count, setCount] = useState<number | null>(null)
+  useEffect(() => {
+    if (!enabled) return
+    let active = true
+    repo.staffDecisions().then(d => { if (active) setCount(d.length) }).catch(() => {})
+    return () => { active = false }
+  }, [enabled])
+  return count
 }

@@ -1,6 +1,6 @@
 import type { BookingEvent, CheckInVerdict } from '../domain/bookingStatus'
 import type { Slot } from '../domain/availability'
-import type { Actor, Booking, BookingStatus, ConsultantReviews, CustomerDetails, Format, Lang, PaymentMethodId, Review, StaffReview } from '../domain/types'
+import type { Actor, Booking, BookingStatus, ConsultantReviews, CustomerDetails, DecisionInput, Format, Lang, PaymentMethodId, PendingDecision, Review, StaffReview } from '../domain/types'
 import type { ScheduleRules } from '../domain/availability'
 import type { ConsultationRecord } from '../store/useAppStore'
 import type { StoredAssessment } from '../assessment/questions'
@@ -73,6 +73,12 @@ export interface BookingRepo {
   staffReviews(): Promise<StaffReview[]>
   /** Admin: hide a review from the public profile, or restore it. */
   setReviewHidden(reviewId: string, hidden: boolean): Promise<void>
+  /** Admin: open operational decisions, in display order. */
+  staffDecisions(): Promise<PendingDecision[]>
+  /** Admin: add a decision (no id) or edit one. */
+  saveDecision(d: DecisionInput): Promise<void>
+  /** Admin: the decision is settled, so it is deleted (the audit log keeps its wording). */
+  resolveDecision(id: string): Promise<void>
   staffRecords(): Promise<Record<string, ConsultationRecord>>
   saveRecord(bookingId: string, record: ConsultationRecord): Promise<void>
   staffAudit(): Promise<AuditEntry[]>

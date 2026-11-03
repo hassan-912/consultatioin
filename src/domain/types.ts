@@ -78,12 +78,15 @@ export interface KpiConfig {
   attributionRule: L10n
 }
 
+/** An open operational question the admin tracks; resolving one deletes it. Either language may be blank. */
 export interface PendingDecision {
   id: string
   area: L10n
   question: L10n
-  owner: L10n | null
+  /** Who is responsible for settling it; blank when unassigned. */
+  owner: string
 }
+export type DecisionInput = Omit<PendingDecision, 'id'> & { id?: string }
 
 export type BookingStatus =
   | 'reserved'

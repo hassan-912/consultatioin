@@ -175,6 +175,23 @@ export function createLocalRepo(): BookingRepo {
       useAppStore.setState(s => ({ reviews: { ...s.reviews, [id]: { ...r, hidden } } }))
       get().addAudit({ actor: 'admin', action: hidden ? 'review-hidden' : 'review-shown', bookingRef: get().bookings[id]?.reference, to: String(r.rating) })
     },
+    async staffDecisions() { return get().decisions },
+    async saveDecision({ id, ...d }) {
+      if (!d.question.en.trim() && !d.question.ar.trim()) throw new RepoError('INVALID_INPUT')
+      if (id) {
+        if (!get().decisions.some(x => x.id === id)) throw new RepoError('NOT_FOUND')
+        useAppStore.setState(s => ({ decisions: s.decisions.map(x => (x.id === id ? { ...d, id } : x)) }))
+      } else {
+        useAppStore.setState(s => ({ decisions: [...s.decisions, { ...d, id: crypto.randomUUID() }] }))
+        get().addAudit({ actor: 'admin', action: 'decision-added', to: d.question.en || d.question.ar })
+      }
+    },
+    async resolveDecision(id) {
+      const d = get().decisions.find(x => x.id === id)
+      if (!d) throw new RepoError('NOT_FOUND')
+      useAppStore.setState(s => ({ decisions: s.decisions.filter(x => x.id !== id) }))
+      get().addAudit({ actor: 'admin', action: 'decision-resolved', to: d.question.en || d.question.ar })
+    },
     async staffRecords() { return get().records },
     async staffAudit() { return get().audit },
     async staffSchedules() { return Object.fromEntries(consultants.map(c => [c.id, getRules(c.id)])) },
