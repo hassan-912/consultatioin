@@ -13,16 +13,12 @@ export const paymentConfig: PaymentConfig = {
       placeholder: false,
     },
     {
-      // PENDING: wallet number and name to be supplied by MG.
       id: 'vodafone-cash',
       region: 'egypt',
       label: { en: 'Vodafone Cash', ar: 'فودافون كاش' },
       currency: 'EGP',
-      fields: [
-        { label: { en: 'Wallet number', ar: 'رقم المحفظة' }, value: '[Wallet number – pending]' },
-        { label: { en: 'Recipient name', ar: 'اسم المستلم' }, value: '[Recipient name – pending]', mono: false },
-      ],
-      placeholder: true,
+      fields: [{ label: { en: 'Wallet number', ar: 'رقم المحفظة' }, value: '01032935257' }],
+      placeholder: false,
     },
     {
       id: 'bank-aed',

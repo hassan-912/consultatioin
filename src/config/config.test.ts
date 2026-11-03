@@ -56,7 +56,8 @@ describe('booking & payments', () => {
   })
   test('Egypt wallets plus two bank accounts for customers abroad', () => {
     expect(paymentConfig.methods.map(m => [m.id, m.region])).toEqual([['instapay', 'egypt'], ['vodafone-cash', 'egypt'], ['bank-aed', 'international'], ['bank-usd-eur', 'international']])
-    expect(paymentConfig.methods.filter(m => m.placeholder).map(m => m.id)).toEqual(['vodafone-cash'])
+    expect(paymentConfig.methods.filter(m => m.placeholder)).toEqual([])
+    expect(paymentConfig.methods.find(m => m.id === 'vodafone-cash')!.fields[0].value).toBe('01032935257')
   })
 })
 
