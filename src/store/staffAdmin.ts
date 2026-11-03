@@ -5,6 +5,7 @@ import type { StaffRole } from '../domain/types'
 import type { InviteRequest } from '../../supabase/functions/invite-staff/validate'
 
 export interface StaffProfile { userId: string; displayName: string; role: StaffRole; consultantId: string | null; active: boolean }
+export interface AccessRequest { userId: string; email: string; displayName: string; provider: string; createdAt: number }
 
 const known = new Set(['FORBIDDEN', 'NOT_FOUND', 'INVALID_INPUT', 'ALREADY_EXISTS', 'UNAUTHENTICATED'])
 const codeOf = (message: unknown) => (typeof message === 'string' && known.has(message) ? message : 'NETWORK')
@@ -22,6 +23,25 @@ export async function saveStaff(p: StaffProfile, client: SupabaseClient | null =
     p_user_id: p.userId, p_display_name: p.displayName.trim(), p_role: p.role,
     p_consultant_id: p.role === 'consultant' ? p.consultantId : null, p_active: p.active,
   })
+  if (error) throw new RepoError(codeOf(error.message))
+}
+
+/** People who signed themselves up and wait for an admin. */
+export async function listAccessRequests(client: SupabaseClient | null = staffClient): Promise<AccessRequest[]> {
+  const { data, error } = await need(client).from('staff_access_requests').select('user_id,email,display_name,provider,created_at').order('created_at').order('user_id')
+  if (error) throw new RepoError('NETWORK')
+  return (data ?? []).map(r => ({ userId: r.user_id, email: r.email, displayName: r.display_name, provider: r.provider, createdAt: Date.parse(r.created_at) }))
+}
+
+/** Admin: give the person a staff profile with this role (audited); the request is removed. */
+export async function approveAccessRequest(userId: string, role: StaffRole, consultantId: string | null, client: SupabaseClient | null = staffClient): Promise<void> {
+  const { error } = await need(client).rpc('approve_staff_request', { p_user_id: userId, p_role: role, p_consultant_id: role === 'consultant' ? consultantId : null })
+  if (error) throw new RepoError(codeOf(error.message))
+}
+
+/** Admin: refuse access (audited). Their login stays but opens nothing; signing in again files a new request. */
+export async function declineAccessRequest(userId: string, client: SupabaseClient | null = staffClient): Promise<void> {
+  const { error } = await need(client).rpc('decline_staff_request', { p_user_id: userId })
   if (error) throw new RepoError(codeOf(error.message))
 }
 

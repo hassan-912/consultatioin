@@ -4,19 +4,35 @@ import type { StaffRole } from '../domain/types'
 import { useAppStore } from './useAppStore'
 
 /** Real staff authentication (live mode only). Every function takes the client so tests can inject a mock. */
-export type StaffAuthResult = 'ok' | 'invalid' | 'inactive' | 'unavailable'
+export type StaffAuthResult = 'ok' | 'pending' | 'invalid' | 'inactive' | 'unavailable'
 
 const roles: StaffRole[] = ['admin', 'finance', 'reception', 'consultant', 'sales']
 type ProfileRow = { role: string; consultant_id: string | null; display_name: string; active: boolean }
 
-const clearSession = () => useAppStore.setState({ staffSession: null })
+const clearSession = () => useAppStore.setState({ staffSession: null, staffPending: null })
+type AuthUser = { id: string; email?: string | null; user_metadata?: Record<string, unknown> }
+const metaName = (u: AuthUser) => ['full_name', 'name', 'display_name'].map(k => u.user_metadata?.[k]).find(v => typeof v === 'string' && v.trim()) as string | undefined
+const siteOrigin = () => {
+  const site = import.meta.env.VITE_SITE_URL
+  if (!site) throw new Error('LIVE_CONFIG_MISSING')
+  return new URL(site).origin
+}
 
-/** Reads the caller's own profile; an inactive or missing profile ends the session and is refused. */
-async function adoptSession(client: SupabaseClient, user: { id: string; email?: string | null }): Promise<'ok' | 'inactive' | 'unavailable'> {
+/**
+ * Reads the caller's own profile. No profile yet: the person signed themselves up, so their access request is
+ * (re)filed and they wait for an admin, still signed in. An inactive profile ends the session and is refused.
+ */
+async function adoptSession(client: SupabaseClient, user: AuthUser): Promise<'ok' | 'pending' | 'inactive' | 'unavailable'> {
   const { data, error } = await client.from('staff_profiles').select('role,consultant_id,display_name,active').eq('user_id', user.id).maybeSingle()
   if (error) return 'unavailable'
   const profile = data as ProfileRow | null
-  if (!profile || !profile.active || !roles.includes(profile.role as StaffRole)
+  if (!profile) {
+    const request = await client.rpc('request_staff_access', { p_display_name: metaName(user) ?? '' })
+    if (request.error) return 'unavailable'
+    useAppStore.setState({ staffSession: null, staffPending: { email: user.email ?? '', name: metaName(user) ?? '' } })
+    return 'pending'
+  }
+  if (!profile.active || !roles.includes(profile.role as StaffRole)
     || (profile.role === 'consultant' && !profile.consultant_id)) {
     clearSession()
     await client.auth.signOut({ scope: 'local' })
@@ -26,6 +42,7 @@ async function adoptSession(client: SupabaseClient, user: { id: string; email?: 
   const consultantId = role === 'consultant' ? profile.consultant_id : null
   useAppStore.setState(s => ({
     staffSession: { username: user.email || profile.display_name, role, consultantId },
+    staffPending: null,
     role,
     staffConsultantId: consultantId ?? s.staffConsultantId,
   }))
@@ -70,10 +87,46 @@ export async function signOutStaff(client: SupabaseClient | null = staffClient) 
   try { await client?.auth.signOut({ scope: 'local' }) } catch { /* the local session is already cleared */ }
 }
 
-const resetUrl = () => {
-  const site = import.meta.env.VITE_SITE_URL
-  if (!site) throw new Error('LIVE_CONFIG_MISSING')
-  return `${new URL(site).origin}/#/staff/reset`
+const resetUrl = () => `${siteOrigin()}/#/staff/reset`
+/** Google and email-confirmation links come back here and are turned into a session. */
+const returnUrl = () => `${siteOrigin()}/#/staff/oauth`
+
+/**
+ * Self sign-up. Creates the login only; access waits for an admin. 'confirm' means Supabase emailed a
+ * confirmation link first (when "Confirm email" is on in the project's auth settings).
+ */
+export async function signUpWithEmail(name: string, email: string, password: string, client: SupabaseClient | null = staffClient): Promise<'pending' | 'confirm' | 'exists' | 'weak' | 'unavailable'> {
+  if (!client) return 'unavailable'
+  try {
+    const { data, error } = await client.auth.signUp({
+      email: email.trim().toLowerCase(), password, options: { data: { display_name: name.trim() }, emailRedirectTo: returnUrl() },
+    })
+    if (error) return /already|registered|exists/i.test(error.message) ? 'exists' : /password/i.test(error.message) ? 'weak' : 'unavailable'
+    // Supabase hides existing addresses behind an empty identities list instead of an error.
+    if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) return 'exists'
+    if (!data.session || !data.user) return 'confirm'
+    const outcome = await adoptSession(client, data.user)
+    return outcome === 'pending' ? 'pending' : outcome === 'ok' ? 'pending' : 'unavailable'
+  } catch {
+    return 'unavailable'
+  }
+}
+
+/** Sends the browser to Google. It returns to /#/staff/oauth, which finishes the sign-in. */
+export async function signInWithGoogle(client: SupabaseClient | null = staffClient): Promise<'unavailable' | void> {
+  if (!client) return 'unavailable'
+  try {
+    const { error } = await client.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: returnUrl() } })
+    if (error) return 'unavailable'
+  } catch {
+    return 'unavailable'
+  }
+}
+
+/** Completes a Google or email-confirmation return: tokens from the address bar become the staff session. */
+export async function finishOAuthReturn(href: string, client: SupabaseClient | null = staffClient): Promise<StaffAuthResult | 'none'> {
+  if (!(await openRecoveryLink(href, client))) return 'invalid'
+  return restoreStaffSession(client)
 }
 
 export async function requestPasswordReset(email: string, client: SupabaseClient | null = staffClient): Promise<'sent' | 'unavailable'> {

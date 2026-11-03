@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { openRecoveryLink, requestPasswordReset, restoreStaffSession, setNewPassword, signInWithEmail, watchStaffAuth } from './liveAuth'
+import { signUpWithEmail, openRecoveryLink, requestPasswordReset, restoreStaffSession, setNewPassword, signInWithEmail, watchStaffAuth } from './liveAuth'
 import { useAppStore } from './useAppStore'
 
 type Profile = { role: string; consultant_id: string | null; display_name: string; active: boolean } | null
@@ -41,13 +41,22 @@ test('consultant session carries only their own consultant id', async () => {
   expect(useAppStore.getState().staffConsultantId).toBe('ahmed-tarek')
 })
 
-test('deactivated or missing profile is refused and the auth session is ended', async () => {
-  for (const profile of [{ role: 'admin', consultant_id: null, display_name: 'X', active: false }, null] as Profile[]) {
-    const { client, auth } = mockClient(profile)
-    expect(await signInWithEmail('x@example.com', 'pw', client)).toBe('inactive')
-    expect(auth.signOut).toHaveBeenCalledWith({ scope: 'local' })
-    expect(useAppStore.getState().staffSession).toBeNull()
-  }
+test('a deactivated profile is refused and the auth session is ended', async () => {
+  const { client, auth } = mockClient({ role: 'admin', consultant_id: null, display_name: 'X', active: false })
+  expect(await signInWithEmail('x@example.com', 'pw', client)).toBe('inactive')
+  expect(auth.signOut).toHaveBeenCalledWith({ scope: 'local' })
+  expect(useAppStore.getState().staffSession).toBeNull()
+})
+
+test('no profile yet: an access request is filed and the person waits for approval with no staff access', async () => {
+  const { client, auth } = mockClient(null)
+  const rpc = vi.fn().mockResolvedValue({ data: 'pending', error: null })
+  Object.assign(client, { rpc })
+  expect(await signInWithEmail('x@example.com', 'pw', client)).toBe('pending')
+  expect(rpc).toHaveBeenCalledWith('request_staff_access', { p_display_name: '' })
+  expect(auth.signOut).not.toHaveBeenCalled()
+  expect(useAppStore.getState().staffSession).toBeNull()
+  expect(useAppStore.getState().staffPending).toEqual({ email: 'staff@example.com', name: '' })
 })
 
 test('wrong password is invalid; a network failure is unavailable; neither opens a session', async () => {
@@ -102,4 +111,25 @@ test('recovery links: fragment tokens or code open a session, errors do not; new
   expect(await setNewPassword('long-enough-1', client)).toBe('ok')
   expect(auth.updateUser).toHaveBeenCalledWith({ password: 'long-enough-1' })
   expect(auth.signOut).toHaveBeenCalled()
+})
+
+test('self sign-up: a new login waits for approval, confirmation emails and existing addresses are reported', async () => {
+  vi.stubEnv('VITE_SITE_URL', 'https://mg.example.com')
+  const make = (result: unknown) => {
+    const { client, auth } = mockClient(null)
+    Object.assign(auth, { signUp: vi.fn().mockResolvedValue(result) })
+    Object.assign(client, { rpc: vi.fn().mockResolvedValue({ data: 'pending', error: null }) })
+    return { client, auth: auth as typeof auth & { signUp: ReturnType<typeof vi.fn> } }
+  }
+  const user = { id: 'u2', email: 'aya@example.com', identities: [{}], user_metadata: { display_name: 'Aya' } }
+  const ok = make({ data: { user, session: { access_token: 'a' } }, error: null })
+  expect(await signUpWithEmail('Aya', 'Aya@Example.com', 'longpassword', ok.client)).toBe('pending')
+  expect(ok.auth.signUp).toHaveBeenCalledWith({ email: 'aya@example.com', password: 'longpassword',
+    options: { data: { display_name: 'Aya' }, emailRedirectTo: 'https://mg.example.com/#/staff/oauth' } })
+  expect(useAppStore.getState().staffPending).toEqual({ email: 'aya@example.com', name: 'Aya' })
+  expect(useAppStore.getState().staffSession).toBeNull()
+
+  expect(await signUpWithEmail('Aya', 'aya@example.com', 'longpassword', make({ data: { user, session: null }, error: null }).client)).toBe('confirm')
+  expect(await signUpWithEmail('Aya', 'aya@example.com', 'longpassword', make({ data: { user: { ...user, identities: [] }, session: null }, error: null }).client)).toBe('exists')
+  vi.unstubAllEnvs()
 })

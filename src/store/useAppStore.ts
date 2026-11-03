@@ -78,6 +78,8 @@ export interface AppState {
   role: StaffRole
   setRole: (r: StaffRole) => void
   staffSession: { username: string; role: StaffRole; consultantId: string | null } | null
+  /** Live only: signed up (email or Google) but not approved by an admin yet. */
+  staffPending: { email: string; name: string } | null
   /** Name finance staff sign WhatsApp confirmations with. */
   senderName: string
   staffConsultantId: string
@@ -128,6 +130,7 @@ export const useAppStore = create<AppState>()(
       role: 'finance',
       setRole: role => set({ role }),
       staffSession: null,
+      staffPending: null,
       senderName: '',
       staffConsultantId: 'mohamed-gamal',
       setStaffConsultantId: staffConsultantId => set({ staffConsultantId }),

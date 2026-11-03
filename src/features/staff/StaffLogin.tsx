@@ -9,6 +9,7 @@ import { TextField } from '../../components/fields'
 import { Button, Notice } from '../../components/ui'
 import { Icon } from '../../components/Icon'
 import { isLive } from '../../data/mode'
+import { GoogleButton, SignupForm } from './StaffSignup'
 
 export function StaffLogin() {
   const { t } = useT()
@@ -19,6 +20,7 @@ export function StaffLogin() {
   const [error, setError] = useState<'invalid' | 'inactive' | 'unavailable' | null>(null)
   const [forgot, setForgot] = useState(false)
   const [sent, setSent] = useState(false)
+  const [signup, setSignup] = useState(false)
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
@@ -30,7 +32,7 @@ export function StaffLogin() {
         if (r === 'sent') setSent(true); else setError('unavailable')
       } else if (isLive) {
         const r = await signInWithEmail(username, password)
-        if (r !== 'ok') setError(r)
+        if (r !== 'ok' && r !== 'pending') setError(r)
       } else if (!(await signIn(username, password))) setError('invalid')
     } catch { setError('unavailable') } finally { setBusy(false) }
   }
@@ -44,7 +46,7 @@ export function StaffLogin() {
         <LangSwitch />
       </div>
       <main id="main" className="relative mx-auto my-auto w-full max-w-md py-10">
-        <form onSubmit={submit} noValidate className="rounded-3xl bg-white p-6 text-ink shadow-2xl sm:p-8">
+        {isLive && signup ? <SignupForm onBack={() => setSignup(false)} /> : <form onSubmit={submit} noValidate className="rounded-3xl bg-white p-6 text-ink shadow-2xl sm:p-8">
           <span className="inline-flex size-12 items-center justify-center rounded-2xl bg-slate text-gold">
             <Icon name="shield" size={22} />
           </span>
@@ -91,9 +93,13 @@ export function StaffLogin() {
                 {forgot ? t('staff.login.backToSignIn') : t('staff.login.forgot')}
               </button>
             )}
+            {isLive && !forgot && <GoogleButton />}
+            {isLive && !forgot && (
+              <button type="button" onClick={() => setSignup(true)} className="min-h-11 text-sm font-semibold text-navy hover:underline">{t('staff.login.newHere')}</button>
+            )}
           </div>
           {!isLive && <p className="mt-5 text-xs text-muted">{t('staff.login.prototype')}</p>}
-        </form>
+        </form>}
         <Link to="/" className="mt-6 inline-flex min-h-11 items-center gap-1.5 text-sm text-mist hover:text-white">
           <Icon name="chevron" size={15} className="rotate-180" />
           {t('staff.login.backToSite')}

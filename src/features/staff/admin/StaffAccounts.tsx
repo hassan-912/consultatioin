@@ -4,7 +4,7 @@ import { errorKey } from '../../../data/feedback'
 import { useT } from '../../../i18n'
 import { consultants } from '../../../config/consultants'
 import { staffAccounts } from '../../../config/staffAccounts'
-import { inviteStaff, listStaff, saveStaff, type StaffProfile } from '../../../store/staffAdmin'
+import { approveAccessRequest, declineAccessRequest, inviteStaff, listAccessRequests, listStaff, saveStaff, type AccessRequest, type StaffProfile } from '../../../store/staffAdmin'
 import { validateInvite, staffRoles, type InviteField } from '../../../../supabase/functions/invite-staff/validate'
 import type { StaffRole } from '../../../domain/types'
 import { Button, Notice } from '../../../components/ui'
@@ -131,17 +131,61 @@ function Row({ p, onChanged }: { p: StaffProfile; onChanged: () => void }) {
   )
 }
 
+function RequestRow({ r, onDone }: { r: AccessRequest; onDone: () => void }) {
+  const { t, lang } = useT()
+  const [role, setRole] = useState<StaffRole>('sales')
+  const [consultantId, setConsultantId] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [failure, setFailure] = useState<unknown>(null)
+  const run = async (action: () => Promise<void>) => {
+    setBusy(true); setFailure(null)
+    try { await action(); onDone() } catch (error) { setFailure(error) } finally { setBusy(false) }
+  }
+  return (
+    <li aria-label={r.email} className="rounded-2xl bg-white p-4 ring-2 ring-gold/60">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p dir="auto" className="truncate font-semibold text-ink">{r.displayName}</p>
+          <p dir="ltr" className="truncate text-start text-sm text-muted rtl:text-end">{r.email}</p>
+        </div>
+        <p className="text-xs text-muted">
+          {t(r.provider === 'google' ? 'staff.accounts.viaGoogle' : 'staff.accounts.viaEmail')} · {new Date(r.createdAt).toLocaleDateString(lang === 'ar' ? 'ar-EG-u-nu-latn' : 'en-GB', { day: 'numeric', month: 'short' })}
+        </p>
+      </div>
+      {failure != null && <Notice tone="bad" className="mt-3">{t(errorKey(failure))}</Notice>}
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <RoleFields role={role} consultantId={consultantId} onRole={setRole} onConsultant={setConsultantId} />
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Button disabled={busy || (role === 'consultant' && !consultantId)} onClick={() => void run(() => approveAccessRequest(r.userId, role, consultantId || null))}>
+          {t('staff.accounts.approve', { role: t(`staff.roles.${role}`) })}
+        </Button>
+        <Button variant="ghost" disabled={busy} onClick={() => void run(() => declineAccessRequest(r.userId))}>{t('staff.accounts.decline')}</Button>
+      </div>
+    </li>
+  )
+}
+
 function LiveAccounts() {
   const { t } = useT()
   const [rows, setRows] = useState<StaffProfile[] | null>(null)
+  const [requests, setRequests] = useState<AccessRequest[]>([])
   const [failed, setFailed] = useState(false)
   const load = useCallback(() => {
     listStaff().then(r => { setRows(r); setFailed(false) }).catch(() => setFailed(true))
+    listAccessRequests().then(setRequests).catch(() => setFailed(true))
   }, [])
   useEffect(load, [load])
   return (
     <>
       <p className="mb-4 text-sm text-muted">{t('staff.accounts.intro')}</p>
+      {requests.length > 0 && (
+        <section aria-labelledby="requests-title" className="mb-6">
+          <h2 id="requests-title" className="mb-1 text-base font-semibold text-ink">{t('staff.accounts.requestsTitle', { count: requests.length })}</h2>
+          <p className="mb-3 text-sm text-muted">{t('staff.accounts.requestsHint')}</p>
+          <ul className="grid gap-3">{requests.map(r => <RequestRow key={r.userId} r={r} onDone={load} />)}</ul>
+        </section>
+      )}
       <InviteForm onInvited={load} />
       <h2 className="mb-3 text-base font-semibold text-ink">{t('staff.accounts.list')}</h2>
       {failed && <Notice tone="bad">{t('staff.accounts.loadError')}</Notice>}

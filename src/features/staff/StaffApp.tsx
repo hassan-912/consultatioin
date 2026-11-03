@@ -10,6 +10,7 @@ import { can, screens, type StaffScreen } from './permissions'
 import { Overview } from './Overview'
 import { StaffLogin } from './StaffLogin'
 import { StaffReset } from './StaffReset'
+import { StaffOAuthReturn, StaffPending } from './StaffSignup'
 import { signOut } from '../../store/auth'
 import { restoreStaffSession, watchStaffAuth } from '../../store/liveAuth'
 import { PaymentQueue } from './finance/PaymentQueue'
@@ -101,6 +102,7 @@ export function StaffApp() {
   const { t } = useT()
   const role = useAppStore(s => s.role)
   const session = useAppStore(s => s.staffSession)
+  const pending = useAppStore(s => s.staffPending)
   const [open, setOpen] = useState(false)
   const { pathname } = useLocation()
   const [restoring, setRestoring] = useState(isLive)
@@ -117,6 +119,8 @@ export function StaffApp() {
   const snapshotKey = useLiveData(s => s.staffKey)
   const staleSnapshot = isLive && snapshotKey !== staffSessionKey(session)
   if (isLive && pathname.replace(/\/$/, '') === '/staff/reset') return <StaffReset />
+  if (isLive && pathname.replace(/\/$/, '') === '/staff/oauth') return <StaffOAuthReturn />
+  if (isLive && !session && pending) return <StaffPending />
   if (!session) return restoring ? <p role="status" className="grid min-h-dvh place-items-center bg-slate-deep text-mist">{t('staff.login.restoring')}</p> : <StaffLogin />
 
   return (
