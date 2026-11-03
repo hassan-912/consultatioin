@@ -1,23 +1,25 @@
-import { useEffect } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { MotionConfig } from 'framer-motion'
 import { Route, Routes, useLocation } from 'react-router-dom'
 import { applyDocumentLang, useAppStore } from './store/useAppStore'
 import { expireDue, seedIfNeeded } from './store/actions'
 import { DirectoryPage } from './features/directory/DirectoryPage'
-import { ProfilePage } from './features/profile/ProfilePage'
-import { BookingWizard } from './features/booking/BookingWizard'
-import { TicketPage } from './features/ticket/TicketPage'
-import { BookingPage } from './features/ticket/BookingPage'
-import { FindBookingPage } from './features/ticket/FindBookingPage'
-import { MeetPage } from './features/ticket/MeetPage'
-import { StaffApp } from './features/staff/StaffApp'
-import { DemoPanel } from './features/demo/DemoPanel'
 import { CountryBackdrop } from './components/CountryBackdrop'
-import { TeamPage } from './features/team/TeamPage'
 import { isLive, uiStorageKey } from './data/mode'
 import { configurationError } from './data'
 import { ActionFeedback, DataStatus } from './data/feedback'
 import { RepoError } from './data/types'
+
+// Only the directory loads up front; every other screen (the whole staff app above all) downloads when opened.
+const ProfilePage = lazy(() => import('./features/profile/ProfilePage').then(m => ({ default: m.ProfilePage })))
+const BookingWizard = lazy(() => import('./features/booking/BookingWizard').then(m => ({ default: m.BookingWizard })))
+const TicketPage = lazy(() => import('./features/ticket/TicketPage').then(m => ({ default: m.TicketPage })))
+const BookingPage = lazy(() => import('./features/ticket/BookingPage').then(m => ({ default: m.BookingPage })))
+const FindBookingPage = lazy(() => import('./features/ticket/FindBookingPage').then(m => ({ default: m.FindBookingPage })))
+const MeetPage = lazy(() => import('./features/ticket/MeetPage').then(m => ({ default: m.MeetPage })))
+const StaffApp = lazy(() => import('./features/staff/StaffApp').then(m => ({ default: m.StaffApp })))
+const DemoPanel = lazy(() => import('./features/demo/DemoPanel').then(m => ({ default: m.DemoPanel })))
+const TeamPage = lazy(() => import('./features/team/TeamPage').then(m => ({ default: m.TeamPage })))
 
 export default function App() {
   const lang = useAppStore(s => s.lang)
@@ -49,6 +51,7 @@ export default function App() {
     <MotionConfig reducedMotion="user">
       <CountryBackdrop />
       {configurationError ? <main className="mx-auto max-w-xl px-4 py-16"><DataStatus error={new RepoError(configurationError)} /></main> : <>
+      <Suspense fallback={null}>
       <Routes>
         <Route path="/" element={<DirectoryPage />} />
         <Route path="/consultant/:id" element={<ProfilePage />} />
@@ -62,6 +65,7 @@ export default function App() {
         <Route path="*" element={<DirectoryPage />} />
       </Routes>
       {!isLive && <DemoPanel />}
+      </Suspense>
       <ActionFeedback />
       </>}
     </MotionConfig>
