@@ -46,6 +46,18 @@ test('finance verifies a payment: booking confirmed and audited', () => {
   expect(s.audit[0]).toMatchObject({ actor: 'finance', to: 'confirmed' })
 })
 
+test('admin verifies a payment too; the audit names the admin and no assessment shows on the review', () => {
+  useAppStore.setState({ assessments: { a: { program: 'tourism', answers: { hrLetter: 'yes' } } } })
+  loginAs('admin')
+  openStaff('/staff/payments')
+  const item = screen.getByRole('article', { name: /MG-TEST-A/ })
+  expect(within(item).queryByRole('button', { name: /view full assessment/i })).toBeNull()
+  fireEvent.click(within(item).getByRole('button', { name: /verify payment/i }))
+  const s = useAppStore.getState()
+  expect(s.bookings.a.status).toBe('confirmed')
+  expect(s.audit[0]).toMatchObject({ actor: 'admin', to: 'confirmed' })
+})
+
 test('reject requires a reason', () => {
   loginAs('finance')
   openStaff('/staff/payments')

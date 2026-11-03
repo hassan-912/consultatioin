@@ -513,7 +513,7 @@ export const en = {
       linkHint: 'Opens WhatsApp with this message ready to send. The message includes the ticket link, so no file is needed. After sending, click "Mark as sent".',
       step2: 'Open WhatsApp',
       slotTaken: 'The original time is no longer free. Reschedule this booking before confirming it.',
-      verifiedBy: 'Only finance verification confirms a booking. Receipts never auto-confirm.',
+      verifiedBy: 'Only verification by finance or an admin confirms a booking. Receipts never auto-confirm.',
       tabs: { review: 'To review', sent: 'To send', history: 'Recent' },
     },
     reception: {

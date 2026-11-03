@@ -11,7 +11,7 @@ import { Icon } from '../../components/Icon'
 import { StaffAssessment } from '../../assessment/StaffAssessment'
 import { programName } from '../../config/programs'
 
-export function BookingMeta({ b, showStatus = true }: { b: Booking; showStatus?: boolean }) {
+export function BookingMeta({ b, showStatus = true, showAssessment = true }: { b: Booking; showStatus?: boolean; showAssessment?: boolean }) {
   const { t, l, lang } = useT()
   const c = getConsultant(b.consultantId)
   return (
@@ -35,7 +35,7 @@ export function BookingMeta({ b, showStatus = true }: { b: Booking; showStatus?:
         <span>{t('common.durationRange', bookingConfig.durationRange)}</span>
         <span className="font-semibold text-ink"><Ltr>{formatMoney(b.price, lang)}</Ltr></span>
       </p>
-      <StaffAssessment bookingId={b.id} />
+      {showAssessment && <StaffAssessment bookingId={b.id} />}
     </div>
   )
 }

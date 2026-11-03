@@ -42,7 +42,7 @@ function ReviewItem({ b, focused }: { b: Booking; focused?: boolean }) {
     catch (error) { setReceiptError(error) } finally { setReceiptLoading(false) }
   }
   const act = (e: Parameters<typeof repo.staffTransition>[1]) =>
-    repo.staffTransition(b.id, e, 'finance').catch(err => {
+    repo.staffTransition(b.id, e).catch(err => {
       if (err instanceof SlotTaken) setSlotTaken(true)
       else setErr(t(errorKey(err)))
     })
@@ -50,7 +50,7 @@ function ReviewItem({ b, focused }: { b: Booking; focused?: boolean }) {
 
   return (
     <article ref={ref} tabIndex={-1} aria-label={b.reference} className={`rounded-2xl bg-white p-4 outline-none ring-1 sm:p-5 ${focused ? 'ring-2 ring-gold' : 'ring-line'}`}>
-      <BookingMeta b={b} />
+      <BookingMeta b={b} showAssessment={false} />
       <dl className="mt-4 grid grid-cols-2 gap-3 rounded-xl bg-paper p-3 text-sm sm:grid-cols-4">
         <div><dt className="text-xs text-muted">{t('staff.finance.expected')}</dt><dd className="font-semibold"><Ltr>{formatMoney(b.price, lang)}</Ltr></dd></div>
         <div><dt className="text-xs text-muted">{t('payment.method')}</dt><dd className="font-semibold">{method ? l(method.label) : '—'}</dd></div>
@@ -134,7 +134,7 @@ function SendItem({ b }: { b: Booking }) {
     : preferred === 'email' ? 'staff.finance.emailAuto' : 'staff.finance.emailManual'
   return (
     <article aria-label={b.reference} className="rounded-2xl bg-white p-4 ring-1 ring-line sm:p-5">
-      <BookingMeta b={b} />
+      <BookingMeta b={b} showAssessment={false} />
       <div className="mt-4 grid gap-1 rounded-xl bg-paper p-3 text-sm">
         <p className="text-xs text-muted">{t('staff.finance.preferred')}: <span className="font-semibold text-ink">{t(preferred === 'email' ? 'booking.channelEmail' : 'booking.channelWhatsapp')}</span></p>
         {hasEmail && <p><Ltr>{b.customer.email}</Ltr></p>}
@@ -204,7 +204,7 @@ export function PaymentQueue() {
         {tab === 'sent' && (toSend.length ? toSend.map(b => <SendItem key={b.id} b={b} />) : <Empty>{t('staff.finance.queueEmpty')}</Empty>)}
         {tab === 'history' && history.map(b => (
           <div key={b.id} className="rounded-2xl bg-white p-4 ring-1 ring-line">
-            <BookingMeta b={b} />
+            <BookingMeta b={b} showAssessment={false} />
             <p className="mt-2 text-xs text-muted">{t('staff.finance.sentTo', { to: b.ticketSentVia === 'email' ? b.customer.email : b.customer.phone })}</p>
           </div>
         ))}

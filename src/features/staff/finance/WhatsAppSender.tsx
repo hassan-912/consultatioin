@@ -42,7 +42,7 @@ function Sender({ b }: { b: Booking }) {
   const ready = sender.trim().length > 1
   const markSent = () => {
     setError(null)
-    repo.staffTransition(b.id, { type: 'mark-sent', via: 'whatsapp' }, 'finance').catch(setError)
+    repo.staffTransition(b.id, { type: 'mark-sent', via: 'whatsapp' }).catch(setError)
   }
 
   return (
