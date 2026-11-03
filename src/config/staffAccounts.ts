@@ -16,4 +16,6 @@ export const staffAccounts: StaffAccount[] = [
   { username: 'ahmed.tarek', role: 'consultant', consultantId: 'ahmed-tarek', passwordSha256: '27051a7925f8d9c0069a2c9b25092485b43e7c6906c06915af607ad7032acb48' },
   { username: 'mohamed.salah', role: 'consultant', consultantId: 'mohamed-salah', passwordSha256: '6cfcd7bf1100c6b5270003d677efc23d036c931bb829a9973a51b124365a930d' },
   { username: 'mohamed.abdelaziz', role: 'consultant', consultantId: 'mohamed-abdelaziz', passwordSha256: '0a1f0b524a1b940213adc27d2083dad30d7134ea7666776f173244c5385e18d3' },
+  { username: 'test.consultant', role: 'consultant', consultantId: 'mohamed-gamal', passwordSha256: '8fc45cefe986f85b9b7dad509c16c7109178ae34ac5d7e09955f62beb4f28aa3' },
+  { username: 'test.sales', role: 'sales', consultantId: null, passwordSha256: '989a8705d97e7479e21acc51c537de6ba69e852a1212f1c72d483988dc4b0a9d' },
 ]

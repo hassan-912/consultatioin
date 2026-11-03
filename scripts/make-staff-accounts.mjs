@@ -13,6 +13,8 @@ const accounts = [
   ['ahmed.tarek', 'consultant', 'ahmed-tarek'],
   ['mohamed.salah', 'consultant', 'mohamed-salah'],
   ['mohamed.abdelaziz', 'consultant', 'mohamed-abdelaziz'],
+  ['test.consultant', 'consultant', 'mohamed-gamal'],
+  ['test.sales', 'sales', null],
 ]
 const alpha = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789'
 const password = () => Array.from(randomBytes(10), b => alpha[b % alpha.length]).join('')
@@ -30,7 +32,7 @@ export const staffAccounts: StaffAccount[] = [
 ${rows.map(r => `  { username: '${r.username}', role: '${r.role}', consultantId: ${r.consultantId ? `'${r.consultantId}'` : 'null'}, passwordSha256: '${sha(r.password)}' },`).join('\n')}
 ]
 `
-const sees = { admin: 'Everything', finance: 'Payment review, bookings, payment settings, audit', reception: 'Check-in, arrivals, bookings', consultant: 'Own calendar, bookings and records only' }
+const sees = { admin: 'Everything', finance: 'Payment review, bookings, payment settings, audit', reception: 'Check-in, arrivals, bookings', consultant: 'Own calendar, bookings and records only', sales: 'My link and My clients (own clients and their assessments)' }
 const md = `# Demo staff logins (prototype only)
 
 Sign in from **Staff sign-in** (footer link, or the Team page). These accounts exist only in the prototype:
