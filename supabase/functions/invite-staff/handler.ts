@@ -8,8 +8,11 @@ export type Dependencies = {
   /** Service-role read of the caller's staff_profiles row. */
   callerProfile: (userId: string) => Promise<CallerProfile>
   consultantExists: (consultantId: string) => Promise<boolean>
-  /** auth.admin.inviteUserByEmail; throws Error('ALREADY_EXISTS') when the address is already registered. */
-  invite: (email: string, redirectTo: string) => Promise<string>
+  /**
+   * auth.admin.inviteUserByEmail; throws Error('ALREADY_EXISTS') when the address is already registered.
+   * When the email could not be sent (mail limit), the invitation is still created and `link` is returned for the admin to share.
+   */
+  invite: (email: string, redirectTo: string) => Promise<{ userId: string; link?: string }>
   /** Calls the insert-only, audited SQL function; throws Error('ALREADY_EXISTS') when a profile exists. Never overwrites. */
   grantProfile: (actorId: string, userId: string, request: InviteRequest) => Promise<void>
 }
@@ -43,9 +46,9 @@ export function inviteHandler(deps: Dependencies) {
       if (!parsed.ok) return fail('INVALID_INPUT', { field: parsed.field })
       const { value } = parsed
       if (value.consultantId && !(await deps.consultantExists(value.consultantId))) return fail('INVALID_INPUT', { field: 'consultantId' })
-      const invitedId = await deps.invite(value.email, redirectTo)
+      const { userId: invitedId, link } = await deps.invite(value.email, redirectTo)
       await deps.grantProfile(userId, invitedId, value)
-      return reply(200, { userId: invitedId })
+      return reply(200, link ? { userId: invitedId, link } : { userId: invitedId })
     } catch (error) {
       if (error instanceof SyntaxError) return fail('INVALID_INPUT')
       const message = error instanceof Error ? error.message : ''

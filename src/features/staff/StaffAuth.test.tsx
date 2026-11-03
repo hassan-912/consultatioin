@@ -67,6 +67,23 @@ test('live: an active account opens the workspace for its profile role', async (
   expect(client.auth.signInWithPassword).toHaveBeenCalledWith({ email: 'fin@example.com', password: 'secret-pw' })
 })
 
+test('live: when the invitation email cannot be sent, the admin gets the sign-up link to share', async () => {
+  state.profile = { role: 'admin', consultant_id: null, display_name: 'Boss', active: true }
+  client.auth.getSession.mockResolvedValue({ data: { session: { user: { id: 'a1', email: 'boss@example.com' } } } })
+  client.from.mockImplementation(() => ({ select: () => ({
+    eq: () => ({ maybeSingle: async () => ({ data: state.profile, error: null }) }),
+    order: () => ({ order: async () => ({ data: [], error: null }) }),
+  }) }))
+  client.functions.invoke.mockResolvedValue({ data: { userId: 'n1', link: 'https://auth.example/verify?token=abc' }, error: null })
+  openStaff('/staff/staff-accounts')
+  fireEvent.change(await screen.findByLabelText('Email'), { target: { value: 'aya@example.com' } })
+  fireEvent.change(screen.getByLabelText('Display name'), { target: { value: 'Aya' } })
+  fireEvent.click(screen.getByRole('button', { name: /send invitation/i }))
+  expect(await screen.findByText(/invitation email couldn’t be sent/i)).toBeInTheDocument()
+  expect(screen.getByText('https://auth.example/verify?token=abc')).toBeInTheDocument()
+  expect(screen.getByRole('link', { name: /send on whatsapp/i }).getAttribute('href')).toContain(encodeURIComponent('https://auth.example/verify?token=abc'))
+})
+
 test('live: invite form validates before calling the invite function', async () => {
   state.profile = { role: 'admin', consultant_id: null, display_name: 'Boss', active: true }
   client.auth.getSession.mockResolvedValue({ data: { session: { user: { id: 'a1', email: 'boss@example.com' } } } })

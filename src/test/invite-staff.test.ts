@@ -22,7 +22,7 @@ function setup(over: Partial<Dependencies> = {}) {
     verifyUser: vi.fn().mockResolvedValue('admin-id'),
     callerProfile: vi.fn().mockResolvedValue({ role: 'admin', active: true }),
     consultantExists: vi.fn().mockResolvedValue(true),
-    invite: vi.fn().mockResolvedValue('new-id'),
+    invite: vi.fn().mockResolvedValue({ userId: 'new-id' }),
     grantProfile: vi.fn().mockResolvedValue(undefined),
     ...over,
   } satisfies Dependencies
@@ -42,6 +42,14 @@ test('active admin invites: redirect goes to the reset screen and the profile is
   expect(await res.json()).toEqual({ userId: 'new-id' })
   expect(deps.invite).toHaveBeenCalledWith('new@example.com', 'https://mg.example.com/#/staff/reset')
   expect(deps.grantProfile).toHaveBeenCalledWith('admin-id', 'new-id', { email: 'new@example.com', displayName: 'Nora', role: 'reception', consultantId: null })
+})
+
+test('when the email limit is hit the invitation is still created and the link comes back for the admin', async () => {
+  const { deps, call } = setup({ invite: vi.fn().mockResolvedValue({ userId: 'new-id', link: 'https://auth.example/verify?token=t' }) })
+  const res = await call()
+  expect(res.status).toBe(200)
+  expect(await res.json()).toEqual({ userId: 'new-id', link: 'https://auth.example/verify?token=t' })
+  expect(deps.grantProfile).toHaveBeenCalled()
 })
 
 test('missing or invalid JWT is 401 and nothing is invited', async () => {

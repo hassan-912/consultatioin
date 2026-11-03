@@ -8,6 +8,8 @@ import { inviteStaff, listStaff, saveStaff, type StaffProfile } from '../../../s
 import { validateInvite, staffRoles, type InviteField } from '../../../../supabase/functions/invite-staff/validate'
 import type { StaffRole } from '../../../domain/types'
 import { Button, Notice } from '../../../components/ui'
+import { CopyField } from '../../../components/CopyField'
+import { Icon } from '../../../components/Icon'
 import { SelectField, TextField } from '../../../components/fields'
 import { ScreenTitle } from '../StaffApp'
 
@@ -38,18 +40,20 @@ function InviteForm({ onInvited }: { onInvited: () => void }) {
   const [errors, setErrors] = useState<Partial<Record<InviteField, string>>>({})
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState('')
+  const [link, setLink] = useState<{ email: string; name: string; url: string } | null>(null)
   const [failure, setFailure] = useState<unknown>(null)
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
-    setDone(''); setFailure(null)
+    setDone(''); setFailure(null); setLink(null)
     const parsed = validateInvite({ ...f, consultantId: f.consultantId || null })
     if (!parsed.ok) { setErrors({ [parsed.field]: t(fieldKeys[parsed.field]) }); return }
     setErrors({})
     setBusy(true)
     try {
-      await inviteStaff(parsed.value)
-      setDone(parsed.value.email)
+      const sent = await inviteStaff(parsed.value)
+      if (sent.link) setLink({ email: parsed.value.email, name: parsed.value.displayName, url: sent.link })
+      else setDone(parsed.value.email)
       setF({ email: '', displayName: '', role: f.role, consultantId: '' })
       onInvited()
     } catch (error) { setFailure(error) } finally { setBusy(false) }
@@ -60,6 +64,17 @@ function InviteForm({ onInvited }: { onInvited: () => void }) {
       <h2 className="text-base font-semibold text-ink sm:col-span-2">{t('staff.accounts.inviteTitle')}</h2>
       {done && <Notice tone="ok" className="sm:col-span-2">{t('staff.accounts.invited', { email: done })}</Notice>}
       {failureText && <Notice tone="bad" className="sm:col-span-2">{failureText}</Notice>}
+      {link && (
+        <div className="grid gap-3 rounded-xl bg-warn-soft p-3.5 sm:col-span-2">
+          <p className="text-sm font-semibold text-ink">{t('staff.accounts.linkInstead', { email: link.email })}</p>
+          <CopyField label={t('staff.accounts.inviteLink')} value={link.url} />
+          <a href={`https://wa.me/?text=${encodeURIComponent(t('staff.accounts.linkMessage', { name: link.name, link: link.url }))}`} target="_blank" rel="noopener noreferrer"
+            className="inline-flex min-h-11 w-fit items-center gap-2 rounded-xl bg-slate px-4 text-sm font-semibold text-white hover:brightness-110">
+            <Icon name="phone" size={16} />{t('staff.accounts.shareWhatsapp')}
+          </a>
+          <p className="text-xs text-muted">{t('staff.accounts.linkHint')}</p>
+        </div>
+      )}
       <TextField label={t('staff.accounts.email')} dir="ltr" type="email" autoComplete="off" autoCapitalize="none" value={f.email} error={errors.email}
         onChange={e => setF(v => ({ ...v, email: e.target.value }))} />
       <TextField label={t('staff.accounts.displayName')} value={f.displayName} error={errors.displayName}

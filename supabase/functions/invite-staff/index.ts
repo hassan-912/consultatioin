@@ -25,8 +25,15 @@ Deno.serve(inviteHandler({
   },
   async invite(email, redirectTo) {
     const { data, error } = await admin.auth.admin.inviteUserByEmail(email, { redirectTo })
-    if (error || !data.user) throw new Error(error?.status === 422 || /already|registered/i.test(error?.message ?? '') ? 'ALREADY_EXISTS' : 'INVITE_UNAVAILABLE')
-    return data.user.id
+    if (!error && data.user) return { userId: data.user.id }
+    if (error?.status === 422 || /already|registered/i.test(error?.message ?? '')) throw new Error('ALREADY_EXISTS')
+    // Supabase's built-in mailer sends only a few emails an hour. Create the invitation anyway; the admin shares the link.
+    if (error?.status === 429 || error?.code === 'over_email_send_rate_limit') {
+      const made = await admin.auth.admin.generateLink({ type: 'invite', email, options: { redirectTo } })
+      if (made.error || !made.data.user) throw new Error(/already|registered/i.test(made.error?.message ?? '') ? 'ALREADY_EXISTS' : 'INVITE_UNAVAILABLE')
+      return { userId: made.data.user.id, link: made.data.properties.action_link }
+    }
+    throw new Error('INVITE_UNAVAILABLE')
   },
   async grantProfile(actorId, userId, request) {
     // One transaction: insert-only profile + audit_log row. Existing profiles are refused, never overwritten.

@@ -26,9 +26,10 @@ export async function saveStaff(p: StaffProfile, client: SupabaseClient | null =
 }
 
 /** Invitations go through the admin-only Edge Function; the service-role key never reaches the browser. */
-export async function inviteStaff(request: InviteRequest, client: SupabaseClient | null = staffClient): Promise<void> {
-  const { error } = await need(client).functions.invoke('invite-staff', { body: request })
-  if (!error) return
+/** Resolves to the sign-up link when the email could not be sent and the admin has to share it. */
+export async function inviteStaff(request: InviteRequest, client: SupabaseClient | null = staffClient): Promise<{ link?: string }> {
+  const { data, error } = await need(client).functions.invoke('invite-staff', { body: request })
+  if (!error) return { link: typeof data?.link === 'string' ? data.link : undefined }
   let code = 'NETWORK'
   try {
     const body = await (error as { context?: Response }).context?.json()
