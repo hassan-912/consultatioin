@@ -117,12 +117,6 @@ export function PaymentStep({ booking, onSubmit, onExpiredRestart }: {
       </fieldset>
 
       <div className="grid gap-2">
-        {m.link && (
-          <a href={m.link} target="_blank" rel="noopener noreferrer"
-            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-slate px-5 font-semibold text-white hover:brightness-110">
-            <Icon name="card" size={18} />{t('payment.openLink', { method: l(m.label) })}
-          </a>
-        )}
         <CopyField label={m.currency === 'EGP' ? t('payment.amount') : t('payment.amountEgp')} value={String(booking.price.amount)} />
         {equivalent !== null && (
           <div className="rounded-xl border border-gold/40 bg-gold-soft px-3.5 py-2.5 text-sm">
@@ -131,7 +125,19 @@ export function PaymentStep({ booking, onSubmit, onExpiredRestart }: {
             <p className="mt-0.5 text-xs text-muted">{t('payment.equivalentHint', { amount })}</p>
           </div>
         )}
-        {m.fields.map(f => <CopyField key={f.value} label={l(f.label)} value={f.value} mono={f.mono !== false} />)}
+        {m.fields.map(f => f.value === m.link ? (
+          // Payment links open the provider directly (the InstaPay app on phones that have it).
+          <a key={f.value} href={f.value} target="_blank" rel="noopener noreferrer"
+            className="flex min-h-14 items-center justify-between gap-3 rounded-xl border-2 border-slate bg-white px-3.5 py-2.5 hover:bg-paper">
+            <span className="min-w-0">
+              <span className="block text-xs text-muted">{l(f.label)}</span>
+              <span dir="ltr" className="block truncate text-start font-mono text-sm font-semibold text-navy underline underline-offset-2 rtl:text-end">{f.value}</span>
+            </span>
+            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-slate px-3 py-2 text-sm font-semibold text-white">
+              {t('payment.openLink', { method: l(m.label) })}<Icon name="arrow" size={14} />
+            </span>
+          </a>
+        ) : <CopyField key={f.value} label={l(f.label)} value={f.value} mono={f.mono !== false} />)}
         <CopyField label={t('common.reference')} value={booking.reference} />
         {m.placeholder && <Notice tone="warn">{t('payment.pendingConfig')}</Notice>}
       </div>
