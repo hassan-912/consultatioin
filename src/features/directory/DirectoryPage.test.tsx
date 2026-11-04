@@ -65,10 +65,10 @@ test('empty result offers to clear filters or change location', () => {
   expect(screen.getAllByRole('button', { name: /change location/i }).length).toBeGreaterThan(0)
 })
 
-test('Qena is offered as opening soon; demo data is labelled and Wael never appears', () => {
+test('Qena is an open branch; demo data is labelled and Wael never appears', () => {
   useAppStore.setState({ location: 'qena' })
   renderPage()
-  expect(screen.getByText(/qena branch is opening soon/i)).toBeInTheDocument()
+  expect(screen.queryByText(/opening soon/i)).toBeNull()
   expect(screen.getAllByText('Demo data').length).toBeGreaterThan(0)
   expect(document.body.textContent).not.toMatch(/Wael/)
 })

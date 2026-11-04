@@ -8,9 +8,10 @@ import { contact } from './contact'
 const allText = (o: unknown) => JSON.stringify(o)
 
 describe('branches', () => {
-  test('three open branches plus Qena opening soon', () => {
+  test('four open branches, Qena included', () => {
     expect(branches.map(b => b.id)).toEqual(['nasr-city', 'sheikh-zayed', 'dubai', 'qena'])
-    expect(branches.filter(b => b.comingSoon).map(b => b.id)).toEqual(['qena'])
+    expect(branches.filter(b => b.comingSoon)).toEqual([])
+    expect(branches.find(b => b.id === 'qena')!.address.en).toMatch(/Dendera Bridge Street/)
   })
   test('timezones', () => {
     expect(branches.find(b => b.id === 'dubai')!.timeZone).toBe('Asia/Dubai')

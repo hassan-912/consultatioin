@@ -32,11 +32,10 @@ test('LangSwitch toggles direction', () => {
   expect(screen.getByRole('button', { name: /الإنجليزية/ })).toHaveTextContent('English')
 })
 
-test('Footer lists three branches, social links, and no Qena', () => {
+test('Footer lists the four branches and social links', () => {
   render(<MemoryRouter><Footer /></MemoryRouter>)
   const text = document.body.textContent!
-  expect(text).not.toMatch(/Qena|قنا/)
-  for (const b of ['Nasr City', 'Sheikh Zayed', 'Dubai']) expect(text).toContain(b)
+  for (const b of ['Nasr City', 'Sheikh Zayed', 'Dubai', 'Qena', 'Hub Furniture Building']) expect(text).toContain(b)
   const hrefs = screen.getAllByRole('link').map(a => a.getAttribute('href'))
   expect(hrefs).toEqual(expect.arrayContaining([
     'https://www.facebook.com/MGInternational1/',

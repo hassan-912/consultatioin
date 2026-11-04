@@ -40,15 +40,16 @@ export const branches: Branch[] = [
     country: 'AE',
   },
   {
-    // PENDING: address and consultants to be supplied by MG.
     id: 'qena',
     name: { en: 'Qena', ar: 'قنا' },
     city: { en: 'Qena, Egypt', ar: 'قنا، مصر' },
-    address: { en: 'Address coming soon', ar: 'العنوان قريبًا' },
+    address: {
+      en: 'Qena – Dendera Bridge Street – Hub Furniture Building, 5th Floor',
+      ar: 'قنا – شارع كوبري دندرة – مبنى هب للأثاث، الدور الخامس',
+    },
     timeZone: 'Africa/Cairo',
-    mapsUrl: maps('Qena Egypt'),
+    mapsUrl: maps('Dendera Bridge Street Qena Egypt'),
     country: 'EG',
-    comingSoon: true,
   },
 ]
 
