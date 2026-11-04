@@ -13,7 +13,7 @@ import type { Booking } from '../../../domain/types'
 import { Button, Ltr, StatusChip } from '../../../components/ui'
 import { Icon } from '../../../components/Icon'
 import { AssessmentReport, AssessmentRing, useAssessmentResult } from '../../../assessment/StaffAssessment'
-import { Empty } from '../common'
+import { Empty, SwapNote } from '../common'
 import { RecordFields } from './ConsultantDesk'
 import { useRecordDraft } from './recordDraft'
 
@@ -79,6 +79,7 @@ function ClientFileBody({ b, record }: { b: Booking; record?: Parameters<typeof 
             [t('staff.client.contactBy'), t(b.customer.channel === 'email' ? 'booking.channelEmail' : 'booking.channelWhatsapp')],
             ...(b.salesName ? [[t('staff.client.sales'), b.salesName] as [string, ReactNode]] : []),
           ]} />
+          <SwapNote b={b} className="mt-3" />
           {b.customer.note && (
             <p dir="auto" className="mt-3 rounded-lg bg-paper px-3 py-2 text-sm text-slate"><span className="text-muted">{t('staff.booking.customerNote')}:</span> {b.customer.note}</p>
           )}

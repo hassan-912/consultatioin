@@ -28,11 +28,7 @@ export function BookingMeta({ b, showStatus = true, showAssessment = true }: { b
         <span><span className="text-muted">{t('staff.booking.language')}:</span> <span className="font-semibold">{b.customer.consultationLang === 'ar' ? 'العربية' : 'English'}</span></span>
       </p>
       {b.customer.note && <p dir="auto" className="mt-1 rounded-lg bg-paper px-2.5 py-1.5 text-sm text-slate"><span className="text-muted">{t('staff.booking.customerNote')}:</span> {b.customer.note}</p>}
-      {b.swapReason && (
-        <p dir="auto" className="mt-1 rounded-lg bg-gold-soft px-2.5 py-1.5 text-sm text-ink">
-          <span className="font-semibold">{t('staff.reception.swap.movedFrom', { name: b.swappedFrom ? l(getConsultant(b.swappedFrom).name) : '—' })}</span> {b.swapReason}
-        </p>
-      )}
+      <SwapNote b={b} className="mt-1" />
       {b.salesName && <p className="mt-0.5 inline-flex items-center gap-1.5 text-sm text-slate"><Icon name="user" size={14} className="text-gold-deep" />{t('sales.soldBy', { name: b.salesName })}</p>}
       <p className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm text-muted">
         <span className="inline-flex items-center gap-1"><Icon name={b.format === 'online' ? 'video' : 'building'} size={14} />{l(c.name)}, {l(branchById(b.branchId).name)}</span>
@@ -42,6 +38,17 @@ export function BookingMeta({ b, showStatus = true, showAssessment = true }: { b
       </p>
       {showAssessment && <StaffAssessment bookingId={b.id} />}
     </div>
+  )
+}
+
+/** Why reception moved the client to another consultant, shown to every role that sees the booking. */
+export function SwapNote({ b, className = '' }: { b: Booking; className?: string }) {
+  const { t, l } = useT()
+  if (!b.swapReason) return null
+  return (
+    <p dir="auto" className={`rounded-lg bg-gold-soft px-2.5 py-1.5 text-sm text-ink ${className}`}>
+      <span className="font-semibold">{t('staff.reception.swap.movedFrom', { name: b.swappedFrom ? l(getConsultant(b.swappedFrom).name) : '—' })}</span> {b.swapReason}
+    </p>
   )
 }
 
