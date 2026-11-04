@@ -17,6 +17,7 @@ import { PaymentQueue } from './finance/PaymentQueue'
 import { ConnectionIndicator, NewPaymentNotice, PaymentBadge } from './finance/paymentAlerts'
 import { CheckIn } from './reception/CheckIn'
 import { Arrivals } from './reception/Arrivals'
+import { CustomerSheet } from './reception/CustomerSheet'
 import { MyCalendar, MyBookings, Records } from './consultant/ConsultantDesk'
 import { ClientFile } from './consultant/ClientFile'
 import { ConsultantsAdmin } from './admin/ConsultantsAdmin'
@@ -40,6 +41,7 @@ const views: Record<StaffScreen, () => ReactNode> = {
   payments: () => <PaymentQueue />,
   checkin: () => <CheckIn />,
   arrivals: () => <Arrivals />,
+  customers: () => <CustomerSheet />,
   myCalendar: () => <MyCalendar />,
   myBookings: () => <MyBookings />,
   records: () => <Records />,

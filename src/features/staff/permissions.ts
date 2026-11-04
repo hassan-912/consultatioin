@@ -2,7 +2,7 @@ import type { StaffRole } from '../../domain/types'
 import type { IconName } from '../../components/Icon'
 
 export type StaffScreen =
-  | 'overview' | 'salesLink' | 'myClients' | 'payments' | 'checkin' | 'arrivals' | 'myCalendar' | 'myBookings' | 'records'
+  | 'overview' | 'salesLink' | 'myClients' | 'payments' | 'checkin' | 'arrivals' | 'customers' | 'myCalendar' | 'myBookings' | 'records'
   | 'consultants' | 'availability' | 'bookings' | 'paymentSettings' | 'kpi' | 'reviews' | 'audit' | 'decisions' | 'staffAccounts'
 
 export const screens: { id: StaffScreen; path: string; icon: IconName }[] = [
@@ -12,6 +12,7 @@ export const screens: { id: StaffScreen; path: string; icon: IconName }[] = [
   { id: 'payments', path: 'payments', icon: 'card' },
   { id: 'checkin', path: 'checkin', icon: 'qr' },
   { id: 'arrivals', path: 'arrivals', icon: 'user' },
+  { id: 'customers', path: 'customers', icon: 'table' },
   { id: 'myCalendar', path: 'my-calendar', icon: 'calendar' },
   { id: 'myBookings', path: 'my-bookings', icon: 'list' },
   { id: 'records', path: 'records', icon: 'history' },
@@ -28,8 +29,8 @@ export const screens: { id: StaffScreen; path: string; icon: IconName }[] = [
 
 export const permissions: Record<StaffRole, StaffScreen[]> = {
   admin: screens.map(s => s.id).filter(id => id !== 'salesLink' && id !== 'myClients'),
-  finance: ['overview', 'payments', 'bookings', 'paymentSettings', 'audit'],
-  reception: ['overview', 'checkin', 'arrivals', 'bookings'],
+  finance: ['overview', 'payments', 'customers', 'bookings', 'paymentSettings', 'audit'],
+  reception: ['overview', 'checkin', 'arrivals', 'customers', 'bookings'],
   consultant: ['overview', 'myCalendar', 'myBookings', 'records'],
   sales: ['salesLink', 'myClients'],
 }
