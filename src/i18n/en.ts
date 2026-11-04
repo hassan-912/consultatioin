@@ -486,10 +486,16 @@ export const en = {
       download: 'Download Excel',
       exporting: 'Preparing…',
       exportFailed: 'The Excel file could not be created. Please try again.',
-      searchHint: 'Name, phone, email or booking reference',
+      searchHint: 'Any value in the sheet: name, phone, email, date, consultant, sales person, status, booking ref…',
       empty: 'No customers match this search.',
       emptyToday: 'No customers booked for today yet.',
       showing: '{n} customers shown',
+      filter: {
+        open: 'Filter {column}', active: 'Filter {column} (on)', title: 'Filter: {column}', search: 'Search {column}',
+        selectAll: 'Select all', none: 'Nothing matches.', clear: 'Clear', done: 'Done',
+        noSales: '(No sales person)', noPayment: '(Not paid yet)',
+        activeList: 'Filtered by', remove: 'Remove the {column} filter', clearAll: 'Clear all filters',
+      },
       stats: { customers: 'Customers', awaiting: 'Awaiting payment check' },
       cols: {
         name: 'Customer', phone: 'Phone', email: 'Email', when: 'Appointment', date: 'Date', time: 'Time', place: 'Branch',

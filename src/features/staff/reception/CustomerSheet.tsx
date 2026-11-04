@@ -6,23 +6,27 @@ import { dateInZone } from '../../../domain/time'
 import { normalizeDigits } from '../../../domain/phone'
 import type { BookingStatus } from '../../../domain/types'
 import { Button, Notice, StatusChip } from '../../../components/ui'
-import { SelectField, TextField } from '../../../components/fields'
+import { TextField } from '../../../components/fields'
 import { Icon } from '../../../components/Icon'
 import { ScreenTitle } from '../StaffApp'
 import { Empty } from '../common'
-import { matches, NOT_CUSTOMERS, sortRows, toRow, type CustomerRow, type SortKey } from './customerRows'
+import { applyFilters, FILTER_KEYS, filterValue, matches, NOT_CUSTOMERS, sortRows, toRow, type CustomerRow, type FilterKey, type Filters, type SortKey } from './customerRows'
+import { ColumnFilter, type FilterOption } from './ColumnFilter'
 
-const STATUSES: BookingStatus[] = ['on-hold', 'confirmed', 'checked-in', 'completed', 'no-show', 'rejected', 'wrong-amount', 'duplicate', 'late-transfer', 'cancelled']
+const COLUMN: Record<FilterKey, 'when' | 'place' | 'consultant' | 'sales' | 'status' | 'payment' | 'reference'> = {
+  day: 'when', place: 'place', consultant: 'consultant', sales: 'sales', status: 'status', payment: 'payment', reference: 'reference',
+}
 
 /**
  * Reception and finance: every customer as a spreadsheet, today's or all of them, with contact details, consultant
- * and sales person. Searchable, sortable, and downloadable as an Excel file of exactly what is on screen.
+ * and sales person. Search finds any cell; every column except the customer's own details has an Excel-style filter.
+ * Sortable, and downloadable as an Excel file of exactly what is on screen.
  */
 export function CustomerSheet() {
   const { t, l, lang } = useT()
   const bookings = useStaffBookings()
   const [view, setView] = useState<'today' | 'all'>('today')
-  const [status, setStatus] = useState<BookingStatus | 'all'>('all')
+  const [filters, setFilters] = useState<Filters>({})
   const [q, setQ] = useState('')
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 } | null>(null)
   const [exporting, setExporting] = useState(false)
@@ -33,10 +37,26 @@ export function CustomerSheet() {
   const source = view === 'today' ? today : customers
   const query = normalizeDigits(q).trim().toLocaleLowerCase()
   const statusLabel = (s: BookingStatus) => t(`status.${s}`)
-  const rows = sortRows(
-    source.filter(b => status === 'all' || b.status === status).map(b => toRow(b, l, lang, t('format.onlineShort'))).filter(r => matches(r, query)),
-    sort?.key ?? 'when', sort?.dir ?? (view === 'today' ? 1 : -1), statusLabel,
-  )
+  const searched = source.map(b => toRow(b, l, lang, t('format.onlineShort'))).filter(r => matches(r, query, statusLabel))
+  const rows = sortRows(applyFilters(searched, filters), sort?.key ?? 'when', sort?.dir ?? (view === 'today' ? 1 : -1), statusLabel)
+  const activeFilters = FILTER_KEYS.filter(k => filters[k])
+  // Like Excel: each column offers the values left after the search and the other columns' filters.
+  const optionsFor = (key: FilterKey): FilterOption[] => {
+    const counts = new Map<string, { label: string; count: number; sortBy: string }>()
+    for (const r of applyFilters(searched, filters, key)) {
+      const value = filterValue(r, key)
+      const label = key === 'status' ? statusLabel(r.status) : key === 'day' ? r.date
+        : value || t(key === 'sales' ? 'staff.customers.filter.noSales' : 'staff.customers.filter.noPayment')
+      const entry = counts.get(value) ?? { label, count: 0, sortBy: key === 'day' ? value : (value ? '0' : '1') + label.toLocaleLowerCase() }
+      entry.count++
+      counts.set(value, entry)
+    }
+    // Ticked values that no longer appear stay listed, so they can still be unticked.
+    for (const v of filters[key] ?? []) if (!counts.has(v)) counts.set(v, { label: key === 'status' ? statusLabel(v as BookingStatus) : v || '—', count: 0, sortBy: v })
+    return [...counts.entries()].sort((a, b) => a[1].sortBy.localeCompare(b[1].sortBy)).map(([value, e]) => ({ value, label: e.label, count: e.count }))
+  }
+  const setFilter = (key: FilterKey, next: string[] | undefined) => setFilters(f => ({ ...f, [key]: next }))
+  const columnName = (key: FilterKey) => t(`staff.customers.cols.${COLUMN[key]}`)
   const count = (list: typeof source, ...s: BookingStatus[]) => list.filter(b => s.includes(b.status)).length
 
   const toggle = (key: SortKey) => setSort(cur => cur?.key === key ? { key, dir: cur.dir === 1 ? -1 : 1 } : { key, dir: 1 })
@@ -81,38 +101,58 @@ export function CustomerSheet() {
         ))}
       </dl>
 
-      <div className="mb-4 grid gap-3 sm:grid-cols-[1fr_240px]">
+      <div className="mb-4">
         <TextField label={t('common.search')} hint={t('staff.customers.searchHint')} value={q} onChange={e => setQ(e.target.value)} />
-        <SelectField label={t('staff.admin.filterStatus')} value={status} onChange={e => setStatus(e.target.value as BookingStatus | 'all')}>
-          <option value="all">{t('common.all')}</option>
-          {STATUSES.map(s => <option key={s} value={s}>{t(`status.${s}`)}</option>)}
-        </SelectField>
       </div>
+
+      {activeFilters.length > 0 && (
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <span className="text-sm font-semibold text-muted">{t('staff.customers.filter.activeList')}:</span>
+          {activeFilters.map(k => (
+            <button key={k} type="button" onClick={() => setFilter(k, undefined)}
+              aria-label={t('staff.customers.filter.remove', { column: columnName(k) })}
+              className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-slate px-3 text-sm font-semibold text-white hover:bg-ink">
+              <Icon name="filter" size={13} />{columnName(k)} <span className="rounded-full bg-white/15 px-1.5 text-xs tabular-nums">{filters[k]!.length}</span>
+              <Icon name="x" size={13} />
+            </button>
+          ))}
+          <button type="button" onClick={() => setFilters({})} className="min-h-9 px-2 text-sm font-semibold text-slate underline-offset-4 hover:underline">
+            {t('staff.customers.filter.clearAll')}
+          </button>
+        </div>
+      )}
 
       {exportFailed && <div className="mb-4"><Notice tone="bad">{t('staff.customers.exportFailed')}</Notice></div>}
 
-      {rows.length ? (
-        <Sheet rows={rows} sort={sort ?? { key: 'when', dir: view === 'today' ? 1 : -1 }} onSort={toggle} />
+      {source.length ? (
+        // The header stays even when nothing matches, so the filters that hid everything can be changed back.
+        <Sheet rows={rows} sort={sort ?? { key: 'when', dir: view === 'today' ? 1 : -1 }} onSort={toggle} empty={t('staff.customers.empty')}
+          filter={key => <ColumnFilter column={columnName(key)} options={optionsFor(key)} selected={filters[key]} onChange={next => setFilter(key, next)} />} />
       ) : (
-        <Empty>{view === 'today' && !query && status === 'all' ? t('staff.customers.emptyToday') : t('staff.customers.empty')}</Empty>
+        <Empty>{view === 'today' ? t('staff.customers.emptyToday') : t('staff.customers.empty')}</Empty>
       )}
       {rows.length > 0 && <p className="mt-3 text-xs text-muted">{t('staff.customers.showing', { n: rows.length })}</p>}
     </>
   )
 }
 
-function Sheet({ rows, sort, onSort }: { rows: CustomerRow[]; sort: { key: SortKey; dir: 1 | -1 }; onSort: (k: SortKey) => void }) {
+function Sheet({ rows, sort, onSort, filter, empty }: {
+  rows: CustomerRow[]; sort: { key: SortKey; dir: 1 | -1 }; onSort: (k: SortKey) => void; filter: (key: FilterKey) => ReactNode; empty: string
+}) {
   const { t } = useT()
-  const head = (label: ReactNode, key?: SortKey, className = '') => {
+  const head = (label: ReactNode, key?: SortKey, className = '', filterKey?: FilterKey) => {
     const active = key && sort.key === key
     return (
       <th scope="col" aria-sort={active ? (sort.dir === 1 ? 'ascending' : 'descending') : undefined}
         className={`border-b border-e border-line bg-paper px-3 py-2.5 text-start text-xs font-semibold whitespace-nowrap text-slate ${className}`}>
-        {key ? (
-          <button type="button" onClick={() => onSort(key)} className="inline-flex min-h-8 items-center gap-1 hover:text-ink">
-            {label}<span aria-hidden className={active ? 'text-gold-deep' : 'text-mist'}>{active ? (sort.dir === 1 ? '▲' : '▼') : '↕'}</span>
-          </button>
-        ) : label}
+        <span className="flex items-center justify-between gap-1">
+          {key ? (
+            <button type="button" onClick={() => onSort(key)} className="inline-flex min-h-8 items-center gap-1 hover:text-ink">
+              {label}<span aria-hidden className={active ? 'text-gold-deep' : 'text-mist'}>{active ? (sort.dir === 1 ? '▲' : '▼') : '↕'}</span>
+            </button>
+          ) : <span className="inline-flex min-h-8 items-center">{label}</span>}
+          {filterKey && filter(filterKey)}
+        </span>
       </th>
     )
   }
@@ -126,13 +166,13 @@ function Sheet({ rows, sort, onSort }: { rows: CustomerRow[]; sort: { key: SortK
             {head(t('staff.customers.cols.name'), 'name', 'sticky start-12 z-30')}
             {head(t('staff.customers.cols.phone'))}
             {head(t('staff.customers.cols.email'))}
-            {head(t('staff.customers.cols.when'), 'when')}
-            {head(t('staff.customers.cols.place'))}
-            {head(t('staff.customers.cols.consultant'), 'consultant')}
-            {head(t('staff.customers.cols.sales'), 'sales')}
-            {head(t('staff.customers.cols.status'), 'status')}
-            {head(t('staff.customers.cols.payment'))}
-            {head(t('staff.customers.cols.reference'))}
+            {head(t('staff.customers.cols.when'), 'when', '', 'day')}
+            {head(t('staff.customers.cols.place'), undefined, '', 'place')}
+            {head(t('staff.customers.cols.consultant'), 'consultant', '', 'consultant')}
+            {head(t('staff.customers.cols.sales'), 'sales', '', 'sales')}
+            {head(t('staff.customers.cols.status'), 'status', '', 'status')}
+            {head(t('staff.customers.cols.payment'), undefined, '', 'payment')}
+            {head(t('staff.customers.cols.reference'), undefined, '', 'reference')}
           </tr>
         </thead>
         <tbody>
@@ -151,6 +191,9 @@ function Sheet({ rows, sort, onSort }: { rows: CustomerRow[]; sort: { key: SortK
               <td className={`${cell} group-even:bg-[#fafaf7] group-hover:bg-gold-soft`}><bdi dir="ltr" className="font-display text-xs font-semibold tracking-wider text-slate">{r.reference}</bdi></td>
             </tr>
           ))}
+          {!rows.length && (
+            <tr><td colSpan={11} className="px-4 py-10 text-start text-sm text-muted">{empty}</td></tr>
+          )}
         </tbody>
       </table>
     </div>

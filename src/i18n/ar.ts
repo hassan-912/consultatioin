@@ -488,10 +488,16 @@ export const ar: Dict = {
       download: 'تحميل Excel',
       exporting: 'جارٍ التجهيز…',
       exportFailed: 'تعذّر إنشاء ملف Excel. حاول مرة أخرى.',
-      searchHint: 'الاسم أو رقم الهاتف أو البريد أو رقم الحجز',
+      searchHint: 'أي قيمة في الجدول: الاسم، الهاتف، البريد، التاريخ، المستشار، مسؤول المبيعات، الحالة، رقم الحجز…',
       empty: 'لا يوجد عملاء مطابقون للبحث.',
       emptyToday: 'لا يوجد عملاء محجوزون اليوم حتى الآن.',
       showing: 'عدد العملاء المعروضين: {n}',
+      filter: {
+        open: 'تصفية {column}', active: 'تصفية {column} (مفعّلة)', title: 'تصفية: {column}', search: 'بحث في {column}',
+        selectAll: 'تحديد الكل', none: 'لا توجد نتائج.', clear: 'مسح', done: 'تم',
+        noSales: '(بدون مسؤول مبيعات)', noPayment: '(لم يُدفع بعد)',
+        activeList: 'التصفية حسب', remove: 'إزالة تصفية {column}', clearAll: 'مسح كل التصفيات',
+      },
       stats: { customers: 'العملاء', awaiting: 'بانتظار مراجعة الدفع' },
       cols: {
         name: 'العميل', phone: 'الهاتف', email: 'البريد الإلكتروني', when: 'الموعد', date: 'التاريخ', time: 'الوقت', place: 'الفرع',

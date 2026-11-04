@@ -22,7 +22,7 @@ const mk = (id: string, name: string, over: Partial<Booking> & { day?: string; m
   }
 }
 const open = () => render(<MemoryRouter initialEntries={['/staff/customers']}><Routes><Route path="/staff/*" element={<StaffApp />} /></Routes></MemoryRouter>)
-const names = () => screen.getAllByRole('rowheader').map(c => c.textContent)
+const names = () => screen.queryAllByRole('rowheader').map(c => c.textContent)
 
 beforeEach(() => {
   writeXlsxFile.mockClear()
@@ -58,20 +58,54 @@ test('today’s customers in time order with contact, consultant and sales perso
   expect(screen.queryByText('Expired Hold')).toBeNull()
 })
 
-test('all customers, search, status filter and sorting', async () => {
+test('all customers, sorting, and search across any value in the sheet', async () => {
   loginAs('finance')
   open()
   fireEvent.click(await screen.findByRole('tab', { name: /all customers 3/i }))
   expect(names()).toEqual(['Sara Ali', 'Omar Adel', 'Old Client']) // newest first
   fireEvent.click(screen.getByRole('button', { name: /^customer/i }))
   expect(names()).toEqual(['Old Client', 'Omar Adel', 'Sara Ali'])
-  fireEvent.change(screen.getByLabelText('Search'), { target: { value: '0100 123' } })
-  expect(names()).toHaveLength(3) // phone digits match
-  fireEvent.change(screen.getByLabelText('Search'), { target: { value: 'sara' } })
+  const search = (value: string) => fireEvent.change(screen.getByLabelText('Search'), { target: { value } })
+  search('0100 123'); expect(names()).toHaveLength(3) // phone digits
+  search('sara'); expect(names()).toEqual(['Sara Ali']) // name
+  search('aya ash'); expect(names()).toEqual(['Sara Ali']) // sales person
+  search('ahmed salama'); expect(names()).toEqual(['Sara Ali']) // consultant
+  search('checked in'); expect(names()).toEqual(['Omar Adel']) // status label
+  search('mg-c'); expect(names()).toEqual(['Old Client']) // booking reference
+  search('b@example'); expect(names()).toEqual(['Omar Adel']) // email
+})
+
+test('Excel-style column filters: tick values, chips show them, clear restores everything', async () => {
+  loginAs('reception')
+  open()
+  fireEvent.click(await screen.findByRole('tab', { name: /all customers 3/i }))
+  // Customer details have no filter; the other columns do.
+  expect(screen.queryByRole('button', { name: 'Filter Customer' })).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Filter Phone' })).toBeNull()
+  for (const c of ['Appointment', 'Branch', 'Consultant', 'Sales person', 'Status', 'Paid by', 'Booking ref']) expect(screen.getByRole('button', { name: `Filter ${c}` })).toBeInTheDocument()
+
+  fireEvent.click(screen.getByRole('button', { name: 'Filter Consultant' }))
+  const menu = screen.getByRole('dialog', { name: 'Filter: Consultant' })
+  expect(within(menu).getAllByRole('checkbox').map(c => c.closest('label')!.textContent)).toEqual(['Select all', 'Ahmed Salama1', 'Mohamed Gamal2'])
+  fireEvent.click(within(menu).getByRole('checkbox', { name: /mohamed gamal/i }))
   expect(names()).toEqual(['Sara Ali'])
-  fireEvent.change(screen.getByLabelText('Search'), { target: { value: '' } })
-  fireEvent.change(screen.getByLabelText('Filter by status'), { target: { value: 'checked-in' } })
-  expect(names()).toEqual(['Omar Adel'])
+  fireEvent.click(within(menu).getByRole('button', { name: 'Done' }))
+  expect(screen.getByRole('button', { name: 'Filter Consultant (on)' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Remove the Consultant filter' })).toHaveTextContent('Consultant 1')
+
+  // Sales person filter lists the empty value too.
+  fireEvent.click(screen.getByRole('button', { name: 'Remove the Consultant filter' }))
+  expect(names()).toHaveLength(3)
+  fireEvent.click(screen.getByRole('button', { name: 'Filter Sales person' }))
+  const sales = screen.getByRole('dialog', { name: 'Filter: Sales person' })
+  fireEvent.click(within(sales).getByRole('checkbox', { name: 'Select all' }))
+  expect(names()).toEqual([])
+  fireEvent.click(within(sales).getByRole('checkbox', { name: /no sales person/i }))
+  expect(names()).toEqual(['Omar Adel', 'Old Client'])
+  fireEvent.keyDown(document, { key: 'Escape' })
+  expect(screen.queryByRole('dialog')).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: 'Clear all filters' }))
+  expect(names()).toHaveLength(3)
 })
 
 test('Download Excel writes exactly the rows on screen, phones kept as text', async () => {
