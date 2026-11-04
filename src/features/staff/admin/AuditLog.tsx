@@ -35,7 +35,10 @@ export function AuditLog() {
                   <td className="px-4 py-2.5 font-semibold">{actor(e.actor)}</td>
                   <td className="px-4 py-2.5">{actionKey(e.action)}</td>
                   <td className="px-4 py-2.5"><bdi dir="ltr">{e.bookingRef ?? '—'}</bdi></td>
-                  <td className="px-4 py-2.5 text-muted">{[label(e.from), label(e.to)].filter(Boolean).join(' → ')}</td>
+                  <td className="px-4 py-2.5 text-muted">
+                    {[label(e.from), label(e.to)].filter(Boolean).join(' → ')}
+                    {e.note && <span dir="auto" className="mt-0.5 block text-ink">{t('staff.admin.reason')}: {e.note}</span>}
+                  </td>
                 </tr>
               ))}
             </tbody>

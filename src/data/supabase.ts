@@ -8,7 +8,7 @@ import type { ConsultationRecord } from '../store/useAppStore'
 import type { StoredAssessment } from '../assessment/questions'
 
 type Row = Record<string, any> // JSON returned by RPCs and explicitly selected table columns.
-export const STAFF_BOOKING_COLUMNS = 'id,reference,consultant_id,branch_id,format,starts_at,ends_at,tz,price_amount,price_currency,customer_name,customer_phone,customer_email,channel,lang,program,note,status,hold_expires_at,reject_reason,meeting_url,checked_in_at,ticket_sent_at,ticket_sent_via,sales_name,created_at'
+export const STAFF_BOOKING_COLUMNS = 'id,reference,consultant_id,branch_id,format,starts_at,ends_at,tz,price_amount,price_currency,customer_name,customer_phone,customer_email,channel,lang,program,note,status,hold_expires_at,reject_reason,meeting_url,checked_in_at,ticket_sent_at,ticket_sent_via,sales_name,swap_reason,swapped_from,created_at'
 const mapReview = (r: Row): Review => ({ rating: Number(r.rating), comment: r.comment ?? '', name: r.name, at: Date.parse(r.created_at) })
 const ms = (v: unknown) => v == null ? undefined : Date.parse(String(v))
 export function mapBooking(r: Row, audience: 'customer' | 'staff' = 'customer'): Booking {
@@ -24,7 +24,7 @@ export function mapBooking(r: Row, audience: 'customer' | 'staff' = 'customer'):
     customer: { name: c.name, phone: c.phone, email: c.email ?? '', channel: c.channel, consultationLang: c.lang, program: c.program ?? '', note: c.note ?? '' } as CustomerDetails,
     holdExpiresAt: ms(r.hold_expires_at) ?? 0, createdAt: ms(r.created_at)!, rejectReason: r.reject_reason ?? undefined,
     checkedInAt: ms(r.checked_in_at), ticketSentAt: ms(r.ticket_sent_at), ticketSentVia: r.ticket_sent_via ?? undefined, meetingUrl,
-    salesName: r.sales_name ?? undefined,
+    salesName: r.sales_name ?? undefined, swapReason: r.swap_reason ?? undefined, swappedFrom: r.swapped_from ?? undefined,
     payment: p ? { method: p.method, txnRef: p.txn_ref, submittedAt: ms(p.submitted_at)!, hasReceipt: p.has_receipt ?? !!p.receipt_path, receiptPath: p.receipt_path ?? undefined } : undefined,
   }
 }
@@ -198,9 +198,9 @@ export function createSupabaseRepo(clients: BackendClients): BookingRepo {
     },
     async myReferralCode() { await requireStaff(); return result<string>(staff.rpc('my_referral_code')) },
     async setReferral(token, code) { return result<boolean>(customer.rpc('set_booking_referral', { p_manage_token: token, p_code: code })) },
-    async reassignConsultant(id, consultantId) {
+    async reassignConsultant(id, consultantId, reason) {
       await requireStaff()
-      await result(staff.rpc('staff_reassign_consultant', { p_booking_id: id, p_consultant_id: consultantId }))
+      await result(staff.rpc('staff_reassign_consultant', { p_booking_id: id, p_consultant_id: consultantId, p_reason: reason.trim() }))
       changed()
       return staffRow(id)
     },
@@ -244,11 +244,11 @@ export function createSupabaseRepo(clients: BackendClients): BookingRepo {
     },
     async staffAudit() {
       await requireStaff()
-      const rows = await result<Row[]>(staff.from('audit_log').select('at,actor_kind,booking_id,action,from_value,to_value').order('at', { ascending: false }).limit(500))
+      const rows = await result<Row[]>(staff.from('audit_log').select('at,actor_kind,booking_id,action,from_value,to_value,note').order('at', { ascending: false }).limit(500))
       const ids = [...new Set(rows.map(r => r.booking_id).filter(Boolean))]
       const refs = ids.length ? await result<Row[]>(staff.from('bookings').select('id,reference').in('id', ids)) : []
       const byId = new Map(refs.map(r => [r.id, r.reference]))
-      return rows.map(r => ({ at: ms(r.at)!, actor: r.actor_kind, bookingRef: byId.get(r.booking_id), action: r.action, from: r.from_value ?? undefined, to: r.to_value ?? undefined })) as AuditEntry[]
+      return rows.map(r => ({ at: ms(r.at)!, actor: r.actor_kind, bookingRef: byId.get(r.booking_id), action: r.action, from: r.from_value ?? undefined, to: r.to_value ?? undefined, note: r.note ?? undefined })) as AuditEntry[]
     },
     async staffSchedules() {
       await requireStaff()

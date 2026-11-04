@@ -101,7 +101,17 @@ test('reception can change the consultant after a scan (first option) or keep th
   expect(within(busy).getByText(/busy at this time/i)).toBeInTheDocument()
   expect(screen.queryByRole('button', { name: /ahmed tarek/i })).toBeNull() // other branch
   fireEvent.click(screen.getByRole('button', { name: /ahmed khalil/i }))
+  // A reason is required before the change goes through.
+  expect(screen.getByText(/moving the client from mohamed gamal to ahmed khalil/i)).toBeInTheDocument()
+  const confirm = screen.getByRole('button', { name: /confirm change/i })
+  expect(confirm).toBeDisabled()
+  expect(useAppStore.getState().bookings.s1.consultantId).toBe('mohamed-gamal')
+  fireEvent.click(screen.getByRole('button', { name: /isn’t free at this time/i }))
+  expect(screen.getByLabelText(/why are you changing the consultant/i)).toHaveValue('The consultant isn’t free at this time')
+  fireEvent.click(confirm)
   expect(await screen.findByText(/changed from mohamed gamal to ahmed khalil/i)).toBeInTheDocument()
-  expect(useAppStore.getState().bookings.s1.consultantId).toBe('ahmed-khalil')
-  expect(useAppStore.getState().audit[0].action).toBe('consultant-changed')
+  const moved = useAppStore.getState().bookings.s1
+  expect([moved.consultantId, moved.swappedFrom, moved.swapReason]).toEqual(['ahmed-khalil', 'mohamed-gamal', 'The consultant isn’t free at this time'])
+  expect(useAppStore.getState().audit[0]).toMatchObject({ action: 'consultant-changed', note: 'The consultant isn’t free at this time' })
+  expect(screen.getByText(/moved from mohamed gamal:/i)).toBeInTheDocument()
 }, 20000)

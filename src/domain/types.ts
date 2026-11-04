@@ -151,6 +151,9 @@ export interface Booking {
   salesName?: string
   /** Prototype only: the referral code the booking came in with. */
   salesCode?: string
+  /** Set when reception moved the client to another consultant: who they were booked with, and why. */
+  swappedFrom?: string
+  swapReason?: string
   createdAt: number
   demo?: boolean
 }
@@ -187,4 +190,6 @@ export interface AuditEntry {
   action: string
   from?: string
   to?: string
+  /** Free-text reason, e.g. why reception changed the consultant. */
+  note?: string
 }

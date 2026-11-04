@@ -152,16 +152,19 @@ export function createLocalRepo(): BookingRepo {
       useAppStore.setState(s => ({ bookings: { ...s.bookings, [b.id]: { ...b, salesCode: code, salesName: account?.username ?? `Sales ${code}` } } }))
       return true
     },
-    async reassignConsultant(id, consultantId) {
+    async reassignConsultant(id, consultantId, reason) {
       const b = get().bookings[id]
       if (!b) throw new RepoError('NOT_FOUND')
+      const why = reason.trim()
+      if (why.length < 3 || why.length > 300) throw new RepoError('INVALID_INPUT')
       if (!['confirmed', 'checked-in'].includes(b.status)) throw new RepoError('INVALID_TRANSITION')
       const target = consultants.find(c => c.id === consultantId)
       if (!target || (b.format === 'in-person' && target.branchId !== b.branchId)) throw new RepoError('INVALID_INPUT')
       if (consultantBusy(Object.values(get().bookings), consultantId, b)) throw new SlotTaken()
-      const next = { ...b, consultantId }
+      if (consultantId === b.consultantId) return b
+      const next = { ...b, consultantId, swappedFrom: b.consultantId, swapReason: why }
       useAppStore.setState(s => ({ bookings: { ...s.bookings, [id]: next } }))
-      get().addAudit({ actor: get().staffSession?.role ?? 'reception', action: 'consultant-changed', bookingRef: b.reference, from: b.consultantId, to: consultantId })
+      get().addAudit({ actor: get().staffSession?.role ?? 'reception', action: 'consultant-changed', bookingRef: b.reference, from: b.consultantId, to: consultantId, note: why })
       return next
     },
     async staffReviews() {

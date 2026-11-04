@@ -1,7 +1,7 @@
 -- 0021/0022: sales referral links, sales visibility, and reception's consultant swap.
 begin;
 set local search_path = public, extensions;
-select plan(24);
+select plan(25);
 
 create function pg_temp.q(uid uuid, sql text) returns text language plpgsql as $$
 declare r text;
@@ -69,12 +69,13 @@ select is(pg_temp.q('00000000-0000-0000-0000-0000000000f4', 'select count(*)::te
 select is(pg_temp.q('00000000-0000-0000-0000-0000000000f5', $q$select sales_name from public.bookings where reference = 'SR-1'$q$), 'Mona Sales', 'finance sees the sales name');
 
 -- Consultant swap
-select is(pg_temp.q('00000000-0000-0000-0000-0000000000f5', $q$select public.staff_reassign_consultant('a0000000-0000-0000-0000-000000000002', 'ahmed-khalil')$q$), 'ERR:P0001:FORBIDDEN', 'finance cannot swap');
-select is(pg_temp.q('00000000-0000-0000-0000-0000000000f4', $q$select public.staff_reassign_consultant('a0000000-0000-0000-0000-000000000002', 'ahmed-tarek')$q$), 'ERR:P0001:INVALID_INPUT', 'in-person stays in its branch');
-select is(pg_temp.q('00000000-0000-0000-0000-0000000000f4', $q$select public.staff_reassign_consultant('a0000000-0000-0000-0000-000000000002', 'mohamed-gamal')$q$), 'ERR:P0001:SLOT_TAKEN', 'busy consultant refused');
-select is(pg_temp.q('00000000-0000-0000-0000-0000000000f4', $q$select public.staff_reassign_consultant('a0000000-0000-0000-0000-000000000002', 'ahmed-khalil')$q$), 'OK', 'reception swaps to a free consultant');
-select is((select consultant_id from bookings where reference = 'SR-2'), 'ahmed-khalil', 'booking moved');
-select is((select count(*)::int from audit_log where action = 'consultant-changed'), 1, 'swap audited');
+select is(pg_temp.q('00000000-0000-0000-0000-0000000000f5', $q$select public.staff_reassign_consultant('a0000000-0000-0000-0000-000000000002', 'ahmed-khalil', 'Consultant isn''t free at this time')$q$), 'ERR:P0001:FORBIDDEN', 'finance cannot swap');
+select is(pg_temp.q('00000000-0000-0000-0000-0000000000f4', $q$select public.staff_reassign_consultant('a0000000-0000-0000-0000-000000000002', 'ahmed-tarek', 'Consultant isn''t free at this time')$q$), 'ERR:P0001:INVALID_INPUT', 'in-person stays in its branch');
+select is(pg_temp.q('00000000-0000-0000-0000-0000000000f4', $q$select public.staff_reassign_consultant('a0000000-0000-0000-0000-000000000002', 'mohamed-gamal', 'Consultant isn''t free at this time')$q$), 'ERR:P0001:SLOT_TAKEN', 'busy consultant refused');
+select is(pg_temp.q('00000000-0000-0000-0000-0000000000f4', $q$select public.staff_reassign_consultant('a0000000-0000-0000-0000-000000000002', 'ahmed-khalil', '  ')$q$) like 'ERR:P0001:INVALID_INPUT%', true, 'a reason is required');
+select is(pg_temp.q('00000000-0000-0000-0000-0000000000f4', $q$select public.staff_reassign_consultant('a0000000-0000-0000-0000-000000000002', 'ahmed-khalil', ' Consultant isn''t free at this time ')$q$), 'OK', 'reception swaps to a free consultant');
+select is((select consultant_id || '|' || swapped_from || '|' || swap_reason from bookings where reference = 'SR-2'), 'ahmed-khalil|ahmed-salama|Consultant isn''t free at this time', 'booking moved, with who it came from and why');
+select is((select count(*)::int || '|' || max(note) from audit_log where action = 'consultant-changed'), '1|Consultant isn''t free at this time', 'swap audited with the reason');
 
 select * from finish();
 rollback;
