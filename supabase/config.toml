@@ -426,3 +426,8 @@ verify_jwt = false
 # database access or send, so the gateway JWT check is off.
 [functions.send-ticket-email]
 verify_jwt = false
+
+# EasyKash calls this after each payment. It checks the HMAC signature itself (EASYKASH_HMAC_SECRET), so the
+# gateway JWT check is off; a plain GET answers 200 for EasyKash's URL check.
+[functions.easykash-webhook]
+verify_jwt = false
