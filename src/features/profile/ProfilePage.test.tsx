@@ -15,29 +15,21 @@ beforeEach(() => {
   useAppStore.setState({ bookings: {}, records: {}, reviews: {}, seeded: true, approvalMinSample: null })
 })
 
-test('placeholders for missing bio, video, feedback; approval hidden below sample', async () => {
+test('placeholders for missing bio, video, feedback', async () => {
   open('ahmed-khalil')
   expect(screen.getByText('Biography under processing')).toBeInTheDocument()
   expect(screen.getAllByText('Video pending').length).toBeGreaterThan(0)
   expect(await screen.findByText('No verified feedback yet')).toBeInTheDocument()
-  expect(screen.getByText(/not enough decided applications/i)).toBeInTheDocument()
 })
 
-test('Mohamed Gamal shows title and a published approval rate with method and disclaimer', () => {
+test('profile hides internal stats: activity, KPI score and approval rate', () => {
   open('mohamed-gamal')
   expect(screen.getByText('Senior Immigration Specialist & Contract Manager')).toBeInTheDocument()
-  const approval = screen.getByRole('region', { name: /historical application approvals/i })
-  expect(within(approval).getByText('75%')).toBeInTheDocument()
-  expect(within(approval).getByText(/do not guarantee future approval/i)).toBeInTheDocument()
-})
-
-test('KPI score, customer feedback and approval rate are separate regions', () => {
-  open('mohamed-gamal')
-  const kpi = screen.getByRole('region', { name: /company performance score/i })
-  const feedback = screen.getByRole('region', { name: /verified customer feedback/i })
-  const approval = screen.getByRole('region', { name: /historical application approvals/i })
-  expect(new Set([kpi, feedback, approval]).size).toBe(3)
-  expect(within(kpi).queryByText(/75%/)).toBeNull()
+  expect(screen.getByRole('region', { name: /verified customer feedback/i })).toBeInTheDocument()
+  expect(screen.queryByText(/consultation activity/i)).toBeNull()
+  expect(screen.queryByText(/years of experience/i)).toBeNull()
+  expect(screen.queryByText(/company performance score/i)).toBeNull()
+  expect(screen.queryByText(/historical application approvals/i)).toBeNull()
 })
 
 test('video player exposes captions and playback controls', () => {

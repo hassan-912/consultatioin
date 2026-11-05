@@ -5,9 +5,8 @@ import { branchById } from '../../config/branches'
 import { programName } from '../../config/programs'
 import { formatInZone, dateInZone } from '../../domain/time'
 import { useAppStore } from '../../store/useAppStore'
-import { useAvailability, useConsultantStats, shortestDuration } from '../shared/availability'
-import { Avatar, CountUp } from '../../components/widgets'
-import { ScoreBar } from '../../components/ScoreBar'
+import { useAvailability, shortestDuration } from '../shared/availability'
+import { Avatar } from '../../components/widgets'
 import { ButtonLink } from '../../components/ui'
 import { Icon } from '../../components/Icon'
 import { DataStatus } from '../../data/feedback'
@@ -35,7 +34,6 @@ export function ConsultantCard({ consultant: c }: { consultant: Consultant }) {
   const filters = useAppStore(s => s.filters)
   const branch = branchById(c.branchId)
   const av = useAvailability(c.id, filters.date, filters.format)
-  const stats = useConsultantStats(c)
   const startBooking = useStartBooking()
   const nameId = `c-${c.id}`
 
@@ -62,25 +60,6 @@ export function ConsultantCard({ consultant: c }: { consultant: Consultant }) {
               <li key={p} className="rounded-full bg-paper px-2.5 py-1 text-xs font-semibold text-slate ring-1 ring-line">{l(programName(p))}</li>
             ))}
           </ul>
-
-          <dl className="mt-4 grid grid-cols-3 gap-3 border-t border-line pt-4">
-            <div>
-              <dt className="text-xs text-muted">{t('common.yearsOfExperience')}</dt>
-              <dd dir="ltr" className="mt-0.5 text-start font-display text-xl font-semibold text-ink rtl:text-end">{experienceText(c, lang)}</dd>
-            </div>
-            <div>
-              <dt className="text-xs text-muted">{t('common.completed')}</dt>
-              <dd className="mt-0.5 font-display text-xl font-semibold text-ink"><CountUp value={stats.total} /></dd>
-            </div>
-            <div>
-              <dt className="text-xs text-muted">{t('common.thisMonth')}</dt>
-              <dd className="mt-0.5 font-display text-xl font-semibold text-ink"><CountUp value={stats.thisMonth} /></dd>
-            </div>
-          </dl>
-          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1">
-            <span className="text-xs text-muted">{t('common.kpiScore')}</span>
-            <ScoreBar score={stats.kpi} size="sm" />
-          </div>
         </div>
       </div>
 

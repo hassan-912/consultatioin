@@ -4,36 +4,29 @@ import { useAppStore } from '../../store/useAppStore'
 import { getConsultant } from '../../store/actions'
 import { consultants } from '../../config/consultants'
 import { branchById } from '../../config/branches'
-import { kpiConfig } from '../../config/kpi'
 import { programName } from '../../config/programs'
 import { Header } from '../../components/Header'
 import { Footer } from '../../components/Footer'
-import { Avatar, CountUp } from '../../components/widgets'
-import { ScoreBar } from '../../components/ScoreBar'
+import { Avatar } from '../../components/widgets'
 import { Button, DemoBadge, Placeholder } from '../../components/ui'
 import { Icon } from '../../components/Icon'
-import { useConsultantStats, useOutcomes } from '../shared/availability'
-import { experienceText, useStartBooking } from '../directory/ConsultantCard'
+import { useStartBooking } from '../directory/ConsultantCard'
 import { VideoPlayer } from './VideoPlayer'
-import { ApprovalStats } from './ApprovalStats'
 import { SlotCalendar } from './SlotCalendar'
 import { DirectoryPage } from '../directory/DirectoryPage'
 import { ConsultantFeedback } from '../reviews/Reviews'
 
 export function ProfilePage() {
   const { id = '' } = useParams()
-  const { t, l, lang } = useT()
+  const { t, l } = useT()
   const overrides = useAppStore(s => s.consultantOverrides)
-  const minSample = useAppStore(s => s.approvalMinSample) ?? kpiConfig.approvalMinSample
   if (!consultants.some(c => c.id === id)) return <DirectoryPage />
   const c = getConsultant(id, overrides)
-  return <Profile key={c.id} c={c} t={t} l={l} lang={lang} minSample={minSample} />
+  return <Profile key={c.id} c={c} t={t} l={l} />
 }
 
-function Profile({ c, t, l, lang, minSample }: { c: ReturnType<typeof getConsultant>; minSample: number } & Pick<ReturnType<typeof useT>, 't' | 'l' | 'lang'>) {
+function Profile({ c, t, l }: { c: ReturnType<typeof getConsultant> } & Pick<ReturnType<typeof useT>, 't' | 'l'>) {
   const branch = branchById(c.branchId)
-  const stats = useConsultantStats(c)
-  const outcomes = useOutcomes(c.id)
   const startBooking = useStartBooking()
 
   return (
@@ -90,38 +83,7 @@ function Profile({ c, t, l, lang, minSample }: { c: ReturnType<typeof getConsult
         </div>
 
         <aside className="grid content-start gap-6">
-          <section aria-labelledby="activity" className="rounded-3xl bg-white p-5 ring-1 ring-line sm:p-6">
-            <div className="mb-4 flex items-start justify-between gap-3">
-              <h2 id="activity" className="text-lg font-semibold text-ink">{t('profile.activity')}</h2>
-              <DemoBadge />
-            </div>
-            <dl className="grid grid-cols-3 gap-3">
-              <div>
-                <dt className="text-xs text-muted">{t('common.yearsOfExperience')}</dt>
-                <dd dir="ltr" className="mt-1 text-start font-display text-2xl font-semibold rtl:text-end">{experienceText(c, lang)}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-muted">{t('common.completed')}</dt>
-                <dd className="mt-1 font-display text-2xl font-semibold"><CountUp value={stats.total} /></dd>
-              </div>
-              <div>
-                <dt className="text-xs text-muted">{t('common.thisMonth')}</dt>
-                <dd className="mt-1 font-display text-2xl font-semibold"><CountUp value={stats.thisMonth} /></dd>
-              </div>
-            </dl>
-          </section>
-
-          <section role="region" aria-labelledby="kpi" className="rounded-3xl bg-white p-5 ring-1 ring-line sm:p-6">
-            <div className="mb-3 flex items-start justify-between gap-3">
-              <h2 id="kpi" className="text-lg font-semibold text-ink">{t('profile.kpiTitle')}</h2>
-              <DemoBadge />
-            </div>
-            <ScoreBar score={stats.kpi} />
-          </section>
-
           <ConsultantFeedback consultantId={c.id} />
-
-          <ApprovalStats outcomes={outcomes} minSample={minSample} />
         </aside>
       </main>
 

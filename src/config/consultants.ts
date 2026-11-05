@@ -1,11 +1,13 @@
 import type { Consultant } from '../domain/types'
+import { programs } from './programs'
 
-type Seed = Pick<Consultant, 'id' | 'name' | 'branchId' | 'experienceYears' | 'programs'> &
+type Seed = Pick<Consultant, 'id' | 'name' | 'branchId' | 'experienceYears'> &
   Partial<Pick<Consultant, 'title' | 'experienceLabel' | 'nameNeedsConfirmation'>>
 
 // Names, branches and years come from the company brief; titles and photos match mg-visa.com/about-us.
-// Program assignments are demo data (demoPrograms: true) until supplied.
+// Every consultant handles every program.
 const make = (s: Seed): Consultant => ({
+  programs: programs.map(p => p.id),
   title: null,
   photo: null,
   bio: null,
@@ -23,7 +25,6 @@ export const consultants: Consultant[] = [
     title: { en: 'Senior Immigration Specialist & Contract Manager', ar: 'أخصائي هجرة أول ومدير التعاقدات' },
     branchId: 'nasr-city',
     experienceYears: 5,
-    programs: ['immigration', 'investment', 'job-seeking'],
   }),
   make({
     id: 'ahmed-salama',
@@ -32,7 +33,6 @@ export const consultants: Consultant[] = [
     branchId: 'nasr-city',
     experienceYears: 3,
     experienceLabel: { en: '3+', ar: '+3' },
-    programs: ['immigration', 'job-seeking'],
   }),
   make({
     id: 'ahmed-khalil',
@@ -40,7 +40,6 @@ export const consultants: Consultant[] = [
     title: { en: 'Immigration Specialist', ar: 'أخصائي هجرة' },
     branchId: 'nasr-city',
     experienceYears: 1.5,
-    programs: ['education', 'tourism'],
   }),
   make({
     id: 'mohamed-esmail',
@@ -49,7 +48,6 @@ export const consultants: Consultant[] = [
     branchId: 'nasr-city',
     experienceYears: 2,
     nameNeedsConfirmation: true,
-    programs: ['education', 'job-seeking'],
   }),
   make({
     id: 'ahmed-tarek',
@@ -57,7 +55,6 @@ export const consultants: Consultant[] = [
     title: { en: 'Immigration Specialist', ar: 'أخصائي هجرة' },
     branchId: 'sheikh-zayed',
     experienceYears: 3,
-    programs: ['immigration', 'investment'],
   }),
   make({
     id: 'mohamed-salah',
@@ -65,7 +62,6 @@ export const consultants: Consultant[] = [
     title: { en: 'Immigration Specialist', ar: 'أخصائي هجرة' },
     branchId: 'sheikh-zayed',
     experienceYears: 1.5,
-    programs: ['job-seeking', 'tourism'],
   }),
   make({
     id: 'mohamed-abdelaziz',
@@ -73,6 +69,5 @@ export const consultants: Consultant[] = [
     title: { en: 'Immigration Specialist', ar: 'أخصائي هجرة' },
     branchId: 'dubai',
     experienceYears: 2,
-    programs: ['immigration', 'education', 'tourism'],
   }),
 ]
