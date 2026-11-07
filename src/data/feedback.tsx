@@ -6,7 +6,7 @@ export function errorKey(error: unknown): TKey {
   if (error instanceof SlotTaken) return 'payment.slotTaken'
   if (error instanceof HoldExpired) return 'data.expired'
   const code = error instanceof RepoError ? error.code : ''
-  const keys: Record<string, TKey> = { FORBIDDEN: 'data.forbidden', RATE_LIMITED: 'data.rateLimited', INVALID_INPUT: 'data.invalid', INVALID_TRANSITION: 'data.transition', UPLOAD_FAILED: 'data.upload', LIVE_CONFIG_MISSING: 'data.config', NOT_FOUND: 'ticket.notFound' }
+  const keys: Record<string, TKey> = { FORBIDDEN: 'data.forbidden', RATE_LIMITED: 'data.rateLimited', INVALID_INPUT: 'data.invalid', INVALID_TRANSITION: 'data.transition', UPLOAD_FAILED: 'data.upload', LIVE_CONFIG_MISSING: 'data.config', NOT_FOUND: 'ticket.notFound', PAYMENT_UNAVAILABLE: 'payment.unavailable', NOT_CONFIGURED: 'payment.unavailable' }
   return keys[code] ?? 'data.network'
 }
 export function reportActionError(error: unknown) { useLiveData.setState({ actionError: error }) }

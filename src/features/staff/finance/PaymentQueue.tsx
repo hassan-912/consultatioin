@@ -6,7 +6,7 @@ import { repo, SlotTaken } from '../../../data'
 import type { Booking } from '../../../domain/types'
 import { formatInZone } from '../../../domain/time'
 import { formatMoney } from '../../../domain/pricing'
-import { paymentConfig } from '../../../config/payments'
+import { methodLabel } from '../../../config/payments'
 import { Button, Ltr, Notice } from '../../../components/ui'
 import { Segmented, TextField } from '../../../components/fields'
 import { Icon } from '../../../components/Icon'
@@ -26,7 +26,7 @@ function ReviewItem({ b, focused }: { b: Booking; focused?: boolean }) {
   const [rejecting, setRejecting] = useState(false)
   const [reason, setReason] = useState('')
   const [err, setErr] = useState<string>()
-  const method = paymentConfig.methods.find(m => m.id === b.payment?.method)
+  const method = methodLabel(b.payment?.method)
   const [slotTaken, setSlotTaken] = useState(false)
   const [viewing, setViewing] = useState(false)
   const [receiptUrl, setReceiptUrl] = useState<string>()
@@ -53,7 +53,7 @@ function ReviewItem({ b, focused }: { b: Booking; focused?: boolean }) {
       <BookingMeta b={b} showAssessment={false} />
       <dl className="mt-4 grid grid-cols-2 gap-3 rounded-xl bg-paper p-3 text-sm sm:grid-cols-4">
         <div><dt className="text-xs text-muted">{t('staff.finance.expected')}</dt><dd className="font-semibold"><Ltr>{formatMoney(b.price, lang)}</Ltr></dd></div>
-        <div><dt className="text-xs text-muted">{t('payment.method')}</dt><dd className="font-semibold">{method ? l(method.label) : '—'}</dd></div>
+        <div><dt className="text-xs text-muted">{t('payment.method')}</dt><dd className="font-semibold">{method ? l(method) : '—'}</dd></div>
         <div><dt className="text-xs text-muted">{t('staff.finance.txn')}</dt><dd className="font-semibold"><Ltr>{b.payment?.txnRef ?? '—'}</Ltr></dd></div>
         <div>
           <dt className="text-xs text-muted">{t('staff.finance.receipt')}</dt>
@@ -84,7 +84,7 @@ function ReviewItem({ b, focused }: { b: Booking; focused?: boolean }) {
           <dl className="grid content-start gap-3 text-sm">
             <div><dt className="text-xs text-muted">{t('staff.finance.expected')}</dt><dd className="font-semibold"><Ltr>{formatMoney(b.price, lang)}</Ltr></dd></div>
             <div><dt className="text-xs text-muted">{t('staff.finance.txn')}</dt><dd className="font-semibold"><Ltr>{b.payment?.txnRef}</Ltr></dd></div>
-            <div><dt className="text-xs text-muted">{t('payment.method')}</dt><dd className="font-semibold">{method ? l(method.label) : '—'}</dd></div>
+            <div><dt className="text-xs text-muted">{t('payment.method')}</dt><dd className="font-semibold">{method ? l(method) : '—'}</dd></div>
             <p className="text-xs text-muted">{t('staff.finance.verifiedBy')}</p>
           </dl>
         </div>

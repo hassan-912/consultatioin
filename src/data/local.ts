@@ -62,6 +62,16 @@ export function createLocalRepo(): BookingRepo {
       }
     },
 
+    async startOnlinePayment(token, currency) {
+      const b = mustFind(token)
+      if (b.status === 'expired' || (b.status === 'reserved' && b.holdExpiresAt <= get().now())) throw new HoldExpired()
+      if (b.status !== 'reserved') throw new RepoError('INVALID_TRANSITION')
+      get().addAudit({ actor: 'customer', action: 'payment-started', bookingRef: b.reference, to: currency })
+      // Prototype: a stand-in for EasyKash's hosted page.
+      return `#/pay/demo?currency=${currency}`
+    },
+    async checkOnlinePayment() {},
+
     async getByManageToken(token) {
       return byToken(token) ?? null
     },
@@ -210,6 +220,14 @@ export function createLocalRepo(): BookingRepo {
       return useAppStore.subscribe(onChange)
     },
   }
+}
+
+/** Prototype EasyKash: a successful payment confirms the booking, as the signed callback does live. */
+export function completeDemoPayment(token: string) {
+  const b = mustFind(token)
+  if (b.status !== 'reserved') return b
+  submitPayment(b.id, { method: 'easykash', txnRef: `EK-DEMO-${b.reference.slice(-4)}` })
+  return applyEvent(b.id, { type: 'verify' }, 'system')
 }
 
 /** Test helper: back to an empty, seeded store. */

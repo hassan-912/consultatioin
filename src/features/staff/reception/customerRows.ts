@@ -1,7 +1,7 @@
 import type { Booking, BookingStatus, Lang } from '../../../domain/types'
 import { getConsultant } from '../../../store/actions'
 import { branchById } from '../../../config/branches'
-import { paymentConfig } from '../../../config/payments'
+import { methodLabel } from '../../../config/payments'
 import { dateInZone, formatInZone } from '../../../domain/time'
 
 /** Holds that were never paid are not customers; everything else is. */
@@ -35,7 +35,7 @@ export interface CustomerRow {
 type Localize = (v: { en: string; ar: string }) => string
 
 export function toRow(b: Booking, l: Localize, lang: Lang, onlineLabel: string): CustomerRow {
-  const method = paymentConfig.methods.find(m => m.id === b.payment?.method)
+  const method = methodLabel(b.payment?.method)
   return {
     id: b.id,
     reference: b.reference,
@@ -50,7 +50,7 @@ export function toRow(b: Booking, l: Localize, lang: Lang, onlineLabel: string):
     consultant: l(getConsultant(b.consultantId).name),
     sales: b.salesName ?? '',
     status: b.status,
-    payment: method ? l(method.label) : '',
+    payment: method ? l(method) : '',
     amount: b.price.amount,
   }
 }

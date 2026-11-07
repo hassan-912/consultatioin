@@ -431,3 +431,7 @@ verify_jwt = false
 # gateway JWT check is off; a plain GET answers 200 for EasyKash's URL check.
 [functions.easykash-webhook]
 verify_jwt = false
+
+# Customers start an EasyKash payment here. It accepts only the anon key and checks the manage token itself.
+[functions.easykash-pay]
+verify_jwt = false

@@ -1,45 +1,36 @@
-import { useState, type FormEvent } from 'react'
+import { useState } from 'react'
 import { useT } from '../../../i18n'
-import type { Booking, PaymentMethodId } from '../../../domain/types'
-import { defaultPaymentMethod, paymentConfig } from '../../../config/payments'
+import type { Booking, PayCurrency } from '../../../domain/types'
+import { defaultCurrency, easykashOptions, payCurrencies } from '../../../config/payments'
 import { convertEgp, useEgpToForeign } from '../../../data/fxRates'
 import { useAppStore } from '../../../store/useAppStore'
 import { expireDue } from '../../../store/actions'
-import { SlotTaken, HoldExpired, type PaymentInput } from '../../../data'
+import { HoldExpired } from '../../../data'
 import { isLive } from '../../../data/mode'
 import { errorKey } from '../../../data/feedback'
-import { compressReceipt } from '../../../domain/receipt'
 import { formatMoney } from '../../../domain/pricing'
-import { CopyField } from '../../../components/CopyField'
 import { Countdown } from '../../../components/widgets'
-import { TextField } from '../../../components/fields'
-import { Button, Ltr, Notice } from '../../../components/ui'
+import { Button, Ltr } from '../../../components/ui'
 import { Icon } from '../../../components/Icon'
 
-export function PaymentStep({ booking, onSubmit, onExpiredRestart }: {
+export function PaymentStep({ booking, onPay, onExpiredRestart }: {
   booking: Booking
-  onSubmit: (p: PaymentInput) => Promise<unknown>
+  /** Starts the EasyKash payment and leaves the page; rejects when it can't start. */
+  onPay: (currency: PayCurrency) => Promise<unknown>
   onExpiredRestart: () => void
 }) {
   const { t, l, lang } = useT()
   const now = useAppStore(s => s.now)
-  const [method, setMethod] = useState<PaymentMethodId>(() => defaultPaymentMethod(booking.customer.phone))
-  const [txnRef, setTxnRef] = useState('')
-  const [receipt, setReceipt] = useState<string>()
-  const [receiptImage, setReceiptImage] = useState<string>()
-  const [originalReceipt, setOriginalReceipt] = useState<Blob>()
+  const [currency, setCurrency] = useState<PayCurrency>(() => defaultCurrency(booking.customer.phone))
   const [busy, setBusy] = useState(false)
-  const [reading, setReading] = useState(false)
   const [serverExpired, setServerExpired] = useState(false)
   const [error, setError] = useState<string>()
-  const m = paymentConfig.methods.find(x => x.id === method)!
   const expired = serverExpired || booking.status === 'expired' || (booking.status === 'reserved' && booking.holdExpiresAt <= now())
-  const amount = formatMoney(booking.price, lang)
-  const rates = useEgpToForeign(m.currency !== 'EGP')
+  const egp = formatMoney(booking.price, lang)
+  const rates = useEgpToForeign(currency !== 'EGP')
   const money = (n: number, c: string) => new Intl.NumberFormat(lang === 'ar' ? 'ar-EG-u-nu-latn' : 'en-US', { style: 'currency', currency: c, maximumFractionDigits: 0 }).format(n)
-  const equivalent = m.currency === 'EGP' ? null : !rates ? '' : m.currency === 'AED'
-    ? money(convertEgp(booking.price.amount, rates.AED), 'AED')
-    : `${money(convertEgp(booking.price.amount, rates.USD), 'USD')} / ${money(convertEgp(booking.price.amount, rates.EUR), 'EUR')}`
+  // Display only: the server works out the charged amount with the same rule (live rate, rounded up).
+  const amount = currency === 'EGP' ? egp : rates ? money(convertEgp(booking.price.amount, rates[currency]), currency) : null
 
   if (expired)
     return (
@@ -52,23 +43,21 @@ export function PaymentStep({ booking, onSubmit, onExpiredRestart }: {
       </div>
     )
 
-  const submit = async (e: FormEvent) => {
-    e.preventDefault()
-    if (txnRef.trim().length < 4) return setError(t('validation.txnRef'))
-    // Timers are throttled in background tabs, so re-check the deadline at submit time.
-    if (busy || reading) return
+  const pay = async () => {
+    if (busy) return
+    // Timers are throttled in background tabs, so re-check the deadline now.
     if (booking.status === 'reserved' && booking.holdExpiresAt <= now()) { setServerExpired(true); if (!isLive) expireDue(); return }
     setBusy(true); setError(undefined)
-    try { await onSubmit({ method, txnRef, receiptName: receipt, receiptImage, receipt: originalReceipt }) }
+    try { await onPay(currency) }
     catch (err) {
       if (err instanceof HoldExpired) setServerExpired(true)
-      else setError(t(err instanceof SlotTaken ? 'payment.slotTaken' : errorKey(err)))
-      if (!isLive) expireDue()
-    } finally { setBusy(false) }
+      else setError(t(errorKey(err)))
+      setBusy(false)
+    }
   }
 
   return (
-    <form onSubmit={submit} noValidate className="grid grid-cols-[minmax(0,1fr)] gap-5">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-5">
       <div className="rounded-3xl bg-slate-deep p-5 text-white sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -83,111 +72,45 @@ export function PaymentStep({ booking, onSubmit, onExpiredRestart }: {
         <p className="mt-3 text-sm text-mist">{t('payment.deadlineNote')}</p>
       </div>
 
-      <div>
-        <h2 className="text-2xl font-semibold text-ink">{t('payment.title')}</h2>
-        <div className="mt-4 flex items-baseline justify-between rounded-2xl bg-gold-soft px-5 py-4 ring-1 ring-gold/40">
-          <span className="font-semibold text-gold-deep">{t('payment.amount')}</span>
-          <span className="font-display text-3xl font-semibold text-ink"><Ltr>{amount}</Ltr></span>
-        </div>
-      </div>
+      <h2 className="text-2xl font-semibold text-ink">{t('payment.title')}</h2>
 
       <fieldset>
-        <legend className="mb-2 text-sm font-semibold text-ink">{t('payment.method')}</legend>
-        {(['egypt', 'international'] as const).map(region => (
-          <div key={region} className="mb-3 last:mb-0">
-            <p className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted">
-              <Icon name={region === 'egypt' ? 'pin' : 'globe'} size={14} />{t(region === 'egypt' ? 'payment.insideEgypt' : 'payment.outsideEgypt')}
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              {paymentConfig.methods.filter(pm => pm.region === region).map(pm => (
-                <label
-                  key={pm.id}
-                  className={`flex min-h-14 cursor-pointer items-center justify-center gap-2 rounded-2xl border-2 px-3 text-center text-sm font-semibold has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-gold/40 sm:text-base ${
-                    method === pm.id ? 'border-slate bg-white text-ink' : 'border-line bg-white text-muted hover:border-mist'
-                  }`}
-                >
-                  <input type="radio" name="method" className="sr-only" checked={method === pm.id} onChange={() => setMethod(pm.id)} />
-                  <Icon name={pm.id === 'instapay' ? 'card' : pm.id === 'vodafone-cash' ? 'phone' : 'building'} size={18} />
-                  {l(pm.label)}
-                </label>
-              ))}
-            </div>
-          </div>
-        ))}
+        <legend className="mb-2 text-sm font-semibold text-ink">{t('payment.currency')}</legend>
+        <div className="grid grid-cols-4 gap-2">
+          {payCurrencies.map(c => (
+            <label key={c} className={`flex min-h-12 cursor-pointer items-center justify-center rounded-2xl border-2 px-2 font-display text-base font-semibold has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-gold/40 ${
+              currency === c ? 'border-slate bg-white text-ink' : 'border-line bg-white text-muted hover:border-mist'}`}>
+              <input type="radio" name="currency" className="sr-only" checked={currency === c} onChange={() => { setCurrency(c); setError(undefined) }} />
+              {c}
+            </label>
+          ))}
+        </div>
       </fieldset>
 
-      <div className="grid gap-2">
-        <CopyField label={m.currency === 'EGP' ? t('payment.amount') : t('payment.amountEgp')} value={String(booking.price.amount)} />
-        {equivalent !== null && (
-          <div className="rounded-xl border border-gold/40 bg-gold-soft px-3.5 py-2.5 text-sm">
-            <p className="text-xs text-gold-deep">{t('payment.equivalent')}</p>
-            <p className="font-semibold text-ink"><Ltr>{equivalent || t('payment.rateLoading')}</Ltr></p>
-            <p className="mt-0.5 text-xs text-muted">{t('payment.equivalentHint', { amount })}</p>
-          </div>
-        )}
-        {m.fields.map(f => f.value === m.link ? (
-          // Payment links open the provider directly (the InstaPay app on phones that have it).
-          <a key={f.value} href={f.value} target="_blank" rel="noopener noreferrer"
-            className="flex min-h-14 items-center justify-between gap-3 rounded-xl border-2 border-slate bg-white px-3.5 py-2.5 hover:bg-paper">
-            <span className="min-w-0">
-              <span className="block text-xs text-muted">{l(f.label)}</span>
-              <span dir="ltr" className="block truncate text-start font-mono text-sm font-semibold text-navy underline underline-offset-2 rtl:text-end">{f.value}</span>
-            </span>
-            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-slate px-3 py-2 text-sm font-semibold text-white">
-              {t('payment.openLink', { method: l(m.label) })}<Icon name="arrow" size={14} />
-            </span>
-          </a>
-        ) : <CopyField key={f.value} label={l(f.label)} value={f.value} mono={f.mono !== false} />)}
-        <CopyField label={t('common.reference')} value={booking.reference} />
-        {m.placeholder && <Notice tone="warn">{t('payment.pendingConfig')}</Notice>}
+      <div className="rounded-2xl bg-gold-soft px-5 py-4 ring-1 ring-gold/40">
+        <div className="flex items-baseline justify-between gap-3">
+          <span className="font-semibold text-gold-deep">{t('payment.amount')}</span>
+          <span data-testid="pay-amount" className="font-display text-3xl font-semibold text-ink"><Ltr>{amount ?? t('payment.rateLoading')}</Ltr></span>
+        </div>
+        {currency !== 'EGP' && <p className="mt-1.5 text-xs text-muted">{t('payment.rateNote', { amount: egp })}</p>}
       </div>
 
       <section className="rounded-2xl bg-white p-4 ring-1 ring-line">
-        <h3 className="mb-3 font-semibold text-ink">{t('payment.instructions')}</h3>
-        <ol className="grid gap-2.5 text-sm text-slate">
-          {paymentConfig.instructions.map((ins, i) => (
-            <li key={i} className="flex gap-3">
-              <span dir="ltr" className="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-paper text-xs font-semibold text-slate ring-1 ring-line">{i + 1}</span>
-              <span>{l(ins)}</span>
-            </li>
-          ))}
-        </ol>
+        <p className="flex items-start gap-2.5 text-sm text-slate">
+          <Icon name="card" size={18} className="mt-0.5 shrink-0 text-navy" />
+          <span>{t('payment.onlineNote')}</span>
+        </p>
+        <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-muted">{t('payment.accepted')}</p>
+        <ul className="mt-1.5 flex flex-wrap gap-1.5">
+          {easykashOptions.map(o => <li key={o.en} className="rounded-full bg-paper px-2.5 py-1 text-xs font-semibold text-slate ring-1 ring-line">{l(o)}</li>)}
+        </ul>
       </section>
 
-      <TextField
-        label={t('payment.txnRef')}
-        dir="ltr"
-        autoComplete="off"
-        value={txnRef}
-        onChange={e => {
-          setTxnRef(e.target.value)
-          setError(undefined)
-        }}
-        hint={t('payment.txnRefHint')}
-        error={error}
-      />
-
-      <div>
-        <p className="mb-1.5 text-sm font-semibold text-ink">{t('payment.receipt')}</p>
-        <label className="flex min-h-14 cursor-pointer items-center gap-3 rounded-xl border border-dashed border-mist bg-white px-4 text-sm text-slate hover:bg-paper has-[:focus-visible]:ring-4 has-[:focus-visible]:ring-gold/40">
-          <Icon name="upload" size={18} />
-          <span className="truncate">{receipt ? t('payment.receiptChosen', { name: receipt }) : t('payment.receipt')}</span>
-          <input type="file" accept="image/*,application/pdf" className="sr-only" onChange={async e => {
-              const file = e.target.files?.[0]
-              setReading(true); setError(undefined); setReceiptImage(undefined); setOriginalReceipt(undefined); setReceipt(undefined)
-              try {
-                if (file && (!['image/jpeg', 'image/png', 'image/webp', 'application/pdf'].includes(file.type) || file.size > 5 * 1024 * 1024)) throw new Error('Invalid receipt')
-                const image = file ? await compressReceipt(file) : undefined
-                setReceiptImage(image); setOriginalReceipt(file); setReceipt(file?.name)
-              } catch { setError(t('data.upload')) } finally { setReading(false) }
-            }} />
-        </label>
-        {receiptImage && <img src={receiptImage} alt={t('payment.receipt')} className="mt-2 max-h-40 rounded-lg ring-1 ring-line" />}
-        <p className="mt-1.5 text-xs text-muted">{t('payment.receiptHint')}</p>
-      </div>
-
       {error && <p role="alert" className="text-sm text-bad">{error}</p>}
-      <Button type="submit" variant="gold" size="lg" className="w-full" disabled={busy || reading}>{busy || reading ? t('data.saving') : t('payment.submit')}</Button>
-    </form>
+      {/* Not blocked on the display rate: the server prices the payment itself. */}
+      <Button variant="gold" size="lg" className="w-full" disabled={busy} onClick={pay}>
+        {busy ? t('payment.redirecting') : t('payment.payOnline', { amount: amount ?? currency })}
+      </Button>
+    </div>
   )
 }

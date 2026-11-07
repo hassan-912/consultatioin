@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useT } from '../../i18n'
 import { useAppStore } from '../../store/useAppStore'
 import { getConsultant } from '../../store/actions'
 import { repo } from '../../data'
 import { useBookingLookup } from '../../data/useBookings'
+import { rememberPayment } from '../../data/pendingPayment'
 import { DataStatus, errorKey } from '../../data/feedback'
 import { Header } from '../../components/Header'
 import { Footer } from '../../components/Footer'
@@ -57,10 +58,12 @@ function Manage({ b }: { b: Booking }) {
   const [newSlot, setNewSlot] = useState<string | null>(null)
   const [reschedError, setReschedError] = useState<string | null>(null)
   const startBooking = useStartBooking()
+  const navigate = useNavigate()
   const consultant = getConsultant(b.consultantId)
   const branch = branchById(b.branchId)
   const channel = t(b.customer.channel === 'email' ? 'booking.channelEmail' : 'booking.channelWhatsapp')
-  const canPay = (b.status === 'reserved' && b.holdExpiresAt > now()) || b.status === 'rejected'
+  // Online payment needs a live hold; a rejected manual transfer is settled by finance.
+  const canPay = b.status === 'reserved' && b.holdExpiresAt > now()
 
   const [saver, setSaver] = useState<Awaited<ReturnType<typeof getSaver>>>(null)
   const [downloadError, setDownloadError] = useState(false)
@@ -112,7 +115,12 @@ function Manage({ b }: { b: Booking }) {
 
           {canPay && (
             <div className="rounded-3xl bg-paper p-1">
-              <PaymentStep booking={b} onSubmit={p => repo.submitPayment(b.manageToken, p)} onExpiredRestart={() => startBooking(b.consultantId)} />
+              <PaymentStep booking={b} onPay={async currency => {
+                rememberPayment(b.manageToken, b.consultantId)
+                const url = await repo.startOnlinePayment(b.manageToken, currency)
+                if (url.startsWith('#')) navigate(url.slice(1))
+                else window.location.assign(url)
+              }} onExpiredRestart={() => startBooking(b.consultantId)} />
             </div>
           )}
 

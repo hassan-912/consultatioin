@@ -30,7 +30,7 @@ export function mapBooking(r: Row, audience: 'customer' | 'staff' = 'customer'):
 }
 
 export function rpcFailure(error: { message?: string; code?: string }): Error {
-  const code = error.message?.match(/SLOT_TAKEN|HOLD_EXPIRED|FORBIDDEN|RATE_LIMITED|INVALID_INPUT|INVALID_TRANSITION|NOT_FOUND|UPLOAD_FAILED/)?.[0]
+  const code = error.message?.match(/SLOT_TAKEN|HOLD_EXPIRED|FORBIDDEN|RATE_LIMITED|INVALID_INPUT|INVALID_TRANSITION|NOT_FOUND|UPLOAD_FAILED|PAYMENT_UNAVAILABLE|NOT_CONFIGURED/)?.[0]
     ?? (['42501', 'PGRST301', 'PGRST302'].includes(error.code ?? '') ? 'FORBIDDEN' : 'NETWORK')
   if (code === 'SLOT_TAKEN' || error.code === '23P01') return new SlotTaken()
   if (code === 'HOLD_EXPIRED') return new HoldExpired()
@@ -81,6 +81,18 @@ export function createSupabaseRepo(clients: BackendClients): BookingRepo {
     const payments = await result<Row[]>(staff.from('payments').select('method,txn_ref,receipt_path,submitted_at').eq('booking_id', id).order('submitted_at', { ascending: false }).order('created_at', { ascending: false }).order('id').limit(1))
     return mapBooking({ ...row, payment: payments[0] }, 'staff')
   }
+  const easykashPay = async (body: Row): Promise<Row> => {
+    let response: Response
+    try {
+      const send = clients.fetch // detached on purpose: a native fetch throws if called as a method
+      response = await send(`${clients.url}/functions/v1/easykash-pay`, {
+        method: 'POST', headers: { apikey: clients.key, 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+      })
+    } catch (e) { throw new RepoError('NETWORK', { cause: e }) }
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok) throw rpcFailure({ message: data.error ?? 'PAYMENT_UNAVAILABLE' })
+    return data
+  }
   const repo: BookingRepo = {
     async availableSlots(id, date, format, rescheduleToken) {
       const starts = await result<string[]>(customer.rpc(rescheduleToken ? 'reschedule_slots' : 'available_slots', rescheduleToken
@@ -128,6 +140,15 @@ export function createSupabaseRepo(clients: BackendClients): BookingRepo {
         path = capability.path
       }
       return customerBooking('submit_payment', { p_manage_token: token, p_method: p.method, p_txn_ref: p.txnRef, p_receipt_path: path })
+    },
+    async startOnlinePayment(token, currency) {
+      const data = await easykashPay({ action: 'start', manage_token: token, currency })
+      if (typeof data.redirectUrl !== 'string' || !/^https:\/\/(www\.)?easykash\.net\//.test(data.redirectUrl)) throw new RepoError('PAYMENT_UNAVAILABLE')
+      return data.redirectUrl
+    },
+    async checkOnlinePayment(token) {
+      await easykashPay({ action: 'check', manage_token: token })
+      changed()
     },
     async getByManageToken(token) {
       const r = await result<Row | null>(customer.rpc('get_booking', { p_manage_token: token }))

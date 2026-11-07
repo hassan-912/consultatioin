@@ -2,7 +2,7 @@ import { branches } from './branches'
 import { consultants } from './consultants'
 import { bookingConfig } from './booking'
 import { pendingDecisions } from './pendingDecisions'
-import { paymentConfig } from './payments'
+import { defaultCurrency, payCurrencies, paymentMethodLabels } from './payments'
 import { contact } from './contact'
 
 const allText = (o: unknown) => JSON.stringify(o)
@@ -55,10 +55,10 @@ describe('booking & payments', () => {
     expect(bookingConfig.autoConfirm).toBe(false)
     expect(bookingConfig.holdMinutes).toBe(30)
   })
-  test('Egypt wallets plus two bank accounts for customers abroad', () => {
-    expect(paymentConfig.methods.map(m => [m.id, m.region])).toEqual([['instapay', 'egypt'], ['vodafone-cash', 'egypt'], ['bank-aed', 'international'], ['bank-usd-eur', 'international']])
-    expect(paymentConfig.methods.filter(m => m.placeholder)).toEqual([])
-    expect(paymentConfig.methods.find(m => m.id === 'vodafone-cash')!.fields[0].value).toBe('01032935257')
+  test('online payment through EasyKash in four currencies; older methods keep their labels', () => {
+    expect(payCurrencies).toEqual(['EGP', 'USD', 'EUR', 'AED'])
+    expect([defaultCurrency('+201001234567'), defaultCurrency('+971501234567'), defaultCurrency('+447700900123')]).toEqual(['EGP', 'AED', 'USD'])
+    expect(Object.keys(paymentMethodLabels)).toEqual(['easykash', 'instapay', 'vodafone-cash', 'bank-aed', 'bank-usd-eur'])
   })
 })
 

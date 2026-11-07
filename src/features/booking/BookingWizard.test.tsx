@@ -2,6 +2,8 @@ import { Component, type ReactNode } from 'react'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { BookingWizard } from './BookingWizard'
+import { DemoPayPage } from './DemoPayPage'
+import { PayReturnPage } from './PayReturnPage'
 import { useAppStore, emptyDraft } from '../../store/useAppStore'
 import { repo } from '../../data'
 import { slotsFor } from '../shared/availability'
@@ -14,6 +16,8 @@ const renderWizard = () =>
     <MemoryRouter initialEntries={[`/book/${ID}`]}>
       <Routes>
         <Route path="/book/:id" element={<BookingWizard />} />
+        <Route path="/pay/demo" element={<DemoPayPage />} />
+        <Route path="/pay/return" element={<PayReturnPage />} />
         <Route path="/ticket/:token" element={<p>TICKET PAGE</p>} />
       </Routes>
     </MemoryRouter>,
@@ -64,7 +68,7 @@ test('review shows price and duration before payment', () => {
   expect(screen.getByText(/Makram Ebeid/)).toBeInTheDocument()
 })
 
-test('payment step keeps the same reference across reloads and submits to the ticket', async () => {
+test('payment step keeps the same reference across reloads; paying online confirms and opens the ticket', async () => {
   useAppStore.getState().updateDraft({ step: 4, format: 'online', durationMin: 30, slotStartIso: firstSlot('online', 30) })
   useAppStore.getState().updateDetails(goodDetails)
   const { unmount } = renderWizard()
@@ -74,10 +78,12 @@ test('payment step keeps the same reference across reloads and submits to the ti
   expect(screen.getByTestId('booking-ref').textContent).toBe(ref1)
   expect(Object.keys(useAppStore.getState().bookings)).toHaveLength(1)
 
-  fireEvent.change(screen.getByLabelText(/transaction reference/i), { target: { value: 'TX-9988' } })
-  fireEvent.click(screen.getByRole('button', { name: /submit payment details/i }))
+  fireEvent.click(screen.getByRole('button', { name: /pay .* securely/i }))
+  fireEvent.click(await screen.findByRole('button', { name: /pay successfully/i }))
   expect(await screen.findByText('TICKET PAGE')).toBeInTheDocument()
-  expect(Object.values(useAppStore.getState().bookings)[0].status).toBe('on-hold')
+  const booking = Object.values(useAppStore.getState().bookings)[0]
+  expect(booking.status).toBe('confirmed')
+  expect(booking.payment?.method).toBe('easykash')
 })
 
 test('expired reservation disables submit', async () => {
@@ -88,17 +94,16 @@ test('expired reservation disables submit', async () => {
   act(() => useAppStore.setState({ timeOffsetMs: 31 * 60000 }))
   await act(async () => { vi.advanceTimersByTime(1500) })
   expect(screen.getByText(/reservation expired/i)).toBeInTheDocument()
-  expect(screen.queryByRole('button', { name: /submit payment details/i })).toBeNull()
+  expect(screen.queryByRole('button', { name: /pay .* securely/i })).toBeNull()
   vi.useRealTimers()
 })
 
-test('submitting after the hold silently expired (throttled tab) shows the expired screen', () => {
+test('paying after the hold silently expired (throttled tab) shows the expired screen', () => {
   useAppStore.getState().updateDraft({ step: 4, format: 'online', durationMin: 30, slotStartIso: firstSlot('online', 30) })
   useAppStore.getState().updateDetails(goodDetails)
   renderWizard()
-  fireEvent.change(screen.getByLabelText(/transaction reference/i), { target: { value: 'TX-1234' } })
   useAppStore.setState({ timeOffsetMs: 31 * 60000 }) // no timer tick yet
-  fireEvent.click(screen.getByRole('button', { name: /submit payment details/i }))
+  fireEvent.click(screen.getByRole('button', { name: /pay .* securely/i }))
   expect(screen.getByText(/reservation expired/i)).toBeInTheDocument()
   expect(Object.values(useAppStore.getState().bookings)[0].status).toBe('expired')
 })

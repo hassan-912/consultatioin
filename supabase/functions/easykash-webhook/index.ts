@@ -11,5 +11,10 @@ Deno.serve(easykashHandler({
     if (error) throw new Error('RECORD_FAILED')
     return data === true
   },
+  async apply(ref) {
+    const { data, error } = await admin.rpc('apply_easykash_payment', { p_easykash_ref: ref })
+    if (error) throw new Error('APPLY_FAILED')
+    return String(data)
+  },
   log: (event, fields) => console.log(JSON.stringify({ fn: 'easykash-webhook', event, ...fields })),
 }))

@@ -49,27 +49,11 @@ export interface BookingConfig {
   slotStepMin: 15
 }
 
-export type PaymentMethodId = 'instapay' | 'vodafone-cash' | 'bank-aed' | 'bank-usd-eur'
+/** `easykash` is the only checkout method; the others remain for bookings paid before it. */
+export type PaymentMethodId = 'easykash' | 'instapay' | 'vodafone-cash' | 'bank-aed' | 'bank-usd-eur'
 
-export interface PaymentMethod {
-  id: PaymentMethodId
-  /** Inside Egypt (local wallets) or from abroad (bank transfer). */
-  region: 'egypt' | 'international'
-  label: L10n
-  /** Currency the customer sends; foreign ones get an approximate equivalent of the EGP price. */
-  currency: 'EGP' | 'AED' | 'USD/EUR'
-  /** Copyable account details, in display order. */
-  fields: { label: L10n; value: string; mono?: boolean }[]
-  /** Opens the provider's payment page. */
-  link?: string
-  /** Details still to be supplied by MG. */
-  placeholder: boolean
-}
-
-export interface PaymentConfig {
-  methods: PaymentMethod[]
-  instructions: L10n[]
-}
+/** Currencies a customer can pay in online. Prices are set in EGP; the others use the day's rate. */
+export type PayCurrency = 'EGP' | 'USD' | 'EUR' | 'AED'
 
 export interface KpiConfig {
   scale: 10

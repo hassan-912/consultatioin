@@ -1,6 +1,6 @@
 import type { BookingEvent, CheckInVerdict } from '../domain/bookingStatus'
 import type { Slot } from '../domain/availability'
-import type { Actor, Booking, BookingStatus, ConsultantReviews, CustomerDetails, DecisionInput, Format, Lang, PaymentMethodId, PendingDecision, Review, StaffReview } from '../domain/types'
+import type { Actor, Booking, BookingStatus, ConsultantReviews, CustomerDetails, DecisionInput, Format, Lang, PayCurrency, PaymentMethodId, PendingDecision, Review, StaffReview } from '../domain/types'
 import type { ScheduleRules } from '../domain/availability'
 import type { ConsultationRecord } from '../store/useAppStore'
 import type { StoredAssessment } from '../assessment/questions'
@@ -39,6 +39,10 @@ export interface BookingRepo {
   availableSlots(consultantId: string, date: string, format: Format, rescheduleToken?: string): Promise<Slot[]>
   reserve(draft: ReserveDraft): Promise<{ bookingId: string; reference: string; manageToken: string; holdExpiresAt: number }>
   submitPayment(manageToken: string, p: PaymentInput): Promise<Booking>
+  /** Customer: open an EasyKash payment for a held booking. Resolves to the page to send the customer to. */
+  startOnlinePayment(manageToken: string, currency: PayCurrency): Promise<string>
+  /** Customer: ask EasyKash whether the latest payment went through (fallback when its callback is late). */
+  checkOnlinePayment(manageToken: string): Promise<void>
   getByManageToken(token: string): Promise<Booking | null>
   /** Resolves to the manage token. */
   find(reference: string, phone: string): Promise<string | null>

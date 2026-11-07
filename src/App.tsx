@@ -19,6 +19,8 @@ const FindBookingPage = lazy(() => import('./features/ticket/FindBookingPage').t
 const MeetPage = lazy(() => import('./features/ticket/MeetPage').then(m => ({ default: m.MeetPage })))
 const StaffApp = lazy(() => import('./features/staff/StaffApp').then(m => ({ default: m.StaffApp })))
 const DemoPanel = lazy(() => import('./features/demo/DemoPanel').then(m => ({ default: m.DemoPanel })))
+const PayReturnPage = lazy(() => import('./features/booking/PayReturnPage').then(m => ({ default: m.PayReturnPage })))
+const DemoPayPage = lazy(() => import('./features/booking/DemoPayPage').then(m => ({ default: m.DemoPayPage })))
 const TeamPage = lazy(() => import('./features/team/TeamPage').then(m => ({ default: m.TeamPage })))
 
 export default function App() {
@@ -59,6 +61,8 @@ export default function App() {
         <Route path="/ticket/:token" element={<TicketPage />} />
         <Route path="/booking/:token" element={<BookingPage />} />
         <Route path="/find" element={<FindBookingPage />} />
+        <Route path="/pay/return" element={<PayReturnPage />} />
+        {!isLive && <Route path="/pay/demo" element={<DemoPayPage />} />}
         <Route path="/meet/:token" element={<MeetPage />} />
         <Route path="/team" element={<TeamPage />} />
         <Route path="/staff/*" element={<StaffApp />} />

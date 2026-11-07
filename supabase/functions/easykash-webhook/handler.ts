@@ -3,6 +3,8 @@ export type Dependencies = {
   config: Config
   /** Keeps a verified callback; false when the same payment was already kept. */
   record: (payload: Record<string, string>) => Promise<boolean>
+  /** Settles the recorded payment against its booking (idempotent). Resolves to the outcome. */
+  apply?: (easykashRef: string) => Promise<string>
   /** Safe logging only: event name plus fields that are never secrets or personal data. */
   log?: (event: string, fields: Record<string, string | number>) => void
 }
@@ -63,6 +65,11 @@ export function easykashHandler(deps: Dependencies) {
     try {
       const fresh = await deps.record(payload)
       deps.log?.(fresh ? 'recorded' : 'duplicate', { status: payload.status ?? '' })
+      // Applied on repeats too: if a previous delivery was recorded but not applied, a retry finishes it.
+      if (deps.apply) {
+        const outcome = await deps.apply(payload.easykashRef)
+        deps.log?.('applied', { outcome })
+      }
       return json(200, { ok: true })
     } catch {
       deps.log?.('record_failed', {})

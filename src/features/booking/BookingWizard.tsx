@@ -23,6 +23,7 @@ import { PaymentStep } from './steps/PaymentStep'
 import { SummaryCard, validateDetails, type DetailErrors } from './shared'
 import { isAssessed, unanswered } from '../../assessment/questions'
 import { currentReferral } from '../../data/referral'
+import { rememberPayment } from '../../data/pendingPayment'
 
 const STEP_KEYS = ['format', 'time', 'details', 'review', 'payment'] as const
 
@@ -198,10 +199,11 @@ function Wizard({ id }: { id: string }) {
             {step === 4 && booking && (
               <PaymentStep
                 booking={booking}
-                onSubmit={async p => {
-                  const b = await repo.submitPayment(booking.manageToken, p)
-                  resetDraft(null)
-                  navigate(`/ticket/${b.manageToken}`)
+                onPay={async currency => {
+                  rememberPayment(booking.manageToken, booking.consultantId)
+                  const url = await repo.startOnlinePayment(booking.manageToken, currency)
+                  if (url.startsWith('#')) navigate(url.slice(1))
+                  else window.location.assign(url)
                 }}
                 onExpiredRestart={() => updateDraft({ step: 1, slotStartIso: null, bookingId: null })}
               />
