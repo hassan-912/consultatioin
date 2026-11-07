@@ -103,7 +103,8 @@ export function PayReturnPage() {
   return (
     <>
       <Header />
-      <main id="main" className="mx-auto max-w-xl px-4 py-12">{content}</main>
+      {/* Centred in the space under the header on desktop; full width with side padding on phones. */}
+      <main id="main" className="mx-auto flex min-h-[calc(100dvh-4.5rem)] w-full max-w-xl items-center justify-center px-4 py-8 sm:py-12">{content}</main>
     </>
   )
 }

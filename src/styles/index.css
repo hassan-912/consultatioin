@@ -83,3 +83,8 @@
 @keyframes mg-trace { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
 .mg-trace { stroke-dasharray: 1; animation: mg-trace 1s ease-out both; }
 @media (prefers-reduced-motion: reduce) { .mg-trace { animation: none; } }
+
+/* Pay return: the arrival tick pops in once the plane has parked. */
+@keyframes mg-pop { 0%, 70% { opacity: 0; transform: scale(.4); } 100% { opacity: 1; transform: scale(1); } }
+.mg-pop > * { transform-box: fill-box; transform-origin: center; animation: mg-pop 1.4s ease-out both; }
+@media (prefers-reduced-motion: reduce) { .mg-pop > * { animation: none; } }
