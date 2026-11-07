@@ -54,7 +54,7 @@ export function createReservation(lang = get().lang): Booking {
     startIso: new Date(start).toISOString(),
     endIso: new Date(end).toISOString(),
     tz: branch.timeZone,
-    price: priceFor(draft.format, draft.durationMin),
+    price: priceFor(draft.format, draft.durationMin, consultant.id),
     // Messages to the customer follow the language they booked in.
     customer: { ...draft.details, consultationLang: lang, phone: cleanPhone(draft.details.phone), email: draft.details.email.trim() },
     status: 'reserved',

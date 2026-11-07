@@ -32,6 +32,7 @@ export function DirectoryPage() {
   const list = useMemo(
     () =>
       getConsultants(overrides).filter(c => {
+        if (c.hidden) return false
         // Branch comes from the welcome screen; online vs in person is chosen while booking.
         if (location && c.branchId !== location) return false
         if (filters.program !== 'all' && !c.programs.includes(filters.program)) return false

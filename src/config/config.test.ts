@@ -1,5 +1,7 @@
 import { branches } from './branches'
-import { consultants } from './consultants'
+import { consultants as allConsultants } from './consultants'
+// The hidden 5 EGP payment-test consultant isn't part of the company line-up.
+const consultants = allConsultants.filter(c => !c.hidden)
 import { bookingConfig } from './booking'
 import { pendingDecisions } from './pendingDecisions'
 import { defaultCurrency, payCurrencies, paymentMethodLabels } from './payments'

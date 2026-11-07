@@ -3,7 +3,7 @@ import { programs } from './programs'
 import { bios } from './bios'
 
 type Seed = Pick<Consultant, 'id' | 'name' | 'branchId' | 'experienceYears'> &
-  Partial<Pick<Consultant, 'title' | 'experienceLabel' | 'nameNeedsConfirmation'>>
+  Partial<Pick<Consultant, 'title' | 'experienceLabel' | 'nameNeedsConfirmation' | 'hidden' | 'price'>>
 
 // Names, branches and years come from the company brief; titles and photos match mg-visa.com/about-us.
 // Every consultant handles every program.
@@ -70,5 +70,16 @@ export const consultants: Consultant[] = [
     title: { en: 'Immigration Specialist', ar: 'أخصائي هجرة' },
     branchId: 'dubai',
     experienceYears: 2,
+  }),
+  // Payment test only: 5 EGP, online, not listed for customers. Open #/consultant/test-ek-q7m4x9 to use it.
+  // Remove it here and on the server (see migration 0033) when testing is done.
+  make({
+    id: 'test-ek-q7m4x9',
+    name: { en: 'Payment test', ar: 'اختبار الدفع' },
+    title: { en: 'Internal test — 5 EGP', ar: 'اختبار داخلي — ٥ ج.م' },
+    branchId: 'nasr-city',
+    experienceYears: 0,
+    hidden: true,
+    price: 5,
   }),
 ]

@@ -76,7 +76,7 @@ export function SummaryCard({ consultant, branch, format, durationMin, slotStart
   consultant: Consultant; branch: Branch; format: Format | null; durationMin: number | null; slotStartIso: string | null
 }) {
   const { t, l, lang } = useT()
-  const price = format && durationMin ? priceFor(format, durationMin) : null
+  const price = format && durationMin ? priceFor(format, durationMin, consultant.id) : null
   const row = (label: string, value: React.ReactNode) => (
     <div className="flex items-start justify-between gap-3 py-2.5 text-sm">
       <dt className="text-muted">{label}</dt>

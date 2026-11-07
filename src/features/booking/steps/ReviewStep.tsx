@@ -13,7 +13,7 @@ export function ReviewStep({ consultant, branch, format, durationMin, slotStartI
   onContinue: () => void
 }) {
   const { t, l, lang } = useT()
-  const price = priceFor(format, durationMin)
+  const price = priceFor(format, durationMin, consultant.id)
   const edit = (step: 0 | 1 | 2) => (
     <button type="button" onClick={() => onEdit(step)} className="min-h-11 px-2 text-sm font-semibold text-navy hover:underline">{t('common.edit')}</button>
   )

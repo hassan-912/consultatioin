@@ -30,7 +30,7 @@ export function SlotStep({ consultantId, branch, format, durationMin, slotStartI
         <div>
           <h2 className="text-2xl font-semibold text-ink">{t('booking.chooseTime')}</h2>
           <p className="mt-1 text-sm text-slate">
-            {t('common.durationRange', bookingConfig.durationRange)} — <Ltr className="font-semibold">{formatMoney(priceFor(format, duration), lang)}</Ltr>
+            {t('common.durationRange', bookingConfig.durationRange)} — <Ltr className="font-semibold">{formatMoney(priceFor(format, duration, consultantId), lang)}</Ltr>
           </p>
         </div>
         <DemoBadge />

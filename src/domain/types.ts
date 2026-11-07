@@ -34,6 +34,10 @@ export interface Consultant {
   nameNeedsConfirmation?: boolean
   /** program assignments are demo data until the company supplies real ones */
   demoPrograms: boolean
+  /** Not listed for customers (reachable only by link), e.g. the payment test consultant. */
+  hidden?: boolean
+  /** Price in EGP when it differs from the standard one (set on the server too: consultant_branches.price_amount). */
+  price?: number
 }
 
 export interface BookingConfig {

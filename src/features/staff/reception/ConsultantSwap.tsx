@@ -28,7 +28,7 @@ export function ConsultantSwap({ b, onChanged }: { b: Booking; onChanged: (next:
   const [error, setError] = useState<unknown>(null)
   const [changedFrom, setChangedFrom] = useState<string | null>(null)
   const current = getConsultant(b.consultantId)
-  const options = getConsultants()
+  const options = getConsultants().filter(c => !c.hidden)
     .filter(c => c.id !== b.consultantId && (b.format === 'online' || c.branchId === b.branchId))
     .map(c => ({ c, busy: consultantBusy(all, c.id, b) }))
     .sort((x, y) => Number(x.busy) - Number(y.busy))
