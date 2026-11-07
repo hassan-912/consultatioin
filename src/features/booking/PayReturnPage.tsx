@@ -77,7 +77,7 @@ export function PayReturnPage() {
 
   let content
   if (landed) content = <FlightLoader landed />
-  else if (!pending) content = panel('alert', 'bg-paper text-muted', t('payReturn.missing'), t('ticket.notFoundHere'), <ButtonLink to="/find">{t('ticket.findTitle')}</ButtonLink>)
+  else if (!pending) content = panel('alert', 'bg-paper text-muted', t('payReturn.missing'), t('payReturn.missingHint'), <ButtonLink to="/find">{t('ticket.findTitle')}</ButtonLink>)
   else if (booking && FLAGGED.includes(booking.status)) content = panel('check', 'bg-warn-soft text-warn', t('payReturn.flaggedTitle'), t('payReturn.flaggedBody'), viewBooking)
   else if (booking && booking.status !== 'reserved' && !PAID.includes(booking.status)) content = panel('alert', 'bg-bad-soft text-bad', t('payment.expiredTitle'), t('payment.expiredBody'), viewBooking)
   else if (booking && saysFailed) content = panel('alert', 'bg-bad-soft text-bad', t('payReturn.failedTitle'), t('payReturn.failedBody'),

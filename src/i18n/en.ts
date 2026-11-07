@@ -249,6 +249,7 @@ export const en = {
     viewBooking: 'View my booking',
     flaggedTitle: 'Payment received — our team will contact you',
     flaggedBody: 'We received your payment but couldn’t confirm the appointment automatically. Our finance team will contact you to confirm it or refund you.',
+    missingHint: 'If you’ve paid, find your booking with your booking reference and phone number. Your ticket is also sent to you by WhatsApp or email once confirmed.',
     missing: 'There’s no payment in progress on this device.',
   },
   payDemo: {
