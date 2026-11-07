@@ -15,7 +15,8 @@ const FLAGGED = ['on-hold', 'wrong-amount', 'late-transfer', 'duplicate']
 const POLL_MS = 3000
 const POLLS = 40 // about two minutes
 const ASK_EASYKASH_AT = [2, 5, 10, 20, 30] // ask EasyKash directly; its callback goes to the main website
-const LANDING_MS = 1800
+// The plane lands and the steps tick (about 1s), then the customer gets ~2s to see it before the ticket opens.
+const LANDING_MS = 3500
 
 /** The status EasyKash added to the return link, lower-cased, from the real query string or the hash route's. */
 export function easykashReturnStatus(hashSearch: URLSearchParams): string {

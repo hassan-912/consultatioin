@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useT } from '../../../i18n'
 import type { Booking, PayCurrency } from '../../../domain/types'
-import { defaultCurrency, easykashFee, easykashFeePercent, easykashOptions, payCurrencies } from '../../../config/payments'
+import { defaultCurrency, easykashFee, easykashOptions, payCurrencies } from '../../../config/payments'
 import { convertEgp, useEgpToForeign } from '../../../data/fxRates'
 import { useAppStore } from '../../../store/useAppStore'
 import { expireDue } from '../../../store/actions'
@@ -33,7 +33,7 @@ export function PaymentStep({ booking, onPay, onExpiredRestart }: {
   // Display only: the server asks EasyKash for the price with the same rule (live rate, rounded up), and
   // EasyKash adds its processing fee on top at checkout.
   const base = currency === 'EGP' ? booking.price.amount : rates ? convertEgp(booking.price.amount, rates[currency]) : null
-  const fee = base === null ? null : easykashFee(base, currency)
+  const fee = base === null ? null : easykashFee(base, currency, currency === 'EGP' ? 1 : rates?.[currency])
   const amount = base === null || fee === null ? null : money(Math.round((base + fee) * 100) / 100, currency)
 
   if (expired)
@@ -98,7 +98,7 @@ export function PaymentStep({ booking, onPay, onExpiredRestart }: {
             <dd data-testid="pay-price" className="font-semibold text-ink"><Ltr>{base === null ? '…' : money(base, currency)}</Ltr></dd>
           </div>
           <div className="flex items-baseline justify-between gap-3">
-            <dt className="text-slate">{t('payment.fee', { percent: easykashFeePercent })}</dt>
+            <dt className="text-slate">{t('payment.fee')}</dt>
             <dd data-testid="pay-fee" className="font-semibold text-ink"><Ltr>{fee === null ? '…' : money(fee, currency)}</Ltr></dd>
           </div>
           <div className="mt-1 flex items-baseline justify-between gap-3 border-t border-gold/40 pt-2.5">

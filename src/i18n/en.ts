@@ -225,7 +225,7 @@ export const en = {
     underReview: 'Payment under review',
     slotTaken: 'This time has just been taken. Please choose another time.',
     price: 'Consultation',
-    fee: 'EasyKash processing fee ({percent}%)',
+    fee: 'EasyKash processing fee',
     total: 'Total to pay',
     feeNote: 'The processing fee is charged by EasyKash and may vary slightly by payment method.',
     currency: 'Pay in',

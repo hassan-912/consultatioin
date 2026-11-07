@@ -5,14 +5,15 @@ import type { L10n, PayCurrency, PaymentMethodId } from '../domain/types'
 export const payCurrencies: PayCurrency[] = ['EGP', 'USD', 'EUR', 'AED']
 
 /**
- * EasyKash's processing fee, paid by the customer on top of the price (the account passes it to the buyer).
- * 2.6% matches EasyKash's sales report: a 1,000 EGP booking was charged 1,026 EGP.
+ * EasyKash's processing fee, paid by the customer on top of the price (the account passes it to the buyer):
+ * 2.6% with a minimum of 6 EGP, matching EasyKash's charges (1,000 EGP -> 1,026; 5 EGP -> 11).
  */
 export const easykashFeePercent = 2.6
+export const easykashMinFeeEgp = 6
 
-/** The fee on an amount: whole pounds for EGP, cents for foreign currencies. */
-export function easykashFee(amount: number, currency: PayCurrency): number {
-  const fee = amount * easykashFeePercent / 100
+/** The fee on an amount in `currency`; `unitsPerEgp` converts the EGP minimum. Whole pounds for EGP, cents otherwise. */
+export function easykashFee(amount: number, currency: PayCurrency, unitsPerEgp = 1): number {
+  const fee = Math.max(amount * easykashFeePercent / 100, easykashMinFeeEgp * (currency === 'EGP' ? 1 : unitsPerEgp))
   return currency === 'EGP' ? Math.round(fee) : Math.round(fee * 100) / 100
 }
 
