@@ -29,7 +29,9 @@ export function FormatStep({ value, offered, branch, onChange }: { value: Format
                 disabled ? 'cursor-not-allowed border-line bg-paper opacity-60' : active ? 'border-slate bg-white shadow-[var(--shadow-lift)]' : 'border-line bg-white hover:border-mist'
               }`}
             >
-              <input type="radio" name="format" className="sr-only" checked={active} disabled={disabled} onChange={() => onChange(o.f)} aria-label={t(`format.${o.f}`)} />
+              <input type="radio" name="format" className="sr-only" checked={active} disabled={disabled} onChange={() => onChange(o.f)}
+                // A consultant with one format has it preselected; clicking it again must still move on.
+                onClick={() => { if (active) onChange(o.f) }} aria-label={t(`format.${o.f}`)} />
               <span className={`inline-flex size-12 items-center justify-center rounded-2xl ${active ? 'bg-slate text-gold' : 'bg-paper text-slate'}`}>
                 <Icon name={o.icon} size={22} />
               </span>

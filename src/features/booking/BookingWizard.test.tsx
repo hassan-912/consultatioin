@@ -48,6 +48,14 @@ test('choosing a format moves straight to the time step; duration is fixed, not 
   expect(await screen.findByRole('radio', { name: /in-person consultation/i })).toBeInTheDocument()
 })
 
+test('an already-selected format (single-format consultant) still moves on when clicked', async () => {
+  useAppStore.getState().updateDraft({ format: 'online', step: 0 })
+  renderWizard()
+  expect(screen.getByRole('radio', { name: /online consultation/i })).toBeChecked()
+  fireEvent.click(screen.getByRole('radio', { name: /online consultation/i }))
+  expect(await screen.findByText(/choose a time/i)).toBeInTheDocument()
+})
+
 test('details step blocks invalid phone and empty email with messages', () => {
   useAppStore.getState().updateDraft({ step: 2, format: 'online', durationMin: 30, slotStartIso: firstSlot('online', 30) })
   renderWizard()
