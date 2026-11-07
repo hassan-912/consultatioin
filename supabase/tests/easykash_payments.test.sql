@@ -1,7 +1,7 @@
--- 0029: EasyKash attempts open only for live holds; a signed PAID callback confirms its booking once.
+-- 0029/0030: EasyKash attempts open only for live holds; a signed PAID callback confirms its booking once.
 begin;
 set local search_path = public, extensions;
-select plan(19);
+select plan(20);
 
 create function pg_temp.q(r text, sql text) returns text language plpgsql as $$
 declare res text;
@@ -29,6 +29,7 @@ values
 select is(pg_temp.q('anon', format('select public.start_easykash_attempt(%L, %L, 1)::text', lpad('1', 32, 'a'), 'EGP')) like 'ERR:42501:%', true, 'anon cannot open an attempt');
 select is(pg_temp.q('anon', $q$select public.apply_easykash_payment('x')$q$) like 'ERR:42501:%', true, 'anon cannot settle a payment');
 select is(pg_temp.q('anon', 'select count(*)::text from easykash_attempts') like 'ERR:42501:%', true, 'anon cannot read attempts');
+select is(pg_temp.q('anon', format('select public.open_easykash_attempt(%L)', lpad('1', 32, 'a'))) like 'ERR:42501:%', true, 'anon cannot look up attempts');
 
 -- Opening attempts
 select is((public.start_easykash_attempt(lpad('1', 32, 'a'), 'EGP', 1))->>'amount', '1000', 'EGP amount is the booking price');
