@@ -1,6 +1,7 @@
 {
   "version": "0.0.1",
   "configurations": [
-    { "name": "mg-dev", "runtimeExecutable": "npm", "runtimeArgs": ["run", "dev", "--", "--port", "5179", "--strictPort"], "port": 5179 }
+    { "name": "mg-dev", "runtimeExecutable": "npm", "runtimeArgs": ["run", "dev", "--", "--port", "5179", "--strictPort"], "port": 5179 },
+    { "name": "csp-check", "runtimeExecutable": "node", "runtimeArgs": ["C:/Users/Menna/AppData/Local/Temp/claude/497fa35264f27401/9fd7f9b8-33a9-4beb-8e5d-f937a311e29b/scratchpad/csp-serve.mjs", "C:/Users/Menna/AppData/Local/Temp/claude/497fa35264f27401/9fd7f9b8-33a9-4beb-8e5d-f937a311e29b/scratchpad/csp-dist", "C:/Users/Menna/Documents/projects/consultation/vercel.json", "5181"], "port": 5181 }
   ]
 }
