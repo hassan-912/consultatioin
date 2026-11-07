@@ -1,5 +1,6 @@
 import type { Consultant } from '../domain/types'
 import { programs } from './programs'
+import { bios } from './bios'
 
 type Seed = Pick<Consultant, 'id' | 'name' | 'branchId' | 'experienceYears'> &
   Partial<Pick<Consultant, 'title' | 'experienceLabel' | 'nameNeedsConfirmation'>>
@@ -10,12 +11,12 @@ const make = (s: Seed): Consultant => ({
   programs: programs.map(p => p.id),
   title: null,
   photo: null,
-  bio: null,
   videoUrl: null,
   languages: null,
   qualifications: null,
   demoPrograms: true,
   ...s,
+  bio: bios[s.id] ?? null,
 })
 
 export const consultants: Consultant[] = [

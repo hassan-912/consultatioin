@@ -30,10 +30,10 @@ describe('consultants', () => {
     const count = (id: string) => consultants.filter(c => c.branchId === id).length
     expect([count('nasr-city'), count('sheikh-zayed'), count('dubai')]).toEqual([4, 2, 1])
   })
-  test('titles from the brief and mg-visa.com; no bios', () => {
+  test('titles from the brief and mg-visa.com; every consultant has a bio in both languages', () => {
     expect(consultants.find(c => c.id === 'mohamed-gamal')!.title!.en).toBe('Senior Immigration Specialist & Contract Manager')
     expect(consultants.filter(c => c.id !== 'mohamed-gamal').every(c => c.title?.en === 'Immigration Specialist')).toBe(true)
-    expect(consultants.every(c => c.bio === null)).toBe(true)
+    expect(consultants.every(c => c.bio?.ar.includes(c.name.ar) && c.bio.en.includes(c.name.en))).toBe(true)
   })
   test('Esmail spelling flagged', () => {
     expect(consultants.find(c => c.id === 'mohamed-esmail')!.nameNeedsConfirmation).toBe(true)

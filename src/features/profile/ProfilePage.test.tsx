@@ -15,9 +15,10 @@ beforeEach(() => {
   useAppStore.setState({ bookings: {}, records: {}, reviews: {}, seeded: true, approvalMinSample: null })
 })
 
-test('placeholders for missing bio, video, feedback', async () => {
+test('bio from the brief; placeholders for missing video and feedback', async () => {
   open('ahmed-khalil')
-  expect(screen.getByText('Biography under processing')).toBeInTheDocument()
+  expect(screen.getByText(/I'm Ahmed Khalil, a consultant at MG Immigration/)).toBeInTheDocument()
+  expect(screen.queryByText('Biography under processing')).toBeNull()
   expect(screen.getAllByText('Video pending').length).toBeGreaterThan(0)
   expect(await screen.findByText('No verified feedback yet')).toBeInTheDocument()
 })

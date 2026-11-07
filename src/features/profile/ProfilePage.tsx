@@ -61,7 +61,7 @@ function Profile({ c, t, l }: { c: ReturnType<typeof getConsultant> } & Pick<Ret
         <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6">
           <section aria-labelledby="about" className="rounded-3xl bg-white p-5 ring-1 ring-line sm:p-6">
             <h2 id="about" className="mb-3 text-lg font-semibold text-ink">{t('profile.about')}</h2>
-            {c.bio ? <p className="leading-relaxed text-slate">{l(c.bio)}</p> : <Placeholder kind="bio" hint={t('placeholder.bioHint')} />}
+            {c.bio ? <div className="grid gap-3 leading-relaxed text-slate">{l(c.bio).split(/\n\s*\n/).map((para, i) => <p key={i}>{para.trim()}</p>)}</div> : <Placeholder kind="bio" hint={t('placeholder.bioHint')} />}
           </section>
 
           <VideoPlayer consultant={c} />
