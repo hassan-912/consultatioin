@@ -10,6 +10,7 @@ Date: 2026-11-07 · Branch: `feat/supabase` · Status: draft, waiting for approv
 | Confirmation | Automatic when a signed PAID callback matches the booking's amount. Anything else goes to finance. |
 | Manual methods | Removed. EasyKash is the only way to pay. |
 | Account readiness | Unknown. Build and test without live keys; the user checks with EasyKash before going live. |
+| Callback URL | Stays on https://mg-visa.com (the WooCommerce shop shares the EasyKash account). This system confirms payments itself (decided 2026-11-07). |
 | Currencies | The customer pays in **EGP, USD, EUR or AED** (added 2026-11-07). |
 
 ## Currencies
@@ -75,3 +76,12 @@ Date: 2026-11-07 · Branch: `feat/supabase` · Status: draft, waiting for approv
 - **No sandbox:** EasyKash doesn't document a test environment, so the first live test uses real money.
 - **Fees:** EasyKash's fee is taken from the amount received. Prices are unchanged.
 - **Old bookings:** bookings already `on-hold` with manual receipts keep their current finance review path.
+
+## Confirmation without the callback (added 2026-11-07)
+
+EasyKash allows one callback URL per account, and it points to the main website. So payments are confirmed here by asking EasyKash's Inquiry API with our key:
+
+- **Return page:** when the customer comes back, it asks at about 6s, 15s, 30s, 60s and 90s while showing the plane "ticket being issued" screen, then lands on the ticket.
+- **Background check (0031):** every minute pg_cron calls `dispatch_easykash_checks()`, which pokes `easykash-pay` with the shared `x-webhook-secret` (Vault `ticket_email_webhook_secret`). It claims open attempts (every minute for the first hour, every 10 minutes up to 6 hours) and settles any PAID one through `apply_easykash_payment`. This covers customers who close the tab on EasyKash's page.
+- EasyKash's inquiry answers HTTP 400 "Error your payment is not attempted yet!" until someone pays. That is treated as "not paid yet".
+- No sandbox exists: the docs (all 10 pages, read 2026-11-07) list one live API at back.easykash.net and no test mode, keys or cards.

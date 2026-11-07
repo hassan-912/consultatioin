@@ -78,3 +78,8 @@
 }
 .alert-pop { animation: mg-alert-pop .45s ease-out both; }
 @media (prefers-reduced-motion: reduce) { .alert-pop { animation: none; } }
+
+/* Pay return: the route fills in gold as the plane lands. */
+@keyframes mg-trace { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+.mg-trace { stroke-dasharray: 1; animation: mg-trace 1s ease-out both; }
+@media (prefers-reduced-motion: reduce) { .mg-trace { animation: none; } }

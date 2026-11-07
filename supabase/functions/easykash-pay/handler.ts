@@ -19,6 +19,10 @@ export type Dependencies = {
   /** Keeps an inquiry result as if it were a callback; resolves once stored. */
   record: (payload: Record<string, string>) => Promise<unknown>
   apply: (easykashRef: string) => Promise<string>
+  /** Background check: the open attempts due for a look (marks them checked). */
+  claimChecks?: () => Promise<string[]>
+  /** Shared with the database job that calls the background check (x-webhook-secret header). */
+  sweepSecret?: string
   fetch: typeof fetch
   log?: (event: string, fields: Record<string, string | number>) => void
 }
@@ -29,6 +33,13 @@ export function easykashMobile(phone: string) {
   return phone.startsWith('+20') ? '0' + digits.slice(2) : digits
 }
 
+/** Constant-time comparison (length is not secret here). */
+function same(a: string, b: string): boolean {
+  let diff = a.length ^ b.length
+  for (let i = 0; i < Math.max(a.length, b.length); i++) diff |= (a.charCodeAt(i) || 0) ^ (b.charCodeAt(i) || 0)
+  return diff === 0
+}
+
 export function easykashPayHandler(deps: Dependencies) {
   const allowedOrigin = new URL(deps.siteUrl).origin
   return async (request: Request): Promise<Response> => {
@@ -36,10 +47,56 @@ export function easykashPayHandler(deps: Dependencies) {
     const headers = { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'Vary': 'Origin',
       ...(origin === allowedOrigin ? { 'Access-Control-Allow-Origin': origin } : {}) }
     const reply = (status: number, body: Record<string, unknown>) => new Response(JSON.stringify(body), { status, headers })
+    const easykash = async (path: string, payload: unknown) => {
+      const res = await deps.fetch(`${EASYKASH}${path}`, {
+        method: 'POST', headers: { authorization: deps.apiKey!, 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload), signal: AbortSignal.timeout(15000),
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok || !data) {
+        // EasyKash's own message (never contains our key); trimmed so no buyer details end up in logs.
+        const reason = String((data as Record<string, unknown> | null)?.message ?? (data as Record<string, unknown> | null)?.error ?? '').slice(0, 80)
+        if (!/not attempted/i.test(reason)) deps.log?.('easykash_error', { path, status: res.status, reason })
+        // The inquiry answers 400 "your payment is not attempted yet" while the customer hasn't paid: not an error.
+        if (/not attempted/i.test(reason)) throw new Error('NOT_ATTEMPTED')
+        throw new Error(res.status === 400 || res.status === 404 ? 'EASYKASH_REFUSED' : 'PAYMENT_UNAVAILABLE')
+      }
+      return data as Record<string, unknown>
+    }
+    /** Asks EasyKash about one attempt; a PAID answer is stored like a callback and applied. Resolves to the outcome or the status. */
+    const settle = async (ref: string): Promise<string> => {
+      const data = await easykash('/api/cash-api/inquire', { customerReference: ref }).catch((e: Error) => {
+        if (e.message === 'NOT_ATTEMPTED') return { status: 'NOT_ATTEMPTED' } as Record<string, unknown>
+        throw e
+      })
+      const status = String(data.status ?? '').toUpperCase()
+      if (status !== 'PAID' || !data.easykashRef) return status.toLowerCase() || 'unknown'
+      // Straight from EasyKash's API with our key, so it needs no signature.
+      const payload = Object.fromEntries(Object.entries({ ...data, customerReference: ref })
+        .filter(([, v]) => v !== null && typeof v !== 'object').map(([k, v]) => [k, String(v)]))
+      await deps.record(payload)
+      return deps.apply(String(data.easykashRef))
+    }
     if (origin && origin !== allowedOrigin) return reply(403, { error: 'FORBIDDEN' })
     if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: { ...headers,
       'Access-Control-Allow-Methods': 'POST', 'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-client-info' } })
     if (request.method !== 'POST') return reply(405, { error: 'METHOD_NOT_ALLOWED' })
+    // Background check, called every minute by the database (pg_cron + pg_net) with the shared secret. It covers
+    // customers who close the tab before coming back, since EasyKash's callback goes to the main website.
+    const sweepHeader = request.headers.get('x-webhook-secret')
+    if (sweepHeader !== null) {
+      if (!deps.sweepSecret || !deps.claimChecks || !same(sweepHeader, deps.sweepSecret)) return reply(401, { error: 'FORBIDDEN' })
+      if (!deps.apiKey) return reply(503, { error: 'NOT_CONFIGURED' })
+      const refs = await deps.claimChecks().catch(() => null)
+      if (!refs) return reply(500, { error: 'PAYMENT_UNAVAILABLE' })
+      const outcomes: Record<string, number> = {}
+      for (const ref of refs) {
+        const result = await settle(ref).catch(() => 'error')
+        outcomes[result] = (outcomes[result] ?? 0) + 1
+      }
+      deps.log?.('sweep', { checked: refs.length, ...outcomes })
+      return reply(200, { checked: refs.length, outcomes })
+    }
     // Public endpoint: only the anonymous project credential, never a staff JWT.
     const authorization = request.headers.get('authorization')
     if (authorization && authorization !== `Bearer ${deps.anonKey}`) return reply(403, { error: 'FORBIDDEN' })
@@ -54,16 +111,6 @@ export function easykashPayHandler(deps: Dependencies) {
     const token = body?.manage_token
     if (typeof token !== 'string' || !/^[0-9a-f]{32}$/.test(token)) return reply(400, { error: 'INVALID_INPUT' })
     if (!deps.apiKey) { deps.log?.('not_configured', {}); return reply(503, { error: 'NOT_CONFIGURED' }) }
-
-    const easykash = async (path: string, payload: unknown) => {
-      const res = await deps.fetch(`${EASYKASH}${path}`, {
-        method: 'POST', headers: { authorization: deps.apiKey!, 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload), signal: AbortSignal.timeout(15000),
-      })
-      const data = await res.json().catch(() => null)
-      if (!res.ok || !data) { deps.log?.('easykash_error', { path, status: res.status }); throw new Error('PAYMENT_UNAVAILABLE') }
-      return data as Record<string, unknown>
-    }
 
     try {
       if (body.action === 'start') {
@@ -84,18 +131,10 @@ export function easykashPayHandler(deps: Dependencies) {
       if (body.action === 'check') {
         const ref = await deps.openAttempt(token)
         if (!ref) return reply(200, { status: 'none' })
-        const data = await easykash('/api/cash-api/inquire', { customerReference: ref })
-        const status = String(data.status ?? '').toUpperCase()
-        if (status === 'PAID' && data.easykashRef) {
-          // Straight from EasyKash's API with our key, so it needs no signature; stored like a callback.
-          const payload = Object.fromEntries(Object.entries({ ...data, customerReference: ref })
-            .filter(([, v]) => v !== null && typeof v !== 'object').map(([k, v]) => [k, String(v)]))
-          await deps.record(payload)
-          const outcome = await deps.apply(String(data.easykashRef))
-          deps.log?.('checked', { outcome })
-          return reply(200, { status: 'paid', outcome })
-        }
-        return reply(200, { status: status.toLowerCase() || 'unknown' })
+        const result = await settle(ref)
+        const outcomes = ['confirmed', 'wrong-amount', 'slot-taken', 'needs-refund', 'duplicate', 'unmatched']
+        if (outcomes.includes(result)) { deps.log?.('checked', { outcome: result }); return reply(200, { status: 'paid', outcome: result }) }
+        return reply(200, { status: result })
       }
       return reply(400, { error: 'INVALID_INPUT' })
     } catch (error) {

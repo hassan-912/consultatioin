@@ -26,6 +26,9 @@ Deno.serve(easykashPayHandler({
   openAttempt: token => rpc('open_easykash_attempt', { p_manage_token: token }),
   record: payload => rpc('record_easykash_callback', { p_payload: payload }),
   apply: ref => rpc('apply_easykash_payment', { p_easykash_ref: ref }),
+  claimChecks: () => rpc<string[] | null>('claim_easykash_checks', { p_limit: 20 }).then(r => r ?? []),
+  // The background job reuses the ticket-email worker's shared secret (Vault 'ticket_email_webhook_secret').
+  sweepSecret: Deno.env.get('TICKET_EMAIL_WEBHOOK_SECRET') || undefined,
   fetch: (input, init) => fetch(input, init),
   log: (event, fields) => console.log(JSON.stringify({ fn: 'easykash-pay', event, ...fields })),
 }))

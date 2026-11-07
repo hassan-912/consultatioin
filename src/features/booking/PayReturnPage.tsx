@@ -8,12 +8,14 @@ import { Header } from '../../components/Header'
 import { Button, ButtonLink, Ltr } from '../../components/ui'
 import { Icon } from '../../components/Icon'
 import type { Booking } from '../../domain/types'
+import { FlightLoader } from './FlightLoader'
 
 const PAID = ['confirmed', 'checked-in', 'completed']
 const FLAGGED = ['on-hold', 'wrong-amount', 'late-transfer', 'duplicate']
 const POLL_MS = 3000
 const POLLS = 40 // about two minutes
-const ASK_EASYKASH_AT = [5, 15, 30] // fallback inquiries if the callback is late
+const ASK_EASYKASH_AT = [2, 5, 10, 20, 30] // ask EasyKash directly; its callback goes to the main website
+const LANDING_MS = 1800
 
 /**
  * Where EasyKash sends the customer back. Its query values (?status=…) are not signed, so they only choose
@@ -50,12 +52,17 @@ export function PayReturnPage() {
     return () => { alive = false; clearTimeout(timer) }
   }, [pending, saysFailed, round])
 
+  // Confirmed: the plane lands, then the ticket opens.
+  const landed = !!booking && PAID.includes(booking.status)
   useEffect(() => {
-    if (!booking || !PAID.includes(booking.status)) return
+    if (!booking || !landed) return
     forgetPayment()
-    resetDraft(null)
-    navigate(`/ticket/${booking.manageToken}`, { replace: true })
-  }, [booking, navigate, resetDraft])
+    const id = setTimeout(() => {
+      resetDraft(null)
+      navigate(`/ticket/${booking.manageToken}`, { replace: true })
+    }, LANDING_MS)
+    return () => clearTimeout(id)
+  }, [booking, landed, navigate, resetDraft])
 
   const panel = (icon: 'clock' | 'check' | 'alert', tone: string, title: string, body: string, actions?: React.ReactNode) => (
     <div className="rounded-3xl bg-white p-6 text-center ring-1 ring-line">
@@ -69,20 +76,15 @@ export function PayReturnPage() {
   const viewBooking = pending && <ButtonLink to={`/booking/${pending.token}`} variant="ghost">{t('payReturn.viewBooking')}</ButtonLink>
 
   let content
-  if (!pending) content = panel('alert', 'bg-paper text-muted', t('payReturn.missing'), t('ticket.notFoundHere'), <ButtonLink to="/find">{t('ticket.findTitle')}</ButtonLink>)
+  if (landed) content = <FlightLoader landed />
+  else if (!pending) content = panel('alert', 'bg-paper text-muted', t('payReturn.missing'), t('ticket.notFoundHere'), <ButtonLink to="/find">{t('ticket.findTitle')}</ButtonLink>)
   else if (booking && FLAGGED.includes(booking.status)) content = panel('check', 'bg-warn-soft text-warn', t('payReturn.flaggedTitle'), t('payReturn.flaggedBody'), viewBooking)
   else if (booking && booking.status !== 'reserved' && !PAID.includes(booking.status)) content = panel('alert', 'bg-bad-soft text-bad', t('payment.expiredTitle'), t('payment.expiredBody'), viewBooking)
   else if (booking && saysFailed) content = panel('alert', 'bg-bad-soft text-bad', t('payReturn.failedTitle'), t('payReturn.failedBody'),
     <ButtonLink to={`/booking/${pending.token}`}>{t('payReturn.tryAgain')}</ButtonLink>)
   else if (slow) content = panel('clock', 'bg-paper text-slate', t('payReturn.slowTitle'), t('payReturn.slowBody'),
     <><Button onClick={() => setRound(n => n + 1)}>{t('payReturn.checkAgain')}</Button>{viewBooking}</>)
-  else content = (
-    <div role="status" aria-live="polite" className="rounded-3xl bg-white p-6 text-center ring-1 ring-line">
-      <span className="mx-auto block size-10 animate-spin rounded-full border-4 border-line border-t-gold" aria-hidden="true" />
-      <h1 className="mt-4 text-2xl font-semibold text-ink">{t('payReturn.checking')}</h1>
-      <p className="mt-2 text-slate">{t('payReturn.checkingHint')}</p>
-    </div>
-  )
+  else content = <FlightLoader landed={landed} />
 
   return (
     <>

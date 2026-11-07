@@ -85,3 +85,33 @@ test('mobile numbers in the format EasyKash expects', () => {
   expect(easykashMobile('+201001234567')).toBe('01001234567')
   expect(easykashMobile('+971501234567')).toBe('971501234567')
 })
+
+test('background check: only with the shared secret; asks EasyKash about each due attempt and applies PAID ones', async () => {
+  const replies: Record<string, unknown> = { 'MG-A-1': { status: 'PAID', easykashRef: '901', Amount: '1000' }, 'MG-B-1': { status: 'NEW' } }
+  const { deps } = setup({ sweepSecret: 'shh', claimChecks: vi.fn().mockResolvedValue(['MG-A-1', 'MG-B-1']) }, (_path, body) => replies[body.customerReference])
+  const sweep = (secret: string) => easykashPayHandler(deps)(new Request('https://x.supabase.co/functions/v1/easykash-pay', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'x-webhook-secret': secret }, body: '{"action":"sweep"}',
+  }))
+  expect((await sweep('wrong')).status).toBe(401)
+  expect(deps.claimChecks).not.toHaveBeenCalled()
+  const res = await sweep('shh')
+  expect(await res.json()).toEqual({ checked: 2, outcomes: { confirmed: 1, new: 1 } })
+  expect(deps.record).toHaveBeenCalledTimes(1)
+  expect(deps.apply).toHaveBeenCalledWith('901')
+})
+
+test('background check is off when no secret is configured', async () => {
+  const { deps } = setup({ claimChecks: vi.fn() })
+  const res = await easykashPayHandler(deps)(new Request('https://x.supabase.co/functions/v1/easykash-pay', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'x-webhook-secret': '' }, body: '{"action":"sweep"}',
+  }))
+  expect(res.status).toBe(401)
+})
+
+test('"payment is not attempted yet" from EasyKash means not paid, not an error', async () => {
+  const fetchMock = vi.fn(async () => new Response(JSON.stringify({ message: 'Error your payment is not attempted yet!' }), { status: 400 }))
+  const { call } = setup({ fetch: fetchMock as unknown as typeof fetch })
+  const res = await call({ action: 'check', manage_token: TOKEN })
+  expect(res.status).toBe(200)
+  expect(await res.json()).toEqual({ status: 'not_attempted' })
+})

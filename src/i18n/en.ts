@@ -233,6 +233,11 @@ export const en = {
     redirecting: 'Opening the payment page…',
   },
   payReturn: {
+    dontClose: 'Please don’t close this page — your ticket is being issued',
+    landed: 'You’re booked! Opening your ticket…',
+    step1: 'Checking your payment with EasyKash',
+    step2: 'Confirming your appointment',
+    step3: 'Issuing your ticket',
     checking: 'Confirming your payment…',
     checkingHint: 'This usually takes a few seconds. Please keep this page open.',
     failedTitle: 'The payment didn’t go through',
