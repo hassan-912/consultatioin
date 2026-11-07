@@ -17,6 +17,17 @@ const POLLS = 40 // about two minutes
 const ASK_EASYKASH_AT = [2, 5, 10, 20, 30] // ask EasyKash directly; its callback goes to the main website
 const LANDING_MS = 1800
 
+/** The status EasyKash added to the return link, lower-cased, from the real query string or the hash route's. */
+export function easykashReturnStatus(hashSearch: URLSearchParams): string {
+  const fromPage = new URLSearchParams(window.location.search)
+  const status = (fromPage.get('status') ?? hashSearch.get('status') ?? '').toLowerCase()
+  // Tidy the address bar: EasyKash's values don't belong in a link the customer might share.
+  if (fromPage.has('status') || fromPage.has('customerReference')) {
+    window.history.replaceState(window.history.state, '', window.location.pathname + window.location.hash)
+  }
+  return status
+}
+
 /**
  * Where EasyKash sends the customer back. Its query values (?status=…) are not signed, so they only choose
  * what to say while we wait: the booking's own status, set by the verified callback, decides everything.
@@ -27,7 +38,9 @@ export function PayReturnPage() {
   const resetDraft = useAppStore(s => s.resetDraft)
   const [search] = useSearchParams()
   const [pending] = useState(pendingPayment)
-  const saysFailed = search.get('status') === 'failed'
+  // EasyKash appends its values before the '#' (…/?status=FAILED&…#/pay/return), in capitals; read either place.
+  const [easykashStatus] = useState(() => easykashReturnStatus(search))
+  const saysFailed = easykashStatus === 'failed'
   const [booking, setBooking] = useState<Booking | null>(null)
   const [slow, setSlow] = useState(false)
   const [round, setRound] = useState(0)

@@ -55,3 +55,16 @@ test('no pending payment on this device', () => {
   open(null)
   expect(screen.getByText(/no payment in progress/i)).toBeInTheDocument()
 })
+
+test('EasyKash’s real return link: ?status=FAILED before the #, in capitals, is read and then cleared', async () => {
+  window.history.pushState({}, '', '/?status=FAILED&providerRefNum=123&customerReference=MG-RET1-TEST-1')
+  open('reserved')
+  expect(await screen.findByText(/didn’t go through/i)).toBeInTheDocument()
+  expect(window.location.search).toBe('')
+})
+
+test('while waiting, only "checking" is in progress; nothing claims a confirmation that hasn’t happened', async () => {
+  open('reserved')
+  await screen.findByText(/confirming your payment/i)
+  expect(screen.getAllByRole('listitem').filter(li => li.querySelector('svg'))).toHaveLength(0)
+})

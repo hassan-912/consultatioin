@@ -8,17 +8,19 @@ const STEPS = ['payReturn.step1', 'payReturn.step2', 'payReturn.step3'] as const
 
 /**
  * "Your ticket is being issued": a plane flies the route while we wait for EasyKash's confirmation, then lands.
- * Steps advance with time while waiting (honest wording: checking, confirming, issuing) and all tick on landing.
+ * Steps show real progress only: checking while waiting, then all three tick in turn once confirmed.
  */
 export function FlightLoader({ landed }: { landed: boolean }) {
   const { t } = useT()
-  const [elapsed, setElapsed] = useState(0)
+  // Only real progress is shown: while waiting we are checking with EasyKash; the next steps tick, one after
+  // another, once the booking is actually confirmed.
+  const [ticked, setTicked] = useState(0)
   useEffect(() => {
-    const started = Date.now()
-    const id = setInterval(() => setElapsed(Date.now() - started), 500)
-    return () => clearInterval(id)
-  }, [])
-  const active = landed ? STEPS.length : elapsed < 3000 ? 0 : elapsed < 9000 ? 1 : 2
+    if (!landed) { setTicked(0); return }
+    const ids = STEPS.map((_, i) => setTimeout(() => setTicked(i + 1), i * 280))
+    return () => ids.forEach(clearTimeout)
+  }, [landed])
+  const active = landed ? ticked : 0
 
   return (
     <div role="status" aria-live="polite" className="overflow-hidden rounded-3xl bg-slate-deep text-white shadow-[var(--shadow-lift)]">
