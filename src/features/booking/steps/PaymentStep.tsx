@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useT } from '../../../i18n'
 import type { Booking, PayCurrency } from '../../../domain/types'
-import { defaultCurrency, easykashOptions, payCurrencies } from '../../../config/payments'
+import { defaultCurrency, easykashFee, easykashFeePercent, easykashOptions, payCurrencies } from '../../../config/payments'
 import { convertEgp, useEgpToForeign } from '../../../data/fxRates'
 import { useAppStore } from '../../../store/useAppStore'
 import { expireDue } from '../../../store/actions'
@@ -28,9 +28,13 @@ export function PaymentStep({ booking, onPay, onExpiredRestart }: {
   const expired = serverExpired || booking.status === 'expired' || (booking.status === 'reserved' && booking.holdExpiresAt <= now())
   const egp = formatMoney(booking.price, lang)
   const rates = useEgpToForeign(currency !== 'EGP')
-  const money = (n: number, c: string) => new Intl.NumberFormat(lang === 'ar' ? 'ar-EG-u-nu-latn' : 'en-US', { style: 'currency', currency: c, maximumFractionDigits: 0 }).format(n)
-  // Display only: the server works out the charged amount with the same rule (live rate, rounded up).
-  const amount = currency === 'EGP' ? egp : rates ? money(convertEgp(booking.price.amount, rates[currency]), currency) : null
+  const money = (n: number, c: string) => c === 'EGP' ? formatMoney({ amount: n, currency: 'EGP' }, lang)
+    : new Intl.NumberFormat(lang === 'ar' ? 'ar-EG-u-nu-latn' : 'en-US', { style: 'currency', currency: c, minimumFractionDigits: Number.isInteger(n) ? 0 : 2, maximumFractionDigits: 2 }).format(n)
+  // Display only: the server asks EasyKash for the price with the same rule (live rate, rounded up), and
+  // EasyKash adds its processing fee on top at checkout.
+  const base = currency === 'EGP' ? booking.price.amount : rates ? convertEgp(booking.price.amount, rates[currency]) : null
+  const fee = base === null ? null : easykashFee(base, currency)
+  const amount = base === null || fee === null ? null : money(Math.round((base + fee) * 100) / 100, currency)
 
   if (expired)
     return (
@@ -88,11 +92,22 @@ export function PaymentStep({ booking, onPay, onExpiredRestart }: {
       </fieldset>
 
       <div className="rounded-2xl bg-gold-soft px-5 py-4 ring-1 ring-gold/40">
-        <div className="flex items-baseline justify-between gap-3">
-          <span className="font-semibold text-gold-deep">{t('payment.amount')}</span>
-          <span data-testid="pay-amount" className="font-display text-3xl font-semibold text-ink"><Ltr>{amount ?? t('payment.rateLoading')}</Ltr></span>
-        </div>
-        {currency !== 'EGP' && <p className="mt-1.5 text-xs text-muted">{t('payment.rateNote', { amount: egp })}</p>}
+        <dl className="grid gap-1.5 text-sm">
+          <div className="flex items-baseline justify-between gap-3">
+            <dt className="text-slate">{t('payment.price')}</dt>
+            <dd data-testid="pay-price" className="font-semibold text-ink"><Ltr>{base === null ? '…' : money(base, currency)}</Ltr></dd>
+          </div>
+          <div className="flex items-baseline justify-between gap-3">
+            <dt className="text-slate">{t('payment.fee', { percent: easykashFeePercent })}</dt>
+            <dd data-testid="pay-fee" className="font-semibold text-ink"><Ltr>{fee === null ? '…' : money(fee, currency)}</Ltr></dd>
+          </div>
+          <div className="mt-1 flex items-baseline justify-between gap-3 border-t border-gold/40 pt-2.5">
+            <dt className="font-semibold text-gold-deep">{t('payment.total')}</dt>
+            <dd data-testid="pay-amount" className="font-display text-3xl font-semibold text-ink"><Ltr>{amount ?? t('payment.rateLoading')}</Ltr></dd>
+          </div>
+        </dl>
+        <p className="mt-2 text-xs text-muted">{t('payment.feeNote')}</p>
+        {currency !== 'EGP' && <p className="mt-1 text-xs text-muted">{t('payment.rateNote', { amount: egp })}</p>}
       </div>
 
       <section className="rounded-2xl bg-white p-4 ring-1 ring-line">

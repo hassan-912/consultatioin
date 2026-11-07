@@ -23,7 +23,10 @@ afterEach(() => { vi.unstubAllGlobals(); resetFxRates() })
 test('Egyptian numbers pay in EGP; no manual transfer details are shown', () => {
   const onPay = show('+201001234567')
   expect(screen.getByRole('radio', { name: 'EGP' })).toBeChecked()
-  expect(screen.getByTestId('pay-amount')).toHaveTextContent(/1,000/)
+  // EasyKash's 2.6% fee is shown and included: 1,000 + 26 = 1,026, as its sales report charged.
+  expect(screen.getByTestId('pay-price')).toHaveTextContent(/1,000/)
+  expect(screen.getByTestId('pay-fee')).toHaveTextContent(/26/)
+  expect(screen.getByTestId('pay-amount')).toHaveTextContent(/1,026/)
   expect(screen.queryByText(/instapay|vodafone|iban|transaction reference/i)).toBeNull()
   for (const m of ['Credit & debit cards', 'Mobile wallets', 'Meeza', 'Apple Pay']) expect(screen.getByText(m)).toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: /pay .* securely/i }))
@@ -34,10 +37,11 @@ test('UAE numbers start in AED at the live rate, rounded up; the customer can sw
   resetFxRates({ AED: 0.0752, USD: 0.0205, EUR: 0.0189 })
   const onPay = show('+971501234567')
   expect(screen.getByRole('radio', { name: 'AED' })).toBeChecked()
-  expect(screen.getByTestId('pay-amount')).toHaveTextContent(/AED\s*76|76\s*AED/) // 1000 × 0.0752 = 75.2 → 76
+  expect(screen.getByTestId('pay-price')).toHaveTextContent(/AED\s*76|76\s*AED/) // 1000 × 0.0752 = 75.2 → 76
+  expect(screen.getByTestId('pay-amount')).toHaveTextContent(/77\.98/) // + 2.6% fee (1.98)
   expect(screen.getByText(/today’s exchange rate/i)).toBeInTheDocument()
   fireEvent.click(screen.getByRole('radio', { name: 'EUR' }))
-  expect(screen.getByTestId('pay-amount')).toHaveTextContent('€19')
+  expect(screen.getByTestId('pay-amount')).toHaveTextContent('€19.49')
   fireEvent.click(screen.getByRole('button', { name: /pay .* securely/i }))
   expect(onPay).toHaveBeenCalledWith('EUR')
 })
@@ -46,7 +50,7 @@ test('other countries default to USD, fetching today’s rate', async () => {
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ result: 'success', base_code: 'EGP', rates: { AED: 0.075, USD: 0.0204, EUR: 0.0188 } }) }))
   show('+447700900123')
   expect(screen.getByRole('radio', { name: 'USD' })).toBeChecked()
-  await waitFor(() => expect(screen.getByTestId('pay-amount')).toHaveTextContent('$21'))
+  await waitFor(() => expect(screen.getByTestId('pay-amount')).toHaveTextContent('$21.55'))
 })
 
 test('a failed start shows the reason; an expired hold switches to the expired screen', async () => {

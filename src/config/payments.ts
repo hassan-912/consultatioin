@@ -4,6 +4,18 @@ import type { L10n, PayCurrency, PaymentMethodId } from '../domain/types'
 // Prices are set in EGP; the server converts at the day's rate when the payment starts.
 export const payCurrencies: PayCurrency[] = ['EGP', 'USD', 'EUR', 'AED']
 
+/**
+ * EasyKash's processing fee, paid by the customer on top of the price (the account passes it to the buyer).
+ * 2.6% matches EasyKash's sales report: a 1,000 EGP booking was charged 1,026 EGP.
+ */
+export const easykashFeePercent = 2.6
+
+/** The fee on an amount: whole pounds for EGP, cents for foreign currencies. */
+export function easykashFee(amount: number, currency: PayCurrency): number {
+  const fee = amount * easykashFeePercent / 100
+  return currency === 'EGP' ? Math.round(fee) : Math.round(fee * 100) / 100
+}
+
 /** What EasyKash offers at checkout (its payment option IDs 2, 4, 6, 31). */
 export const easykashOptions: L10n[] = [
   { en: 'Credit & debit cards', ar: 'البطاقات الائتمانية والخصم' },

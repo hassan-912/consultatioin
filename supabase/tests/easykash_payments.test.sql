@@ -1,7 +1,7 @@
--- 0029/0030: EasyKash attempts open only for live holds; a signed PAID callback confirms its booking once.
+-- 0029/0030/0032: EasyKash attempts open only for live holds; a signed PAID callback confirms its booking once.
 begin;
 set local search_path = public, extensions;
-select plan(20);
+select plan(21);
 
 create function pg_temp.q(r text, sql text) returns text language plpgsql as $$
 declare res text;
@@ -23,7 +23,8 @@ values
   ('EK-1','qek1',lpad('1', 32, 'a'),'mohamed-gamal','nasr-city','online',now() + interval '700 days',now() + interval '700 days 30 minutes','Africa/Cairo',1000,'Sara','+201001234567','s@e.com','whatsapp','en','reserved',now() + interval '20 minutes'),
   ('EK-2','qek2',lpad('2', 32, 'a'),'mohamed-gamal','nasr-city','online',now() + interval '701 days',now() + interval '701 days 30 minutes','Africa/Cairo',1000,'Omar','+447700900123',null,'whatsapp','en','reserved',now() + interval '20 minutes'),
   ('EK-3','qek3',lpad('3', 32, 'a'),'mohamed-gamal','nasr-city','online',now() + interval '702 days',now() + interval '702 days 30 minutes','Africa/Cairo',1000,'Nour','+201001234568',null,'whatsapp','en','reserved',now() - interval '1 minute'),
-  ('EK-4','qek4',lpad('4', 32, 'a'),'mohamed-gamal','nasr-city','online',now() + interval '703 days',now() + interval '703 days 30 minutes','Africa/Cairo',1000,'Ali','+201001234569',null,'whatsapp','en','reserved',now() + interval '20 minutes');
+  ('EK-4','qek4',lpad('4', 32, 'a'),'mohamed-gamal','nasr-city','online',now() + interval '703 days',now() + interval '703 days 30 minutes','Africa/Cairo',1000,'Ali','+201001234569',null,'whatsapp','en','reserved',now() + interval '20 minutes'),
+  ('EK-5','qek5',lpad('5', 32, 'a'),'mohamed-gamal','nasr-city','online',now() + interval '704 days',now() + interval '704 days 30 minutes','Africa/Cairo',1000,'Mona','+447700900124',null,'whatsapp','en','reserved',now() + interval '20 minutes');
 
 -- Access
 select is(pg_temp.q('anon', format('select public.start_easykash_attempt(%L, %L, 1)::text', lpad('1', 32, 'a'), 'EGP')) like 'ERR:42501:%', true, 'anon cannot open an attempt');
@@ -42,8 +43,9 @@ select throws_ok(format('select public.start_easykash_attempt(%L, %L, 1)', lpad(
 select is(public.open_easykash_attempt(lpad('2', 32, 'a')), 'EK-2-2', 'the newest open attempt is the one checked');
 
 -- Settling
-do $d$ begin perform pg_temp.paid('EKR-1', 'EK-1-1', '1000.00'); end $d$;
-select is(public.apply_easykash_payment('EKR-1'), 'confirmed', 'matching PAID callback confirms');
+-- EasyKash adds its 2.6% fee on top: a 1,000 EGP booking is charged 1,026 (its sales report, 2026-11-07).
+do $d$ begin perform pg_temp.paid('EKR-1', 'EK-1-1', '1026.00'); end $d$;
+select is(public.apply_easykash_payment('EKR-1'), 'confirmed', 'price plus EasyKash fee confirms');
 select is((select status::text from bookings where reference = 'EK-1'), 'confirmed', 'booking confirmed');
 select is((select method || '|' || txn_ref from payments p join bookings b on b.id = p.booking_id where b.reference = 'EK-1'), 'easykash|EKR-1', 'payment recorded for finance');
 select is(public.apply_easykash_payment('EKR-1'), 'duplicate', 'a repeated callback changes nothing');
@@ -51,6 +53,11 @@ select is(public.apply_easykash_payment('EKR-1'), 'duplicate', 'a repeated callb
 -- EasyKash reporting the converted EGP amount for a USD attempt is accepted within 5%.
 do $d$ begin perform pg_temp.paid('EKR-2', 'EK-2-2', '1032.50'); end $d$;
 select is(public.apply_easykash_payment('EKR-2'), 'confirmed', 'USD attempt paid in EGP equivalent confirms');
+
+-- A USD attempt paid in USD with the fee on top (21 + 2.6% = 21.55) confirms.
+do $d$ begin perform public.start_easykash_attempt(lpad('5', 32, 'a'), 'USD', 0.0201); end $d$;
+do $d$ begin perform pg_temp.paid('EKR-5', 'EK-5-1', '21.55'); end $d$;
+select is(public.apply_easykash_payment('EKR-5'), 'confirmed', 'USD price plus fee confirms');
 
 -- Wrong amount goes to finance.
 do $d$ begin perform public.start_easykash_attempt(lpad('4', 32, 'a'), 'EGP', 1); end $d$;
