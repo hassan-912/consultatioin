@@ -46,7 +46,12 @@ export interface ReadinessSubmission {
   score: number | null; scoreMax: number | null; reasons: L10n[]; answers: Answers
 }
 export type ReadinessStatus = 'open' | 'contacted' | 'closed'
-export interface ReadinessRequest extends ReadinessSubmission { id: string; createdAt: number; status: ReadinessStatus; handledAt?: number }
+export interface ReadinessRequest extends ReadinessSubmission {
+  id: string; createdAt: number; status: ReadinessStatus; handledAt?: number
+  /** The salesperson the sales manager gave this client to. */
+  assignedTo?: string; assignedName?: string
+}
+export interface SalesPerson { id: string; name: string }
 
 export interface FreeSlot { consultantId: string; format: Format; startIso: string }
 
@@ -107,6 +112,10 @@ export interface BookingRepo {
   submitReadinessRequest(s: ReadinessSubmission): Promise<void>
   /** Sales manager or admin: clients who weren't ready, open ones first. */
   readinessRequests(): Promise<ReadinessRequest[]>
+  /** Sales manager or admin: active salespeople to give a client to. */
+  readinessSalesPeople(): Promise<SalesPerson[]>
+  /** Sales manager or admin: give the client to a salesperson (null: nobody). */
+  assignReadinessRequest(id: string, salesPersonId: string | null): Promise<void>
   /** Sales manager or admin: contacted / closed / open again. */
   setReadinessStatus(id: string, status: ReadinessStatus): Promise<void>
   /** Admin: show or hide a consultant on the home page (they can still be booked by direct link). */

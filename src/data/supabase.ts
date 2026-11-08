@@ -253,7 +253,17 @@ export function createSupabaseRepo(clients: BackendClients): BookingRepo {
         program: r.program, destination: r.destination ?? undefined, consultantId: r.consultant_id ?? '', format: r.format ?? 'online',
         wantedIso: r.wanted_at ?? '', score: r.score == null ? null : Number(r.score), scoreMax: r.score_max == null ? null : Number(r.score_max),
         reasons: Array.isArray(r.reasons) ? r.reasons : [], answers: r.answers ?? {}, status: r.status, handledAt: ms(r.handled_at),
+        assignedTo: r.assigned_to ?? undefined, assignedName: r.assigned_name ?? undefined,
       }))
+    },
+    async readinessSalesPeople() {
+      await requireStaff()
+      const rows = await result<Row[]>(staff.rpc('readiness_sales_people'))
+      return (rows ?? []).map(r => ({ id: r.user_id, name: r.display_name }))
+    },
+    async assignReadinessRequest(id, salesPersonId) {
+      await requireStaff()
+      await result(staff.rpc('assign_readiness_request', { p_id: id, p_user_id: salesPersonId }))
     },
     async setReadinessStatus(id, status) {
       await requireStaff()

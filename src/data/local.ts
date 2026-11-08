@@ -197,6 +197,20 @@ export function createLocalRepo(): BookingRepo {
       if (session?.role !== 'admin' && !session?.salesManager) throw new RepoError('FORBIDDEN')
       return Object.values(get().readinessRequests).sort((a, b) => Number(b.status === 'open') - Number(a.status === 'open') || b.createdAt - a.createdAt)
     },
+    async readinessSalesPeople() {
+      const session = get().staffSession
+      if (session?.role !== 'admin' && !session?.salesManager) throw new RepoError('FORBIDDEN')
+      return staffAccounts.filter(a => a.role === 'sales').map(a => ({ id: a.username, name: a.username }))
+    },
+    async assignReadinessRequest(id, salesPersonId) {
+      const session = get().staffSession
+      if (session?.role !== 'admin' && !session?.salesManager) throw new RepoError('FORBIDDEN')
+      const r = get().readinessRequests[id]
+      if (!r) throw new RepoError('NOT_FOUND')
+      const person = salesPersonId ? staffAccounts.find(a => a.role === 'sales' && a.username === salesPersonId) : undefined
+      if (salesPersonId && !person) throw new RepoError('INVALID_INPUT')
+      useAppStore.setState(s => ({ readinessRequests: { ...s.readinessRequests, [id]: { ...r, assignedTo: person?.username, assignedName: person?.username } } }))
+    },
     async setReadinessStatus(id, status) {
       const session = get().staffSession
       if (session?.role !== 'admin' && !session?.salesManager) throw new RepoError('FORBIDDEN')

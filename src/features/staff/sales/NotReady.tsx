@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useT } from '../../../i18n'
 import { repo } from '../../../data'
 import { DataStatus, errorKey, reportActionError } from '../../../data/feedback'
-import type { ReadinessRequest, ReadinessStatus } from '../../../data/types'
+import type { ReadinessRequest, ReadinessStatus, SalesPerson } from '../../../data/types'
 import { defaultReadinessRules, ruleLimits, type ReadinessRules } from '../../../assessment/readiness'
 import { useAppStore } from '../../../store/useAppStore'
 import { getConsultant } from '../../../store/actions'
@@ -82,7 +82,9 @@ export function NotReady() {
   const [error, setError] = useState<unknown>(null)
   const [tab, setTab] = useState<ReadinessStatus>('open')
   const [busy, setBusy] = useState<string | null>(null)
+  const [people, setPeople] = useState<SalesPerson[]>([])
   const load = useCallback(() => repo.readinessRequests().then(r => { setRows(r); setError(null) }).catch(setError), [])
+  useEffect(() => { void repo.readinessSalesPeople().then(setPeople).catch(() => undefined) }, [])
   useEffect(() => {
     void load()
     const timer = setInterval(() => void load(), 30000)
@@ -91,6 +93,10 @@ export function NotReady() {
   const mark = async (id: string, status: ReadinessStatus) => {
     setBusy(id)
     try { await repo.setReadinessStatus(id, status); await load() } catch (e) { reportActionError(e) } finally { setBusy(null) }
+  }
+  const assign = async (id: string, person: string) => {
+    setBusy(id)
+    try { await repo.assignReadinessRequest(id, person || null); await load() } catch (e) { reportActionError(e) } finally { setBusy(null) }
   }
   const when = (ms: number) => formatInZone(ms, 'Africa/Cairo', lang, 'full')
   const list = rows?.filter(r => r.status === tab) ?? []
@@ -146,6 +152,17 @@ export function NotReady() {
                       {r.status !== 'contacted' && <Button size="sm" disabled={busy === r.id} onClick={() => void mark(r.id, 'contacted')}><Icon name="phone" size={14} />{t('staff.notReady.markContacted')}</Button>}
                       {r.status !== 'closed' && <Button size="sm" variant="ghost" disabled={busy === r.id} onClick={() => void mark(r.id, 'closed')}><Icon name="x" size={14} />{t('staff.notReady.markClosed')}</Button>}
                       {r.status !== 'open' && <Button size="sm" variant="ghost" disabled={busy === r.id} onClick={() => void mark(r.id, 'open')}>{t('staff.notReady.reopen')}</Button>}
+                      <label className="inline-flex min-h-9 items-center gap-2 rounded-lg bg-paper px-3 text-sm font-semibold text-slate ring-1 ring-line">
+                        <Icon name="user" size={14} />{t('staff.notReady.assignedTo')}
+                        <select aria-label={`${t('staff.notReady.assignedTo')} ${r.name}`} disabled={busy === r.id} value={r.assignedTo ?? ''}
+                          onChange={e => void assign(r.id, e.target.value)}
+                          className="min-h-8 rounded-md border border-line bg-white px-2 text-sm font-semibold text-ink">
+                          <option value="">{t('staff.notReady.nobody')}</option>
+                          {/* Someone assigned earlier who is no longer an active salesperson stays visible. */}
+                          {r.assignedTo && !people.some(p => p.id === r.assignedTo) && <option value={r.assignedTo}>{r.assignedName ?? '—'}</option>}
+                          {people.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                        </select>
+                      </label>
                     </div>
                   </li>
                 )

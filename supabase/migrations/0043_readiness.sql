@@ -97,7 +97,10 @@ create table public.readiness_requests (
   answers jsonb not null check (jsonb_typeof(answers) = 'object' and pg_column_size(answers) < 16000),
   status text not null default 'open' check (status in ('open','contacted','closed')),
   handled_by uuid references auth.users(id),
-  handled_at timestamptz
+  handled_at timestamptz,
+  -- The salesperson the sales manager gave this client to.
+  assigned_to uuid references auth.users(id) on delete set null,
+  assigned_name text check (assigned_name is null or char_length(assigned_name) <= 100)
 );
 create index readiness_requests_status_idx on public.readiness_requests (status, created_at desc);
 alter table public.readiness_requests enable row level security;
@@ -186,3 +189,35 @@ begin
 end $$;
 revoke execute on function public.set_readiness_status(uuid, text) from public, anon;
 grant execute on function public.set_readiness_status(uuid, text) to authenticated;
+
+-- Sales manager or admin: the active salespeople a client can be given to.
+create function public.readiness_sales_people()
+returns table (user_id uuid, display_name text) language plpgsql stable security definer
+set search_path = ''
+as $$
+begin
+  if public.current_staff_role() is distinct from 'admin' and not public.is_sales_manager() then raise exception 'FORBIDDEN'; end if;
+  return query select p.user_id, p.display_name from public.staff_profiles p where p.role = 'sales' and p.active order by p.display_name, p.user_id;
+end $$;
+revoke execute on function public.readiness_sales_people() from public, anon;
+grant execute on function public.readiness_sales_people() to authenticated;
+
+-- Sales manager or admin: give the client to a salesperson (null takes it back).
+create function public.assign_readiness_request(p_id uuid, p_user_id uuid)
+returns void language plpgsql security definer
+set search_path = ''
+as $$
+declare r public.staff_role := public.current_staff_role(); v_name text;
+begin
+  if r is distinct from 'admin' and not public.is_sales_manager() then raise exception 'FORBIDDEN'; end if;
+  if p_user_id is not null then
+    select display_name into v_name from public.staff_profiles where user_id = p_user_id and role = 'sales' and active;
+    if not found then raise exception 'INVALID_INPUT' using detail = 'salesperson'; end if;
+  end if;
+  update public.readiness_requests set assigned_to = p_user_id, assigned_name = v_name where id = p_id;
+  if not found then raise exception 'NOT_FOUND'; end if;
+  insert into public.audit_log(actor_user, actor_kind, action, from_value, to_value)
+  values (auth.uid(), r::text, 'readiness-assigned', p_id::text, coalesce(v_name, '-'));
+end $$;
+revoke execute on function public.assign_readiness_request(uuid, uuid) from public, anon;
+grant execute on function public.assign_readiness_request(uuid, uuid) to authenticated;

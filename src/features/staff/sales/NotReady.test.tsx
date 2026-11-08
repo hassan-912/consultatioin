@@ -38,6 +38,19 @@ test('the sales manager sees who was not ready: score, name, phone, email, progr
   expect(await screen.findByRole('listitem', { name: 'Karim Adel' })).toBeInTheDocument()
 })
 
+test('the sales manager assigns the client to a salesperson', async () => {
+  loginAs('sales', null, true)
+  open()
+  const item = await screen.findByRole('listitem', { name: 'Karim Adel' })
+  const select = within(item).getByLabelText('Assigned to Karim Adel')
+  expect(select).toHaveValue('')
+  await waitFor(() => expect(within(item).getByRole('option', { name: 'test.sales' })).toBeInTheDocument())
+  fireEvent.change(select, { target: { value: 'test.sales' } })
+  await waitFor(() => expect(useAppStore.getState().readinessRequests.r1).toMatchObject({ assignedTo: 'test.sales', assignedName: 'test.sales' }))
+  fireEvent.change(within(item).getByLabelText('Assigned to Karim Adel'), { target: { value: '' } })
+  await waitFor(() => expect(useAppStore.getState().readinessRequests.r1.assignedTo).toBeUndefined())
+})
+
 test('an ordinary sales account does not get the list', () => {
   loginAs('sales')
   open()

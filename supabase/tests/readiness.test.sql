@@ -1,7 +1,7 @@
 -- 0043: clients who aren't ready file a request instead of paying; only the sales manager and the admin see them.
 begin;
 set local search_path = public, extensions;
-select plan(14);
+select plan(17);
 
 create function pg_temp.q(r text, uid uuid, sql text) returns text language plpgsql as $f$
 declare res text;
@@ -50,6 +50,15 @@ select is(pg_temp.q('authenticated', '00000000-0000-0000-0000-0000000000c7',
 select is(pg_temp.q('authenticated', '00000000-0000-0000-0000-0000000000c7',
   $q$select public.admin_save_readiness_rules('{"tourismMinScore":"high"}')::text$q$), 'ERR:P0001:INVALID_INPUT', 'only known rules with the right type');
 select is(pg_temp.q('anon', null, $q$select (public.public_readiness_rules()->>'tourismMinScore')$q$), '55', 'the booking form gets the new rules');
+
+select is(pg_temp.q('authenticated', '00000000-0000-0000-0000-0000000000c8',
+  $q$select string_agg(display_name, ',' order by display_name) from public.readiness_sales_people() where display_name like '% Eight'$q$),
+  'Manager Eight,Sales Eight', 'the sales manager lists the salespeople');
+select is(pg_temp.q('authenticated', '00000000-0000-0000-0000-0000000000c8',
+  $q$select public.assign_readiness_request((select id from public.readiness_request_list() where customer_phone = '+201005550199'), '00000000-0000-0000-0000-0000000000c9')::text$q$),
+  'OK', 'and assigns the client to one');
+select is(pg_temp.q('authenticated', '00000000-0000-0000-0000-0000000000c9',
+  $q$select public.assign_readiness_request((select id from readiness_requests limit 1), '00000000-0000-0000-0000-0000000000c9')::text$q$) like 'ERR:%', true, 'an ordinary salesperson cannot assign');
 
 select * from finish();
 rollback;

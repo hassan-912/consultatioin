@@ -818,6 +818,8 @@ export const en = {
       markContacted: 'Mark contacted',
       markClosed: 'Close',
       reopen: 'Open again',
+      assignedTo: 'Assigned to',
+      nobody: 'Nobody yet',
       rulesTitle: 'Rules: who is not ready',
       rulesHint: 'A client who breaks any rule cannot pay and appears in this list. Changes apply to new bookings right away.',
       tourism: 'Tourism',
