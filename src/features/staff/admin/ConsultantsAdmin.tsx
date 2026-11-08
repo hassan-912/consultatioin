@@ -4,6 +4,7 @@ import { repo } from '../../../data'
 import { rememberAdminTestKey } from '../../../data/adminTest'
 import { errorKey } from '../../../data/feedback'
 import { isLive } from '../../../data/mode'
+import { refreshPublicMetadata, usePublicMetadata } from '../../../data/hooks'
 import { useT } from '../../../i18n'
 import { useAppStore } from '../../../store/useAppStore'
 import { editConsultant, getConsultants } from '../../../store/actions'
@@ -76,9 +77,31 @@ function TestBookingButton({ consultantId }: { consultantId: string }) {
   )
 }
 
+/** Show or hide this consultant on the home page; they can still be booked by direct link. */
+function ListedSwitch({ c, listed }: { c: Consultant; listed: boolean }) {
+  const { t, l } = useT()
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<unknown>(null)
+  const toggle = async () => {
+    setBusy(true); setError(null)
+    try { await repo.setConsultantListed(c.id, !listed); await refreshPublicMetadata() } catch (e) { setError(e) } finally { setBusy(false) }
+  }
+  return (
+    <div className="grid justify-items-end gap-1">
+      <Button size="sm" variant={listed ? 'ghost' : 'primary'} disabled={busy} onClick={() => void toggle()}
+        aria-label={`${t(listed ? 'staff.admin.hideHome' : 'staff.admin.showHome')} ${l(c.name)}`}>
+        <Icon name={listed ? 'eyeOff' : 'eye'} size={15} />{t(listed ? 'staff.admin.hideHome' : 'staff.admin.showHome')}
+      </Button>
+      {error != null && <span role="alert" className="text-xs text-bad">{t(errorKey(error))}</span>}
+    </div>
+  )
+}
+
 export function ConsultantsAdmin() {
   const { t, l } = useT()
   const overrides = useAppStore(s => s.consultantOverrides)
+  const metadata = usePublicMetadata()
+  const isListed = (c: Consultant) => !c.hidden && metadata?.find(m => m.consultantId === c.id)?.listed !== false
   const [editing, setEditing] = useState<string | null>(null)
   return (
     <>
@@ -98,6 +121,10 @@ export function ConsultantsAdmin() {
                       {t('staff.admin.adminTestBadge')}
                     </span>
                   )}
+                  <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${isListed(c) ? 'bg-ok-soft text-ok' : 'bg-paper text-muted ring-1 ring-line'}`}>
+                    <Icon name={isListed(c) ? 'eye' : 'eyeOff'} size={12} />
+                    {t(isListed(c) ? 'staff.admin.onHome' : 'staff.admin.offHome')}
+                  </span>
                   {c.nameNeedsConfirmation && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-warn-soft px-2 py-0.5 text-xs font-semibold text-warn">
                       <Icon name="alert" size={12} />
@@ -111,6 +138,7 @@ export function ConsultantsAdmin() {
                 </p>
               </div>
               {c.paymentTest && <TestBookingButton consultantId={c.id} />}
+              <ListedSwitch c={c} listed={isListed(c)} />
               <Button variant="ghost" size="sm" disabled={isLive} title={isLive ? t('data.sourceManaged') : undefined} aria-label={`${t('staff.admin.editProfile')} ${c.name.en}`} onClick={() => setEditing(editing === c.id ? null : c.id)}>
                 <Icon name="settings" size={15} />
                 <span className="hidden sm:inline">{t('staff.admin.editProfile')}</span>

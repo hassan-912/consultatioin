@@ -15,7 +15,7 @@ export class HoldExpired extends Error {}
 export class RepoError extends Error {
   constructor(public code: string, options?: ErrorOptions) { super(code, options) }
 }
-export interface PublicMetadata { consultantId: string; formats: Format[]; total: number; thisMonth: number }
+export interface PublicMetadata { consultantId: string; formats: Format[]; total: number; thisMonth: number; /** Shown on the home page (the admin can hide a consultant). */ listed: boolean }
 
 export interface ReserveDraft {
   consultantId: string
@@ -82,6 +82,8 @@ export interface BookingRepo {
   reassignConsultant(bookingId: string, consultantId: string, reason: string): Promise<Booking>
   /** Admin: the key that lets this device book admin-only (payment test) consultants. */
   adminTestKey(): Promise<string>
+  /** Admin: show or hide a consultant on the home page (they can still be booked by direct link). */
+  setConsultantListed(consultantId: string, listed: boolean): Promise<void>
   /** Admin: every review, newest first, hidden ones included. */
   staffReviews(): Promise<StaffReview[]>
   /** Admin: hide a review from the public profile, or restore it. */

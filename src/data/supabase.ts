@@ -199,7 +199,7 @@ export function createSupabaseRepo(clients: BackendClients): BookingRepo {
     async queueTicketEmail(id) { await requireStaff(); const status = await result<'pending' | 'sending' | 'sent' | 'failed'>(staff.rpc('staff_queue_ticket_email', { p_booking_id: id })); changed(); return status },
     async publicMetadata() {
       const rows = await result<Row[]>(customer.rpc('public_consultant_metadata'))
-      return rows.map(r => ({ consultantId: r.consultant_id, formats: r.formats as Format[], total: Number(r.total), thisMonth: Number(r.this_month) }))
+      return rows.map(r => ({ consultantId: r.consultant_id, formats: r.formats as Format[], total: Number(r.total), thisMonth: Number(r.this_month), listed: r.listed !== false }))
     },
     async consultantReviews(consultantId) {
       const r = await result<Row>(customer.rpc('public_consultant_reviews', { p_consultant_id: consultantId }))
@@ -229,6 +229,11 @@ export function createSupabaseRepo(clients: BackendClients): BookingRepo {
       return staffRow(id)
     },
     async adminTestKey() { await requireStaff(); return result<string>(staff.rpc('admin_test_key')) },
+    async setConsultantListed(id, listed) {
+      await requireStaff()
+      await result(staff.rpc('admin_set_consultant_listed', { p_consultant_id: id, p_listed: listed }))
+      changed()
+    },
     async staffReviews() {
       await requireStaff()
       const rows = await allRows(staff.from('consultant_reviews').select('id,booking_id,consultant_id,rating,comment,reviewer_name,hidden,created_at').order('created_at', { ascending: false }).order('id'))

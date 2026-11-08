@@ -100,3 +100,31 @@ test('the 5 EGP payment-test consultant is listed for the admin, with a button t
   expect(await screen.findByText('BOOKING test-ek-q7m4x9')).toBeInTheDocument()
   expect(localStorage.getItem('mg-admin-test-key')).toBe('demo')
 })
+
+test('the admin hides a consultant from the home page and shows them again', async () => {
+  const { DirectoryPage } = await import('../directory/DirectoryPage')
+  const { refreshPublicMetadata } = await import('../../data/hooks')
+  const home = () => render(<MemoryRouter><DirectoryPage /></MemoryRouter>)
+  const listedNames = () => screen.getAllByRole('article').map(a => a.textContent ?? '')
+  useAppStore.setState({ location: 'nasr-city' })
+
+  loginAs('admin')
+  const admin = openStaff('/staff/consultants')
+  fireEvent.click(screen.getByRole('button', { name: 'Hide Ahmed Salama' }))
+  expect(await screen.findByRole('button', { name: 'Show Ahmed Salama' })).toBeInTheDocument()
+  expect(useAppStore.getState().audit[0]).toMatchObject({ actor: 'admin', action: 'edited' })
+  admin.unmount()
+
+  await refreshPublicMetadata()
+  const page = home()
+  expect(listedNames().some(t => t.includes('Ahmed Salama'))).toBe(false)
+  expect(listedNames().some(t => t.includes('Mohamed Gamal'))).toBe(true)
+  page.unmount()
+
+  openStaff('/staff/consultants')
+  fireEvent.click(screen.getByRole('button', { name: 'Show Ahmed Salama' }))
+  expect(await screen.findByRole('button', { name: 'Hide Ahmed Salama' })).toBeInTheDocument()
+  await refreshPublicMetadata()
+  home()
+  expect(listedNames().some(t => t.includes('Ahmed Salama'))).toBe(true)
+})

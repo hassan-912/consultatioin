@@ -1,5 +1,5 @@
 import { useAppStore, emptyDraft, todayIn } from '../store/useAppStore'
-import { applyEvent, createReservation, rescheduleBooking, submitPayment, getRules, editSchedule } from '../store/actions'
+import { applyEvent, createReservation, rescheduleBooking, submitPayment, getRules, editSchedule, editConsultant, getConsultants } from '../store/actions'
 import { consultants } from '../config/consultants'
 import { demoStats } from '../demo/seed'
 import { publicTotals } from '../domain/stats'
@@ -118,7 +118,7 @@ export function createLocalRepo(): BookingRepo {
     // Prototype: no real email; recording the send is the simulation.
     async queueTicketEmail(id) { applyEvent(id, { type: 'mark-sent', via: 'email' }, get().staffSession?.role ?? get().role); return 'sent' },
     async publicMetadata() {
-      return consultants.map(c => ({ consultantId: c.id, formats: getRules(c.id).formats, ...publicTotals(Object.values(get().bookings), c.id, get().now(), demoStats[c.id]) }))
+      return getConsultants().map(c => ({ consultantId: c.id, formats: getRules(c.id).formats, listed: !c.hidden, ...publicTotals(Object.values(get().bookings), c.id, get().now(), demoStats[c.id]) }))
     },
     async consultantReviews(consultantId) {
       const list = Object.values(get().reviews).filter(r => r.consultantId === consultantId && !r.hidden).sort((a, b) => b.at - a.at)
@@ -180,6 +180,10 @@ export function createLocalRepo(): BookingRepo {
     },
     // Prototype: admin-only consultants aren't enforced locally.
     async adminTestKey() { return 'demo' },
+    async setConsultantListed(id, listed) {
+      if (!consultants.some(c => c.id === id)) throw new RepoError('INVALID_INPUT')
+      editConsultant(id, { hidden: !listed })
+    },
     async staffReviews() {
       return Object.entries(get().reviews)
         .map(([bookingId, r]) => ({ ...r, id: bookingId, hidden: !!r.hidden, bookingRef: get().bookings[bookingId]?.reference }))
