@@ -6,11 +6,11 @@ Scope: the live booking site (consultatioin.vercel.app), its Supabase database, 
 
 | # | Risk | What could happen | Fix | Status |
 |---|---|---|---|---|
-| 1 | **Fake payment** | Anyone with a booking link could call the retired `submit_payment` directly and move the booking to "paid, under review" with a made-up transaction number, which also blocked the slot. | Public access revoked; receipt uploads closed too (migration 0035). | Tested; **waiting for your approval to apply** |
-| 2 | **Slot hoarding** | Reservations were limited per phone number only, so rotating fake numbers could hold every slot. | Also limited per connection: 15 reservations per 10 minutes (0035). | Tested; **waiting for approval** |
-| 3 | **Booking-lookup brute force** | "Find my booking" was limited per reference and phone, not per connection. | 30 lookups per 10 minutes per connection (0035). | Tested; **waiting for approval** |
-| 4 | **Payment API abuse** | The payment-status check had no limit, so it could be used to exhaust EasyKash's API. | 40 checks per 10 minutes per booking (0035). | Tested; **waiting for approval** |
-| 5 | **5 EGP test consultant** | Anyone who found its link could book a 5 EGP consultation. | Switched off (no bookable hours, 0035). | Tested; **waiting for approval** |
+| 1 | **Fake payment** | Anyone with a booking link could call the retired `submit_payment` directly and move the booking to "paid, under review" with a made-up transaction number, which also blocked the slot. | Public access revoked; receipt uploads closed too (migration 0035). | **Live** (0035 applied 8 Nov) |
+| 2 | **Slot hoarding** | Reservations were limited per phone number only, so rotating fake numbers could hold every slot. | Also limited per connection: 15 reservations per 10 minutes (0035). | **Live** (0035 applied 8 Nov) |
+| 3 | **Booking-lookup brute force** | "Find my booking" was limited per reference and phone, not per connection. | 30 lookups per 10 minutes per connection (0035). | **Live** (0035 applied 8 Nov) |
+| 4 | **Payment API abuse** | The payment-status check had no limit, so it could be used to exhaust EasyKash's API. | 40 checks per 10 minutes per booking (0035). | **Live** (0035 applied 8 Nov) |
+| 5 | **5 EGP test consultant** | Anyone who found its link could book a 5 EGP consultation. | Switched off (no bookable hours, 0035). | **Live** (0035 applied 8 Nov) |
 | 6 | **No browser security headers** | Injected scripts or a fake page framing the site (clickjacking) weren't blocked by the browser. | `vercel.json`: strict Content-Security-Policy, X-Frame-Options DENY, nosniff, Referrer-Policy, Permissions-Policy, COOP, HSTS. Checked on a production build: no violations. | **Live** |
 | 7 | EasyKash amount check | A small booking plus EasyKash's minimum fee was treated as a wrong amount. | Fee-aware check (0032, 0034). | **Live** |
 | 8 | EasyKash return status | The customer's return link isn't signed, and was being misread. | Never trusted; read only for wording (1f37abd). | **Live** |
@@ -26,13 +26,18 @@ Scope: the live booking site (consultatioin.vercel.app), its Supabase database, 
 - **Dependencies.** `npm audit` reports 0 vulnerabilities.
 - **Edge Functions.** `easykash-pay`, `create-receipt-upload` and `invite-staff` accept only this site's origin and the public key, never a staff token passed through. `invite-staff` verifies the caller is an active admin. `send-ticket-email` requires its shared secret.
 
+## Verified after applying 0035 (8 Nov)
+
+- From the public internet, `submit_payment` now answers **permission denied**.
+- Real consultants still return available times, and the test consultant returns none.
+- The per-connection limit records the caller's address through Supabase's gateway.
+
 ## Needs you (dashboard settings I can't change from here)
 
 1. **Supabase → Authentication → Passwords:** turn on **leaked-password protection** (flagged by Supabase's advisor) and set a minimum length of at least 10.
 2. **Supabase → Authentication → Multi-factor:** enable **MFA (TOTP)**, and turn it on for every admin account.
 3. **Supabase → Authentication → URL configuration:** the redirect allow-list should only contain `https://consultatioin.vercel.app/**`.
 4. **EasyKash:** refund the two 11 EGP test payments (MG-CD23-9X5E, MG-ANTZ-P5DD).
-5. **Approve migration 0035.** It's tested; applying it closes items 1–5.
 
 ## Accepted / later
 
