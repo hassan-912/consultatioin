@@ -6,7 +6,7 @@ import { programs } from '../../../config/programs'
 import type { Booking, ProgramId } from '../../../domain/types'
 import type { ConsultationRecord, NextStep } from '../../../store/useAppStore'
 import { Button } from '../../../components/ui'
-import { SelectField } from '../../../components/fields'
+import { SelectField, TextArea } from '../../../components/fields'
 import { Icon, type IconName } from '../../../components/Icon'
 
 const STEPS: { id: NextStep; icon: IconName; tone: string }[] = [
@@ -23,15 +23,19 @@ export function NextStepPanel({ b, record }: { b: Booking; record?: Consultation
   const { t, l } = useT()
   const [step, setStep] = useState<NextStep | undefined>(record?.nextStep)
   const [program, setProgram] = useState<ProgramId | ''>(record?.recommendedProgram ?? b.customer.program ?? '')
+  const [reason, setReason] = useState(record?.refundReason ?? '')
   const [busy, setBusy] = useState(false)
   const [saved, setSaved] = useState(false)
   if (!['checked-in', 'completed'].includes(b.status)) return null
   const dirty = step !== record?.nextStep || (program || undefined) !== (record?.recommendedProgram ?? (b.customer.program || undefined))
+    || (step === 'refund' && reason.trim() !== (record?.refundReason ?? ''))
+  const needsReason = step === 'refund' && !reason.trim()
 
   const save = async () => {
     if (!step) return
     setBusy(true)
-    try { await repo.saveNextStep(b.id, step, program || null); setSaved(true) }
+    if (needsReason) return
+    try { await repo.saveNextStep(b.id, step, program || null, step === 'refund' ? reason.trim() : undefined); setSaved(true) }
     catch (e) { reportActionError(e) }
     finally { setBusy(false) }
   }
@@ -49,12 +53,19 @@ export function NextStepPanel({ b, record }: { b: Booking; record?: Consultation
           </label>
         ))}
       </div>
+      {step === 'refund' && (
+        <div className="mt-3">
+          <TextArea label={t('staff.nextStep.refundReason')} hint={t('staff.nextStep.refundReasonHint')} required maxLength={500} rows={3} dir="auto"
+            value={reason} onChange={e => { setReason(e.target.value); setSaved(false) }}
+            error={needsReason ? t('staff.nextStep.refundReasonRequired') : undefined} />
+        </div>
+      )}
       <div className="mt-3 grid items-end gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
         <SelectField label={t('staff.nextStep.program')} hint={t('staff.nextStep.programHint')} value={program}
           onChange={e => { setProgram(e.target.value as ProgramId); setSaved(false) }}>
           {programs.map(p => <option key={p.id} value={p.id}>{l(p.name)}</option>)}
         </SelectField>
-        <Button disabled={!step || busy || (!dirty && !!record?.nextStep)} onClick={() => void save()}>
+        <Button disabled={!step || busy || needsReason || (!dirty && !!record?.nextStep)} onClick={() => void save()}>
           <Icon name="check" size={16} />{t('staff.nextStep.save')}
         </Button>
       </div>

@@ -235,14 +235,16 @@ export function createLocalRepo(): BookingRepo {
       const now = getRules(id).blocked ?? []
       editSchedule(id, { blocked: blocked ? [...new Set([...now, iso])] : now.filter(x => x !== iso) })
     },
-    async saveNextStep(id, nextStep, program) {
+    async saveNextStep(id, nextStep, program, refundReason) {
       const b = get().bookings[id]
       if (!b) throw new RepoError('NOT_FOUND')
       if (!['checked-in', 'completed'].includes(b.status)) throw new RepoError('INVALID_TRANSITION')
+      const reason = refundReason?.trim()
+      if (nextStep === 'refund' && (!reason || reason.length > 500)) throw new RepoError('INVALID_INPUT')
       const prev = get().records[id] ?? { notes: '', outcome: 'none' as const }
       const changedStep = prev.nextStep !== nextStep
       const next = {
-        ...prev, nextStep, recommendedProgram: program ?? (b.customer.program || undefined),
+        ...prev, nextStep, recommendedProgram: program ?? (b.customer.program || undefined), refundReason: nextStep === 'refund' ? reason : undefined,
         nextStepAt: changedStep ? get().now() : prev.nextStepAt ?? get().now(),
         followedUpAt: changedStep ? undefined : prev.followedUpAt, financeHandledAt: changedStep ? undefined : prev.financeHandledAt,
       }
@@ -261,7 +263,8 @@ export function createLocalRepo(): BookingRepo {
         .map(([id, r]) => {
           const b = bookings[id]
           return { bookingId: id, reference: b.reference, name: b.customer.name, phone: b.customer.phone, consultantId: b.consultantId,
-            nextStep: r.nextStep as 'contract' | 'refund', program: r.recommendedProgram, at: r.nextStepAt ?? 0, handledAt: r.financeHandledAt }
+            nextStep: r.nextStep as 'contract' | 'refund', program: r.recommendedProgram, at: r.nextStepAt ?? 0, handledAt: r.financeHandledAt,
+            refundReason: r.refundReason, salesName: b.salesName, paid: b.price }
         })
         .sort((a, b) => Number(!!a.handledAt) - Number(!!b.handledAt) || b.at - a.at)
     },

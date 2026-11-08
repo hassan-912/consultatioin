@@ -5,6 +5,7 @@ import { DataStatus, reportActionError } from '../../../data/feedback'
 import type { FinanceCase } from '../../../data/types'
 import { getConsultant } from '../../../store/actions'
 import { programName } from '../../../config/programs'
+import { formatMoney } from '../../../domain/pricing'
 import { Button, Ltr } from '../../../components/ui'
 import { Icon } from '../../../components/Icon'
 import { ScreenTitle } from '../StaffApp'
@@ -58,6 +59,16 @@ export function NextStepsFinance() {
                       {c.program && <span>{t('staff.history.cols.program')}: <span className="font-semibold text-slate">{l(programName(c.program))}</span></span>}
                       <span>{t('staff.financeCases.decided', { date: date(c.at) })}</span>
                     </p>
+                    <dl className="mt-2 grid gap-x-4 gap-y-1 text-sm sm:grid-cols-[auto_1fr]">
+                      <dt className="text-muted">{t('staff.financeCases.sales')}</dt>
+                      <dd className="font-semibold text-slate">{c.salesName || t('staff.financeCases.noSales')}</dd>
+                      <dt className="text-muted">{t('staff.financeCases.paid')}</dt>
+                      <dd className="font-semibold text-slate"><Ltr>{formatMoney(c.paid, lang)}</Ltr></dd>
+                      {c.nextStep === 'refund' && <>
+                        <dt className="text-muted">{t('staff.financeCases.reason')}</dt>
+                        <dd dir="auto" className="whitespace-pre-line font-semibold text-bad">{c.refundReason || t('staff.financeCases.noReason')}</dd>
+                      </>}
+                    </dl>
                   </div>
                   {c.handledAt
                     ? <span className="text-sm font-semibold text-ok"><Icon name="check" size={15} className="inline" /> {t('staff.financeCases.handledOn', { date: date(c.handledAt) })}</span>

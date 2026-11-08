@@ -37,6 +37,8 @@ export interface ConsultationRecord {
   nextStep?: NextStep
   /** The program the consultant recommends (may differ from what the client chose when booking). */
   recommendedProgram?: ProgramId
+  /** Required when the client wants a refund: the consultant's reason, shown to finance. */
+  refundReason?: string
   nextStepAt?: number
   followedUpAt?: number
   financeHandledAt?: number

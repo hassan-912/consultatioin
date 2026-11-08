@@ -23,7 +23,7 @@ beforeEach(() => {
     seeded: true, audit: [], records: {}, timeOffsetMs: 0, assessments: {},
     bookings: {
       a: mk('a', 'Sara Ali', '+201001234567', 'completed'),
-      b: mk('b', 'Omar Hassan', '+201117654321', 'completed', today, 15 * 60, 'en'),
+      b: { ...mk('b', 'Omar Hassan', '+201117654321', 'completed', today, 15 * 60, 'en'), salesName: 'Youssef' },
       c: mk('c', 'Laila Adel', '+201112223334', 'confirmed', addDays(today, 2)),
       d: mk('d', 'Old Client', '+201009998887', 'completed', addDays(today, -5)),
     },
@@ -42,8 +42,15 @@ test('contract and refund decisions reach finance; finance can mark them handled
   expect(await within(sara).findByText(/finance can see this now/i)).toBeInTheDocument()
   const omar = screen.getByRole('article', { name: 'MG-NXT-B' })
   fireEvent.click(within(omar).getByRole('radio', { name: /wants a refund/i }))
+  // A refund needs a written reason before it can be saved.
+  expect(within(omar).getByRole('button', { name: /save next step/i })).toBeDisabled()
+  expect(within(omar).getByText(/write why the client wants a refund/i)).toBeInTheDocument()
+  fireEvent.change(within(omar).getByLabelText(/reason for the refund/i), { target: { value: '   ' } })
+  expect(within(omar).getByRole('button', { name: /save next step/i })).toBeDisabled()
+  fireEvent.change(within(omar).getByLabelText(/reason for the refund/i), { target: { value: 'Budget too low for tourism' } })
   fireEvent.click(within(omar).getByRole('button', { name: /save next step/i }))
   await within(omar).findByText(/finance can see this now/i)
+  expect(useAppStore.getState().records.b.refundReason).toBe('Budget too low for tourism')
   expect(useAppStore.getState().records.a.notes).toBe('Private: wife is pregnant') // the next step doesn't touch notes
   unmount()
 
@@ -52,7 +59,13 @@ test('contract and refund decisions reach finance; finance can mark them handled
   const contract = await screen.findByRole('listitem', { name: 'MG-NXT-A' })
   expect(within(contract).getByText('Will sign the contract')).toBeInTheDocument()
   expect(within(contract).getByText('Immigration')).toBeInTheDocument() // the consultant's recommendation, not the booked Tourism
-  expect(screen.getByRole('listitem', { name: 'MG-NXT-B' })).toHaveTextContent(/wants a refund/i)
+  const refund = screen.getByRole('listitem', { name: 'MG-NXT-B' })
+  expect(refund).toHaveTextContent(/wants a refund/i)
+  expect(within(refund).getByText('Budget too low for tourism')).toBeInTheDocument()
+  expect(refund).toHaveTextContent(/consultation fee paid/i)
+  expect(refund).toHaveTextContent(/1,000/)
+  expect(refund).toHaveTextContent(/salesperson\s*youssef/i)
+  expect(within(contract).queryByText(/refund reason/i)).toBeNull() // the reason only shows on refunds
   expect(document.body.textContent).not.toMatch(/pregnant/)
   fireEvent.click(within(contract).getByRole('button', { name: /mark handled/i }))
   await waitFor(() => expect(screen.queryByRole('listitem', { name: 'MG-NXT-A' })).toBeNull())

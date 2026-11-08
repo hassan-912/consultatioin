@@ -775,6 +775,9 @@ export const en = {
       saved: 'Saved',
       toFinance: 'Finance can see this now.',
       toFollowUp: 'Added to your follow-up reminders.',
+      refundReason: 'Reason for the refund',
+      refundReasonHint: 'Required. Finance will read this.',
+      refundReasonRequired: 'Write why the client wants a refund.',
     },
     followUps: {
       title: 'Follow-up reminders',
@@ -805,6 +808,11 @@ export const en = {
       handledOn: 'Handled {date}',
       decided: 'Recorded {date}',
       empty: 'Nothing to handle.',
+      sales: 'Salesperson',
+      noSales: 'None',
+      paid: 'Consultation fee paid',
+      reason: 'Refund reason',
+      noReason: 'Not written (recorded before reasons were required)',
     },
     freeSlots: {
       intro: 'Free times customers can still book, for the next {n} days.',

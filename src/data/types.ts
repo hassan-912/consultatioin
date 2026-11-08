@@ -30,6 +30,11 @@ export interface ReserveDraft {
 export interface FinanceCase {
   bookingId: string; reference: string; name: string; phone: string; consultantId: string
   nextStep: Exclude<NextStep, 'thinking'>; program?: ProgramId; at: number; handledAt?: number
+  /** Refunds: why, in the consultant's words. */
+  refundReason?: string
+  salesName?: string
+  /** The consultation fee the client paid. */
+  paid: { amount: number; currency: string }
 }
 export interface FreeSlot { consultantId: string; format: Format; startIso: string }
 
@@ -96,7 +101,7 @@ export interface BookingRepo {
   resolveDecision(id: string): Promise<void>
   staffRecords(): Promise<Record<string, ConsultationRecord>>
   /** Consultant (own clients) or admin: what the client does next, and the program the consultant recommends. */
-  saveNextStep(bookingId: string, nextStep: NextStep, program: ProgramId | null): Promise<void>
+  saveNextStep(bookingId: string, nextStep: NextStep, program: ProgramId | null, refundReason?: string): Promise<void>
   /** Consultant (own) or admin: the "thinking" client has been followed up. */
   markFollowedUp(bookingId: string): Promise<void>
   /** Finance or admin: clients who will sign a contract or want a refund (no consultation notes). */

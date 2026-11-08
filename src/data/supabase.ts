@@ -264,15 +264,15 @@ export function createSupabaseRepo(clients: BackendClients): BookingRepo {
     },
     async staffRecords() {
       await requireStaff()
-      const rows = await allRows(staff.from('consultation_records').select('booking_id,notes,outcome,next_step,recommended_program,next_step_at,followed_up_at,finance_handled_at').order('booking_id'))
+      const rows = await allRows(staff.from('consultation_records').select('booking_id,notes,outcome,next_step,recommended_program,next_step_at,followed_up_at,finance_handled_at,refund_reason').order('booking_id'))
       return Object.fromEntries(rows.map(r => [r.booking_id, {
-        notes: r.notes ?? '', outcome: r.outcome ?? 'none', nextStep: r.next_step ?? undefined, recommendedProgram: r.recommended_program ?? undefined,
+        notes: r.notes ?? '', outcome: r.outcome ?? 'none', nextStep: r.next_step ?? undefined, recommendedProgram: r.recommended_program ?? undefined, refundReason: r.refund_reason ?? undefined,
         nextStepAt: ms(r.next_step_at), followedUpAt: ms(r.followed_up_at), financeHandledAt: ms(r.finance_handled_at),
       }])) as Record<string, ConsultationRecord>
     },
-    async saveNextStep(id, nextStep, program) {
+    async saveNextStep(id, nextStep, program, refundReason) {
       await requireStaff()
-      await result(staff.rpc('save_next_step', { p_booking_id: id, p_next_step: nextStep, p_program: program }))
+      await result(staff.rpc('save_next_step', { p_booking_id: id, p_next_step: nextStep, p_program: program, p_refund_reason: nextStep === 'refund' ? refundReason ?? '' : null }))
       changed()
     },
     async markFollowedUp(id) {
@@ -286,6 +286,8 @@ export function createSupabaseRepo(clients: BackendClients): BookingRepo {
       return (rows ?? []).map(r => ({
         bookingId: r.booking_id, reference: r.reference, name: r.customer_name, phone: r.customer_phone, consultantId: r.consultant_id,
         nextStep: r.next_step, program: r.recommended_program ?? undefined, at: ms(r.next_step_at)!, handledAt: ms(r.handled_at),
+        refundReason: r.refund_reason ?? undefined, salesName: r.sales_name ?? undefined,
+        paid: { amount: Number(r.price_amount ?? 0), currency: r.price_currency ?? 'EGP' },
       }))
     },
     async markFinanceHandled(id) {
