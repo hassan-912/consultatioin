@@ -6,6 +6,7 @@ import type {
 } from '../domain/types'
 import { pendingDecisions } from '../config/pendingDecisions'
 import type { ScheduleRules } from '../domain/availability'
+import type { MessageTemplates } from '../config/messageTemplates'
 import type { StoredAssessment } from '../assessment/questions'
 
 export interface Filters {
@@ -96,6 +97,8 @@ export interface AppState {
   staffPending: { email: string; name: string; needsName: boolean; taken: boolean } | null
   /** Name finance staff sign WhatsApp confirmations with. */
   senderName: string
+  /** Prototype only: the admin's wording for the WhatsApp messages. */
+  messageTemplates: MessageTemplates
   staffConsultantId: string
   setStaffConsultantId: (id: string) => void
 
@@ -146,6 +149,7 @@ export const useAppStore = create<AppState>()(
       staffSession: null,
       staffPending: null,
       senderName: '',
+      messageTemplates: {},
       staffConsultantId: 'mohamed-gamal',
       setStaffConsultantId: staffConsultantId => set({ staffConsultantId }),
 

@@ -8,6 +8,7 @@ import { Segmented, TextField } from '../../../components/fields'
 import { Icon } from '../../../components/Icon'
 import { manageUrl } from '../../ticket/BoardingPass'
 import { buildConfirmationMessage, whatsappLink } from './whatsappMessage'
+import { useMessageTemplates } from '../../../data/messageTemplates'
 import { isLive } from '../../../data/mode'
 import { DataStatus, errorKey } from '../../../data/feedback'
 import { RepoError } from '../../../data/types'
@@ -38,7 +39,8 @@ function Sender({ b }: { b: Booking }) {
   const [msgLang, setMsgLang] = useState<Lang>(b.customer.consultationLang)
   const [opened, setOpened] = useState(false)
   const [error, setError] = useState<unknown>(null)
-  const text = buildConfirmationMessage(b, msgLang, sender || '…', manageUrl(b))
+  const templates = useMessageTemplates()
+  const text = buildConfirmationMessage(b, msgLang, sender || '…', manageUrl(b), templates)
   const ready = sender.trim().length > 1
   const markSent = () => {
     setError(null)

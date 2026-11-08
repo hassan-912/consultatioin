@@ -13,6 +13,7 @@ import { HoldExpired, RepoError, SlotTaken, type BookingRepo } from './types'
 import { staffAccounts } from '../config/staffAccounts'
 import { consultantBusy } from '../domain/bookingStatus'
 import { localReferralCode } from './referral'
+import { MAX_TEMPLATE_LENGTH } from '../config/messageTemplates'
 
 const get = () => useAppStore.getState()
 
@@ -248,6 +249,19 @@ export function createLocalRepo(): BookingRepo {
       const r = get().records[id]
       if (!r || (r.nextStep !== 'contract' && r.nextStep !== 'refund') || r.financeHandledAt) throw new RepoError('INVALID_TRANSITION')
       useAppStore.setState(s => ({ records: { ...s.records, [id]: { ...r, financeHandledAt: get().now() } } }))
+    },
+    async messageTemplates() { return get().messageTemplates },
+    async saveMessageTemplate(key, lang, body) {
+      if (get().staffSession?.role !== 'admin') throw new RepoError('FORBIDDEN')
+      const text = body?.trim() ? body : null
+      if (text && text.length > MAX_TEMPLATE_LENGTH) throw new RepoError('INVALID_INPUT')
+      useAppStore.setState(s => {
+        const own = { ...s.messageTemplates[key] }
+        if (text) own[lang] = text
+        else delete own[lang]
+        return { messageTemplates: { ...s.messageTemplates, [key]: own } }
+      })
+      get().addAudit({ actor: 'admin', action: 'message-template', to: `${key}:${lang}` })
     },
     async freeSlots(fromDate, days) {
       const out: { consultantId: string; format: Format; startIso: string }[] = []

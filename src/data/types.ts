@@ -3,6 +3,7 @@ import type { Slot } from '../domain/availability'
 import type { Actor, Booking, BookingStatus, ConsultantReviews, CustomerDetails, DecisionInput, Format, Lang, PayCurrency, PaymentMethodId, PendingDecision, ProgramId, Review, StaffReview } from '../domain/types'
 import type { ScheduleRules } from '../domain/availability'
 import type { ConsultationRecord, NextStep } from '../store/useAppStore'
+import type { MessageTemplateKey, MessageTemplates } from '../config/messageTemplates'
 import type { StoredAssessment } from '../assessment/questions'
 import type { AuditEntry } from '../domain/types'
 
@@ -100,6 +101,10 @@ export interface BookingRepo {
   financeNextSteps(): Promise<FinanceCase[]>
   /** Finance or admin: a contract/refund case has been dealt with. */
   markFinanceHandled(bookingId: string): Promise<void>
+  /** Staff: the admin's wording for the WhatsApp messages (missing languages use the defaults). */
+  messageTemplates(): Promise<MessageTemplates>
+  /** Admin: change one message in one language; null goes back to the default wording. */
+  saveMessageTemplate(key: MessageTemplateKey, lang: Lang, body: string | null): Promise<void>
   /** Admin: every consultant's free times for `days` days from `fromDate`. */
   freeSlots(fromDate: string, days: number): Promise<FreeSlot[]>
   saveRecord(bookingId: string, record: ConsultationRecord): Promise<void>

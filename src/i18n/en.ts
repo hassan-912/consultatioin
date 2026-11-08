@@ -497,6 +497,7 @@ export const en = {
     },
     viewingAs: 'Viewing as',
     screens: {
+      messages: 'WhatsApp messages',
       history: 'Consultation history',
       nextSteps: 'Contracts & refunds',
       freeSlots: 'Available times',
@@ -718,6 +719,17 @@ export const en = {
         unsaved: 'Unsaved changes',
         pdf: 'Generate PDF',
       },
+    messages: {
+      intro: 'The WhatsApp messages staff send to clients. Change the wording for each language; words in {braces} are filled in automatically.',
+      text: 'Message',
+      placeholders: 'Insert a detail',
+      save: 'Save message',
+      saved: 'Saved. Staff will use the new wording from now on.',
+      restore: 'Restore default',
+      restored: 'Back to the default wording.',
+      customised: 'Edited',
+      default: 'Default wording',
+    },
     nextStep: {
       title: 'Next step',
       hint: 'What did the client decide after the consultation?',

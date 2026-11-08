@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom'
-import { useT, translate } from '../../../i18n'
+import { useT } from '../../../i18n'
+import { fillTemplate, templateText, type MessageTemplates } from '../../../config/messageTemplates'
+import { useMessageTemplates } from '../../../data/messageTemplates'
 import { repo } from '../../../data'
 import { reportActionError } from '../../../data/feedback'
 import { getConsultant } from '../../../store/actions'
@@ -12,10 +14,10 @@ import { Icon } from '../../../components/Icon'
 import { whatsappLink } from '../finance/whatsappMessage'
 
 /** The reminder the consultant sends, in the language the client booked in. */
-export function followUpMessage(b: Booking, record?: ConsultationRecord): string {
+export function followUpMessage(b: Booking, record?: ConsultationRecord, templates?: MessageTemplates): string {
   const lang = b.customer.consultationLang
   const program = record?.recommendedProgram ?? (b.customer.program || undefined)
-  return translate(lang, 'staff.followUps.message', {
+  return fillTemplate(templateText(templates, 'follow_up', lang), {
     client: b.customer.name.trim(),
     consultant: getConsultant(b.consultantId).name[lang],
     program: program ? programName(program)[lang] : '—',
@@ -31,6 +33,7 @@ export function pendingFollowUps(bookings: Booking[], records: Record<string, Co
 
 export function FollowUps({ bookings, records }: { bookings: Booking[]; records: Record<string, ConsultationRecord> }) {
   const { t, l, lang } = useT()
+  const templates = useMessageTemplates()
   const list = pendingFollowUps(bookings, records)
   const done = (id: string) => repo.markFollowedUp(id).catch(reportActionError)
   return (
@@ -52,9 +55,9 @@ export function FollowUps({ bookings, records }: { bookings: Booking[]; records:
                   {program && <span className="shrink-0 rounded-full bg-gold-soft px-2 py-0.5 text-xs font-semibold text-gold-deep">{l(programName(program))}</span>}
                 </div>
                 <p className="mt-1 text-xs text-muted">{t('staff.followUps.since', { date: formatInZone(b.startIso, b.tz, lang, 'date') })}</p>
-                <p dir="auto" className="mt-3 rounded-xl bg-paper px-3 py-2 text-sm text-slate">{followUpMessage(b, r)}</p>
+                <p dir="auto" className="mt-3 rounded-xl bg-paper px-3 py-2 text-sm text-slate">{followUpMessage(b, r, templates)}</p>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <a href={whatsappLink(b.customer.phone, followUpMessage(b, r))} target="_blank" rel="noopener noreferrer"
+                  <a href={whatsappLink(b.customer.phone, followUpMessage(b, r, templates))} target="_blank" rel="noopener noreferrer"
                     className="inline-flex min-h-10 items-center gap-1.5 rounded-xl bg-ok px-3 text-sm font-semibold text-white hover:brightness-110">
                     <Icon name="chat" size={16} />{t('staff.followUps.send')}
                   </a>

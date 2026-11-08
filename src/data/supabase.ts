@@ -5,6 +5,7 @@ import type { ScheduleRules } from '../domain/availability'
 import { dateInZone, addDays } from '../domain/time'
 import { consultationMinutes } from '../config/booking'
 import { adminTestKeyOnThisDevice } from './adminTest'
+import type { MessageTemplateKey, MessageTemplates } from '../config/messageTemplates'
 import { HoldExpired, RepoError, SlotTaken, type BookingRepo, type PaymentInput } from './types'
 import type { ConsultationRecord } from '../store/useAppStore'
 import type { StoredAssessment } from '../assessment/questions'
@@ -285,6 +286,18 @@ export function createSupabaseRepo(clients: BackendClients): BookingRepo {
     async markFinanceHandled(id) {
       await requireStaff()
       await result(staff.rpc('finance_mark_handled', { p_booking_id: id }))
+      changed()
+    },
+    async messageTemplates() {
+      await requireStaff()
+      const rows = await result<Row[]>(staff.from('message_templates').select('key,lang,body'))
+      const out: MessageTemplates = {}
+      for (const r of rows ?? []) out[r.key as MessageTemplateKey] = { ...out[r.key as MessageTemplateKey], [r.lang]: r.body }
+      return out
+    },
+    async saveMessageTemplate(key, lang, body) {
+      await requireStaff()
+      await result(staff.rpc('admin_save_message_template', { p_key: key, p_lang: lang, p_body: body }))
       changed()
     },
     async freeSlots(fromDate, days) {

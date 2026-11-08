@@ -72,8 +72,8 @@ test('"will think about it" becomes a follow-up reminder for the consultant only
 
   const home = open('/staff')
   const reminders = screen.getByRole('region', { name: /follow-up reminders/i })
-  // Sara booked in Arabic, so her reminder is in Arabic, naming the consultant and the recommended program.
-  expect(within(reminders).getByText('أهلاً أستاذ/ة Sara Ali، معك محمد جمال من MG International. كنت أتابع مع حضرتك بخصوص التقديم على برنامج الهجرة.')).toBeInTheDocument()
+  // Sara booked in Arabic, so her reminder is in Arabic and names her consultant.
+  expect(within(reminders).getByText('أخبار حضرتك إيه؟ معاك محمد جمال من شركة MG. كنت حابب أعرف: خدنا قرار ولا لأ؟')).toBeInTheDocument()
   const wa = within(reminders).getByRole('link', { name: /send on whatsapp/i })
   expect(wa.getAttribute('href')).toMatch(/^https:\/\/wa\.me\/201001234567\?text=/)
   fireEvent.click(within(reminders).getByRole('button', { name: /mark followed up/i }))
@@ -121,4 +121,38 @@ test('the admin lists every consultant\'s free times by date, on the hour', asyn
   expect(within(gamal).queryByText(/:30$/)).toBeNull()
   expect(screen.getByRole('region', { name: 'Mohamed Abdelaziz' })).toBeInTheDocument()
   expect(screen.queryByRole('region', { name: 'Payment test' })).toBeNull() // the hidden test consultant isn't listed for "all"
+})
+
+test('the admin rewrites the follow-up message; consultants then send the new wording, and can restore the default', async () => {
+  loginAs('admin')
+  const { unmount } = open('/staff/messages')
+  const editor = screen.getByRole('region', { name: 'Consultant follow-up' })
+  const box = within(editor).getByLabelText('Message')
+  expect(box).toHaveValue('أخبار حضرتك إيه؟ معاك {consultant} من شركة MG. كنت حابب أعرف: خدنا قرار ولا لأ؟')
+  fireEvent.change(box, { target: { value: 'مساء الخير {client}، معاك {consultant}. ' } })
+  fireEvent.click(within(editor).getByRole('button', { name: /\{program\}/ }))
+  expect(within(editor).getByText('مساء الخير سارة علي، معاك محمد جمال. {program}'.replace('{program}', 'الهجرة'))).toBeInTheDocument() // live preview
+  fireEvent.click(within(editor).getByRole('button', { name: /save message/i }))
+  expect(await within(editor).findByText(/staff will use the new wording/i)).toBeInTheDocument()
+  expect(within(editor).getByText('Edited')).toBeInTheDocument()
+  unmount()
+
+  loginAs('consultant', 'mohamed-gamal')
+  useAppStore.setState({ records: { a: { notes: '', outcome: 'none', nextStep: 'thinking', recommendedProgram: 'immigration', nextStepAt: Date.now() } } })
+  const home = open('/staff')
+  expect(within(screen.getByRole('region', { name: /follow-up reminders/i })).getByText('مساء الخير Sara Ali، معاك محمد جمال. الهجرة')).toBeInTheDocument()
+  home.unmount()
+
+  loginAs('admin')
+  open('/staff/messages')
+  const again = screen.getByRole('region', { name: 'Consultant follow-up' })
+  fireEvent.click(within(again).getByRole('button', { name: /restore default/i }))
+  expect(await within(again).findByText(/back to the default wording/i)).toBeInTheDocument()
+  expect(within(again).getByLabelText('Message')).toHaveValue('أخبار حضرتك إيه؟ معاك {consultant} من شركة MG. كنت حابب أعرف: خدنا قرار ولا لأ؟')
+})
+
+test('only the admin can open the messages screen', () => {
+  loginAs('finance')
+  open('/staff/messages')
+  expect(screen.queryByRole('region', { name: 'Consultant follow-up' })).toBeNull()
 })
