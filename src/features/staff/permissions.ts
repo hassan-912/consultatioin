@@ -3,7 +3,7 @@ import type { IconName } from '../../components/Icon'
 
 export type StaffScreen =
   | 'overview' | 'salesLink' | 'myClients' | 'payments' | 'nextSteps' | 'checkin' | 'arrivals' | 'customers' | 'myCalendar' | 'myBookings' | 'history' | 'records'
-  | 'consultants' | 'freeSlots' | 'messages' | 'bookings' | 'paymentSettings' | 'kpi' | 'reviews' | 'audit' | 'decisions' | 'staffAccounts'
+  | 'consultants' | 'freeSlots' | 'messages' | 'bookings' | 'paymentSettings' | 'kpi' | 'reviews' | 'audit' | 'decisions' | 'staffAccounts' | 'notReady'
 
 export const screens: { id: StaffScreen; path: string; icon: IconName }[] = [
   { id: 'overview', path: '', icon: 'layers' },
@@ -11,6 +11,7 @@ export const screens: { id: StaffScreen; path: string; icon: IconName }[] = [
   { id: 'myClients', path: 'my-clients', icon: 'user' },
   { id: 'payments', path: 'payments', icon: 'card' },
   { id: 'nextSteps', path: 'contracts-refunds', icon: 'check' },
+  { id: 'notReady', path: 'not-ready', icon: 'alert' },
   { id: 'checkin', path: 'checkin', icon: 'qr' },
   { id: 'arrivals', path: 'arrivals', icon: 'user' },
   { id: 'customers', path: 'customers', icon: 'table' },
@@ -38,4 +39,4 @@ export const permissions: Record<StaffRole, StaffScreen[]> = {
   sales: ['salesLink', 'myClients'],
 }
 
-export const can = (role: StaffRole, s: StaffScreen) => permissions[role].includes(s)
+export const can = (role: StaffRole, s: StaffScreen, salesManager = false) => permissions[role].includes(s) || (salesManager && s === 'notReady')

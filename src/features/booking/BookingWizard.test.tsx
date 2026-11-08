@@ -144,3 +144,37 @@ test('every consultant offers 45-minute consultations starting on the hour, one 
     }
   }
 })
+
+const tourism = (extra: Record<string, string> = {}) => ({
+  program: 'tourism' as const,
+  answers: {
+    age_bracket: 'age_opt_2', education: 'edu_opt_1', employment: 'emp_opt_1', marital: 'mar_opt_1', travel: 'trav_opt_1,trav_opt_2',
+    bank: 'bank_opt_1', purpose: 'purp_opt_1', asset: 'asset_opt_1,asset_opt_4', hrLetter: 'yes', previous_rejection: 'no', personal_overstay: 'no', relative_overstay: 'no',
+    ...extra,
+  },
+})
+
+test('a client who is not ready for the program cannot pay: no time is held, they see the call-back message, and the sales manager gets the request', async () => {
+  useAppStore.setState({ readinessRequests: {} })
+  const slot = firstSlot('online', 45)
+  useAppStore.getState().updateDraft({ step: 3, format: 'online', durationMin: 45, slotStartIso: slot, assessment: tourism({ bank: 'bank_opt_5' }) })
+  useAppStore.getState().updateDetails({ ...goodDetails, program: 'tourism' })
+  renderWizard()
+  fireEvent.click(screen.getByRole('button', { name: /continue to payment/i }))
+  expect(await screen.findByText(/customer service will contact you within 24 hours to confirm the booking/i)).toBeInTheDocument()
+  expect(screen.getByText(/no payment was taken/i)).toBeInTheDocument()
+  expect(Object.keys(useAppStore.getState().bookings)).toHaveLength(0) // nothing reserved
+  const [req] = Object.values(useAppStore.getState().readinessRequests)
+  expect(req).toMatchObject({ name: 'Sara Ali', phone: '+201001234567', email: 'sara@example.com', program: 'tourism', consultantId: ID, wantedIso: slot, status: 'open' })
+  expect(req.reasons.map(r => r.en)).toContain('Egyptian account with less than 250,000 EGP')
+})
+
+test('a client who is ready goes on to payment as before', async () => {
+  useAppStore.setState({ readinessRequests: {} })
+  useAppStore.getState().updateDraft({ step: 3, format: 'online', durationMin: 45, slotStartIso: firstSlot('online', 45), assessment: tourism() })
+  useAppStore.getState().updateDetails({ ...goodDetails, program: 'tourism' })
+  renderWizard()
+  fireEvent.click(screen.getByRole('button', { name: /continue to payment/i }))
+  expect(await screen.findByTestId('booking-ref')).toBeInTheDocument()
+  expect(Object.keys(useAppStore.getState().readinessRequests)).toHaveLength(0)
+})

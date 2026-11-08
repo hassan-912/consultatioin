@@ -4,7 +4,7 @@ import { RepoError } from '../data/types'
 import type { StaffRole } from '../domain/types'
 import type { InviteRequest } from '../../supabase/functions/invite-staff/validate'
 
-export interface StaffProfile { userId: string; displayName: string; role: StaffRole; consultantId: string | null; active: boolean }
+export interface StaffProfile { userId: string; displayName: string; role: StaffRole; consultantId: string | null; active: boolean; salesManager?: boolean }
 export interface AccessRequest { userId: string; email: string; displayName: string; provider: string; createdAt: number }
 
 const known = new Set(['FORBIDDEN', 'NOT_FOUND', 'INVALID_INPUT', 'ALREADY_EXISTS', 'UNAUTHENTICATED'])
@@ -12,9 +12,9 @@ const codeOf = (message: unknown) => (typeof message === 'string' && known.has(m
 const need = (client: SupabaseClient | null) => { if (!client) throw new RepoError('LIVE_CONFIG_MISSING'); return client }
 
 export async function listStaff(client: SupabaseClient | null = staffClient): Promise<StaffProfile[]> {
-  const { data, error } = await need(client).from('staff_profiles').select('user_id,display_name,role,consultant_id,active').order('display_name').order('user_id')
+  const { data, error } = await need(client).from('staff_profiles').select('user_id,display_name,role,consultant_id,active,sales_manager').order('display_name').order('user_id')
   if (error) throw new RepoError('NETWORK')
-  return (data ?? []).map(r => ({ userId: r.user_id, displayName: r.display_name, role: r.role, consultantId: r.consultant_id, active: r.active }))
+  return (data ?? []).map(r => ({ userId: r.user_id, displayName: r.display_name, role: r.role, consultantId: r.consultant_id, active: r.active, salesManager: !!r.sales_manager }))
 }
 
 /** Role / consultant / active changes go through the admin-only set_staff_role RPC (it audits and blocks self-lockout). */
@@ -23,6 +23,12 @@ export async function saveStaff(p: StaffProfile, client: SupabaseClient | null =
     p_user_id: p.userId, p_display_name: p.displayName.trim(), p_role: p.role,
     p_consultant_id: p.role === 'consultant' ? p.consultantId : null, p_active: p.active,
   })
+  if (error) throw new RepoError(codeOf(error.message))
+}
+
+/** Admin: this account also sees the clients who weren't ready (audited). */
+export async function setSalesManager(userId: string, on: boolean, client: SupabaseClient | null = staffClient): Promise<void> {
+  const { error } = await need(client).rpc('admin_set_sales_manager', { p_user_id: userId, p_on: on })
   if (error) throw new RepoError(codeOf(error.message))
 }
 

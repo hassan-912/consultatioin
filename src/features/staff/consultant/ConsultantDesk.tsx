@@ -1,13 +1,13 @@
 import { useStaffBookings, useStaffRecords } from '../../../data/hooks'
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import type { ConsultationRecord } from '../../../store/useAppStore'
 import { useT } from '../../../i18n'
-import { useAppStore, type Outcome } from '../../../store/useAppStore'
+import { useAppStore } from '../../../store/useAppStore'
 import { getConsultants } from '../../../store/actions'
 import { canApply } from '../../../domain/bookingStatus'
 import { repo } from '../../../data'
 import { Button } from '../../../components/ui'
-import { SelectField, TextArea, TextField } from '../../../components/fields'
+import { SelectField, TextField } from '../../../components/fields'
 import { Icon } from '../../../components/Icon'
 import { normalizeDigits } from '../../../domain/phone'
 import type { Booking } from '../../../domain/types'
@@ -121,7 +121,6 @@ export function Records() {
   )
 }
 
-const outcomes: Outcome[] = ['none', 'pending', 'approved', 'refused', 'withdrawn']
 
 function RecordCard({ b, record }: { b: Booking; record?: ConsultationRecord }) {
   const draft = useRecordDraft(b, record)
@@ -131,25 +130,18 @@ function RecordCard({ b, record }: { b: Booking; record?: ConsultationRecord }) 
         <div className="min-w-0 flex-1"><BookingMeta b={b} /></div>
         <AssessmentRing bookingId={b.id} />
       </div>
-      <div className="mt-4"><RecordFields draft={draft} /></div>
-      <NextStepPanel b={b} record={record} />
+      <RecordFields draft={draft}><NextStepPanel b={b} record={record} /></RecordFields>
     </article>
   )
 }
 
-/** Notes, outcome, Submit and the PDF button for one consultation record. */
-export function RecordFields({ draft }: { draft: ReturnType<typeof useRecordDraft> }) {
+/** The next step (passed in), then Submit and the PDF button for one consultation record. */
+export function RecordFields({ draft, children }: { draft: ReturnType<typeof useRecordDraft>; children?: ReactNode }) {
   const { t } = useT()
-  const { notes, setNotes, outcome, setOutcome, busy, justSaved, submitted, dirty, report, save, pdf } = draft
+  const { busy, justSaved, submitted, dirty, report, save, pdf } = draft
   return (
     <>
-      <div className="grid gap-4 sm:grid-cols-[1fr_220px]">
-        <TextArea label={t('staff.consultant.notes')} placeholder={t('staff.consultant.notesPlaceholder')} rows={5} dir="auto"
-          value={notes} onChange={e => setNotes(e.target.value)} />
-        <SelectField label={t('staff.consultant.outcome')} value={outcome} onChange={e => setOutcome(e.target.value as Outcome)}>
-          {outcomes.map(o => <option key={o} value={o}>{t(`staff.consultant.outcomes.${o}`)}</option>)}
-        </SelectField>
-      </div>
+      {children}
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <Button disabled={busy || (!dirty && submitted)} onClick={() => void save()}>
           <Icon name="check" size={16} />{submitted && !dirty ? t('staff.records.submitted') : t('staff.records.submit')}

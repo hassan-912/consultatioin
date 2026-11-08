@@ -9,6 +9,7 @@ import type { MessageTemplateKey, MessageTemplates } from '../config/messageTemp
 import { HoldExpired, RepoError, SlotTaken, type BookingRepo, type PaymentInput } from './types'
 import type { ConsultationRecord } from '../store/useAppStore'
 import type { StoredAssessment } from '../assessment/questions'
+import { mergeRules } from '../assessment/readiness'
 
 type Row = Record<string, any> // JSON returned by RPCs and explicitly selected table columns.
 export const STAFF_BOOKING_COLUMNS = 'id,reference,consultant_id,branch_id,format,starts_at,ends_at,tz,price_amount,price_currency,customer_name,customer_phone,customer_email,channel,lang,program,note,status,hold_expires_at,reject_reason,meeting_url,checked_in_at,ticket_sent_at,ticket_sent_via,sales_name,swap_reason,swapped_from,created_at'
@@ -229,6 +230,35 @@ export function createSupabaseRepo(clients: BackendClients): BookingRepo {
       return staffRow(id)
     },
     async adminTestKey() { await requireStaff(); return result<string>(staff.rpc('admin_test_key')) },
+    async readinessRules() {
+      // The booking form must never get stuck on this: no rules from the server means the defaults.
+      return mergeRules(await result<unknown>(customer.rpc('public_readiness_rules')).catch(() => null))
+    },
+    async saveReadinessRules(rules) {
+      await requireStaff()
+      await result(staff.rpc('admin_save_readiness_rules', { p_rules: rules }))
+    },
+    async submitReadinessRequest(r) {
+      await result(customer.rpc('submit_readiness_request', { p: {
+        name: r.name, phone: r.phone, email: r.email, lang: r.lang, program: r.program, destination: r.destination ?? '',
+        consultantId: r.consultantId, format: r.format, wantedAt: r.wantedIso, score: r.score, scoreMax: r.scoreMax,
+        reasons: r.reasons, answers: r.answers,
+      } }))
+    },
+    async readinessRequests() {
+      await requireStaff()
+      const rows = await result<Row[]>(staff.rpc('readiness_request_list'))
+      return (rows ?? []).map(r => ({
+        id: r.id, createdAt: ms(r.created_at)!, name: r.customer_name, phone: r.customer_phone, email: r.customer_email ?? '', lang: r.lang,
+        program: r.program, destination: r.destination ?? undefined, consultantId: r.consultant_id ?? '', format: r.format ?? 'online',
+        wantedIso: r.wanted_at ?? '', score: r.score == null ? null : Number(r.score), scoreMax: r.score_max == null ? null : Number(r.score_max),
+        reasons: Array.isArray(r.reasons) ? r.reasons : [], answers: r.answers ?? {}, status: r.status, handledAt: ms(r.handled_at),
+      }))
+    },
+    async setReadinessStatus(id, status) {
+      await requireStaff()
+      await result(staff.rpc('set_readiness_status', { p_id: id, p_status: status }))
+    },
     async setConsultantListed(id, listed) {
       await requireStaff()
       await result(staff.rpc('admin_set_consultant_listed', { p_consultant_id: id, p_listed: listed }))

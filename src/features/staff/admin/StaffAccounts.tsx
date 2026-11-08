@@ -4,7 +4,7 @@ import { errorKey } from '../../../data/feedback'
 import { useT } from '../../../i18n'
 import { consultants } from '../../../config/consultants'
 import { staffAccounts } from '../../../config/staffAccounts'
-import { approveAccessRequest, declineAccessRequest, inviteStaff, listAccessRequests, listStaff, saveStaff, type AccessRequest, type StaffProfile } from '../../../store/staffAdmin'
+import { approveAccessRequest, declineAccessRequest, inviteStaff, listAccessRequests, listStaff, saveStaff, setSalesManager, type AccessRequest, type StaffProfile } from '../../../store/staffAdmin'
 import { validateInvite, staffRoles, type InviteField } from '../../../../supabase/functions/invite-staff/validate'
 import type { StaffRole } from '../../../domain/types'
 import { Button, Notice } from '../../../components/ui'
@@ -99,6 +99,10 @@ function Row({ p, onChanged }: { p: StaffProfile; onChanged: () => void }) {
     setBusy(true); setFailure(null)
     try { await saveStaff(next); setEditing(false); onChanged() } catch (error) { setFailure(error) } finally { setBusy(false) }
   }
+  const toggleManager = async () => {
+    setBusy(true); setFailure(null)
+    try { await setSalesManager(p.userId, !p.salesManager); onChanged() } catch (error) { setFailure(error) } finally { setBusy(false) }
+  }
   return (
     <li className="rounded-2xl bg-white p-4 ring-1 ring-line">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -107,9 +111,15 @@ function Row({ p, onChanged }: { p: StaffProfile; onChanged: () => void }) {
           <p className="text-sm text-muted">
             {t(`staff.roles.${p.role}`)}{consultant ? ` · ${l(consultant.name)}` : ''}
             {' · '}<span className={p.active ? 'text-ok' : 'text-bad'}>{t(p.active ? 'staff.accounts.active' : 'staff.accounts.inactive')}</span>
+            {p.salesManager && <>{' · '}<span className="font-semibold text-gold-deep" title={t('staff.notReady.salesManagerHint')}>{t('staff.notReady.salesManager')}</span></>}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          {p.role !== 'admin' && (
+            <Button variant="ghost" size="sm" disabled={busy} onClick={() => void toggleManager()}>
+              {t(p.salesManager ? 'staff.notReady.removeManager' : 'staff.notReady.makeManager')}
+            </Button>
+          )}
           <Button variant="ghost" size="sm" onClick={() => { setDraft(p); setEditing(v => !v) }} aria-expanded={editing}>{t('staff.accounts.edit')}</Button>
           <Button variant={p.active ? 'danger' : 'ghost'} size="sm" disabled={busy} onClick={() => run({ ...p, active: !p.active })}>
             {t(p.active ? 'staff.accounts.deactivate' : 'staff.accounts.reactivate')}

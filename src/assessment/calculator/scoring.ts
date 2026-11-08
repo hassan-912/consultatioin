@@ -106,6 +106,7 @@ export const CATEGORIES: Category[] = [
       { id: "bank_opt_1", label: "Local & USD account (6+ months active)", value: 29 },
       { id: "bank_opt_2", label: "Local account (6+ months, 250k+ balance)", value: 25 },
       { id: "bank_opt_3", label: "USD account only (6+ months, $3,000+ balance)", value: 25 },
+      { id: "bank_opt_5", label: "Local account (less than 250k balance)", value: 8 },
       { id: "bank_opt_4", label: "No bank account", value: 0 },
     ],
   },

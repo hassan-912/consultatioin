@@ -102,8 +102,7 @@ function ClientFileBody({ b, record }: { b: Booking; record?: Parameters<typeof 
       </Section>
 
       <Section title={t('staff.consultant.notes')} className="mt-4">
-        <RecordFields draft={draft} />
-        <NextStepPanel b={b} record={record} />
+        <RecordFields draft={draft}><NextStepPanel b={b} record={record} /></RecordFields>
       </Section>
     </>
   )

@@ -4,7 +4,9 @@ import type { Actor, Booking, BookingStatus, ConsultantReviews, CustomerDetails,
 import type { ScheduleRules } from '../domain/availability'
 import type { ConsultationRecord, NextStep } from '../store/useAppStore'
 import type { MessageTemplateKey, MessageTemplates } from '../config/messageTemplates'
-import type { StoredAssessment } from '../assessment/questions'
+import type { AssessedProgram, Answers, StoredAssessment } from '../assessment/questions'
+import type { ReadinessRules } from '../assessment/readiness'
+import type { L10n } from '../domain/types'
 import type { AuditEntry } from '../domain/types'
 
 // Same class the store actions throw, so existing `instanceof` checks keep working.
@@ -36,6 +38,16 @@ export interface FinanceCase {
   /** The consultation fee the client paid. */
   paid: { amount: number; currency: string }
 }
+/** A client who wasn't ready for their program: they didn't pay; the sales manager calls them. */
+export interface ReadinessSubmission {
+  name: string; phone: string; email: string; lang: Lang
+  program: AssessedProgram; destination?: string
+  consultantId: string; format: Format; wantedIso: string
+  score: number | null; scoreMax: number | null; reasons: L10n[]; answers: Answers
+}
+export type ReadinessStatus = 'open' | 'contacted' | 'closed'
+export interface ReadinessRequest extends ReadinessSubmission { id: string; createdAt: number; status: ReadinessStatus; handledAt?: number }
+
 export interface FreeSlot { consultantId: string; format: Format; startIso: string }
 
 export interface PaymentInput {
@@ -87,6 +99,16 @@ export interface BookingRepo {
   reassignConsultant(bookingId: string, consultantId: string, reason: string): Promise<Booking>
   /** Admin: the key that lets this device book admin-only (payment test) consultants. */
   adminTestKey(): Promise<string>
+  /** Public: the admin's readiness rules (defaults filled in). */
+  readinessRules(): Promise<ReadinessRules>
+  /** Admin: save the readiness rules. */
+  saveReadinessRules(rules: ReadinessRules): Promise<void>
+  /** Customer: not ready for the program, so no payment; file it for the sales manager. */
+  submitReadinessRequest(s: ReadinessSubmission): Promise<void>
+  /** Sales manager or admin: clients who weren't ready, open ones first. */
+  readinessRequests(): Promise<ReadinessRequest[]>
+  /** Sales manager or admin: contacted / closed / open again. */
+  setReadinessStatus(id: string, status: ReadinessStatus): Promise<void>
   /** Admin: show or hide a consultant on the home page (they can still be booked by direct link). */
   setConsultantListed(consultantId: string, listed: boolean): Promise<void>
   /** Admin: every review, newest first, hidden ones included. */

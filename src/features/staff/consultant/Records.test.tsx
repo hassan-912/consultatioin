@@ -43,14 +43,17 @@ test('records can be searched by name or phone and show which are not submitted 
   expect(screen.queryByRole('article', { name: 'MG-REC-B' })).toBeNull()
 })
 
-test('submit saves the record; the PDF holds client details, the full assessment and the notes', async () => {
+test('the next step sits above Submit (no notes box); the PDF holds client details and the full assessment', async () => {
   const print = vi.spyOn(window, 'print').mockImplementation(() => {})
   open('/staff/records')
   const card = screen.getByRole('article', { name: 'MG-REC-A' })
-  fireEvent.change(within(card).getByLabelText(/consultation notes/i), { target: { value: 'Strong ties. Prepare bank letter.' } })
-  fireEvent.change(within(card).getByLabelText(/application outcome/i), { target: { value: 'pending' } })
-  fireEvent.click(within(card).getByRole('button', { name: /submit record/i }))
-  await waitFor(() => expect(useAppStore.getState().records.a).toEqual({ notes: 'Strong ties. Prepare bank letter.', outcome: 'pending' }))
+  expect(within(card).queryByLabelText(/consultation notes/i)).toBeNull()
+  expect(within(card).queryByLabelText(/application outcome/i)).toBeNull()
+  const nextStep = within(card).getByRole('region', { name: /next step/i })
+  const submit = within(card).getByRole('button', { name: /submit record/i })
+  expect(nextStep.compareDocumentPosition(submit) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy() // next step comes first
+  fireEvent.click(submit)
+  await waitFor(() => expect(useAppStore.getState().records.a).toBeDefined())
 
   fireEvent.click(screen.getByRole('tab', { name: /all clients/i }))
   fireEvent.click(within(screen.getByRole('article', { name: 'MG-REC-A' })).getByRole('button', { name: /generate pdf/i }))
@@ -58,7 +61,7 @@ test('submit saves the record; the PDF holds client details, the full assessment
   const report = document.querySelector('body > .cr-report') as HTMLElement
   expect(report).not.toBeNull()
   for (const text of ['Consultation summary', 'Sara Ali', '+201001234567', 'Tourism', 'Mona', 'MG-REC-A', 'Mohamed Gamal', 'Wants Schengen',
-    'Strong file', 'Points breakdown', 'Client answers', 'Previous Visa Refusal', 'Strong ties. Prepare bank letter.', 'Pending']) {
+    'Strong file', 'Points breakdown', 'Client answers', 'Previous Visa Refusal']) {
     expect(report.textContent).toContain(text)
   }
   expect(report.textContent).toMatch(/91\s*%/)
@@ -76,7 +79,7 @@ test('consultant overview shows today as cards with a score ring; the assessment
   expect(screen.getByText('Customer answers')).toBeInTheDocument()
 })
 
-test('clicking an overview card opens the client file with details, assessment, notes and a PDF download', async () => {
+test('clicking an overview card opens the client file with details, assessment, the next step and a PDF download', async () => {
   const print = vi.spyOn(window, 'print').mockImplementation(() => {})
   act(() => { useAppStore.setState(s => ({ bookings: { ...s.bookings, a: { ...s.bookings.a, status: 'confirmed' } } })) })
   open('/staff')
@@ -85,11 +88,10 @@ test('clicking an overview card opens the client file with details, assessment, 
   for (const text of ['Client details', 'c@example.com', 'Wants Schengen', 'Mona', 'Customer answers', 'Previous Visa Refusal']) {
     expect(screen.getAllByText(new RegExp(text)).length).toBeGreaterThan(0)
   }
-  fireEvent.change(screen.getByLabelText(/consultation notes/i), { target: { value: 'Bring payslips.' } })
+  expect(screen.queryByLabelText(/consultation notes/i)).toBeNull()
   fireEvent.click(screen.getByRole('button', { name: /download pdf/i }))
   await waitFor(() => expect(print).toHaveBeenCalled(), { timeout: 3000 })
-  expect(useAppStore.getState().records.a?.notes).toBe('Bring payslips.')
-  expect(document.querySelector('body > .cr-report')?.textContent).toContain('Bring payslips.')
+  expect(document.querySelector('body > .cr-report')?.textContent).toContain('Sara Ali')
 }, 20000)
 
 test('a consultant cannot open another consultant’s client file', () => {

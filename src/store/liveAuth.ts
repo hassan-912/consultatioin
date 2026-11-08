@@ -45,8 +45,11 @@ async function adoptSession(client: SupabaseClient, user: AuthUser, username = '
   }
   const role = profile.role as StaffRole
   const consultantId = role === 'consultant' ? profile.consultant_id : null
+  // Older databases have no such check yet: then nobody is a sales manager.
+  let manager = false
+  try { manager = (await client.rpc('is_sales_manager')).data === true } catch { manager = false }
   useAppStore.setState(s => ({
-    staffSession: { username: profile.display_name.trim() || user.email || '', role, consultantId },
+    staffSession: { username: profile.display_name.trim() || user.email || '', role, consultantId, salesManager: manager },
     staffPending: null,
     role,
     staffConsultantId: consultantId ?? s.staffConsultantId,
