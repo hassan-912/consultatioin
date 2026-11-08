@@ -148,7 +148,8 @@ const baseRules = buildScheduleRules()
 export function getRules(consultantId: string, overrides = get().scheduleOverrides): ScheduleRules {
   const r = baseRules.find(x => x.consultantId === consultantId)!
   const o = overrides[consultantId] ?? {}
-  return { ...r, ...o, leave: [...r.leave, ...(o.leave ?? [])] }
+  // Overrides replace the demo lists, so the admin can also remove a demo day off.
+  return { ...r, ...o, leave: o.leave ?? r.leave, blocked: o.blocked ?? [] }
 }
 
 export function editConsultant(id: string, patch: Partial<Consultant>, actor: Actor = 'admin') {

@@ -21,11 +21,10 @@ import { CustomerSheet } from './reception/CustomerSheet'
 import { MyCalendar, MyBookings, Records } from './consultant/ConsultantDesk'
 import { ClientFile } from './consultant/ClientFile'
 import { ConsultantsAdmin } from './admin/ConsultantsAdmin'
-import { FreeSlotsAdmin } from './admin/FreeSlotsAdmin'
+import { AvailableTimesAdmin } from './admin/FreeSlotsAdmin'
 import { MessagesAdmin } from './admin/MessagesAdmin'
 import { NextStepsFinance } from './finance/NextStepsFinance'
 import { History } from './consultant/History'
-import { AvailabilityAdmin } from './admin/AvailabilityAdmin'
 import { BookingsAdmin } from './admin/BookingsAdmin'
 import { PaymentsAdmin, KpiAdmin } from './admin/SettingsAdmin'
 import { AuditLog } from './admin/AuditLog'
@@ -53,8 +52,7 @@ const views: Record<StaffScreen, () => ReactNode> = {
   records: () => <Records />,
   bookings: () => <BookingsAdmin />,
   consultants: () => <ConsultantsAdmin />,
-  availability: () => <AvailabilityAdmin />,
-  freeSlots: () => <FreeSlotsAdmin />,
+  freeSlots: () => <AvailableTimesAdmin />,
   paymentSettings: () => <PaymentsAdmin />,
   messages: () => <MessagesAdmin />,
   kpi: () => <KpiAdmin />,

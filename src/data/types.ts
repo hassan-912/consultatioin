@@ -101,6 +101,12 @@ export interface BookingRepo {
   financeNextSteps(): Promise<FinanceCase[]>
   /** Finance or admin: a contract/refund case has been dealt with. */
   markFinanceHandled(bookingId: string): Promise<void>
+  /** Admin: give a consultant a day off (from = to) or several days off. */
+  addDayOff(consultantId: string, from: string, to: string): Promise<void>
+  /** Admin: take back a day off. */
+  removeDayOff(consultantId: string, dayOffId: string): Promise<void>
+  /** Admin: block (or unblock) one start time so nobody can book the consultant then. */
+  setSlotBlocked(consultantId: string, startIso: string, blocked: boolean): Promise<void>
   /** Staff: the admin's wording for the WhatsApp messages (missing languages use the defaults). */
   messageTemplates(): Promise<MessageTemplates>
   /** Admin: change one message in one language; null goes back to the default wording. */

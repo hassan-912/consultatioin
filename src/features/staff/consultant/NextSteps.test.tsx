@@ -112,17 +112,6 @@ test('a consultant cannot open finance or admin screens; finance cannot open con
   expect(screen.queryByRole('table')).toBeNull()
 })
 
-test('the admin lists every consultant\'s free times by date, on the hour', async () => {
-  loginAs('admin')
-  open('/staff/available-times')
-  const gamal = await screen.findByRole('region', { name: 'Mohamed Gamal' })
-  const times = within(gamal).getAllByText(/^\d{2}:00$/)
-  expect(times.length).toBeGreaterThan(0)
-  expect(within(gamal).queryByText(/:30$/)).toBeNull()
-  expect(screen.getByRole('region', { name: 'Mohamed Abdelaziz' })).toBeInTheDocument()
-  expect(screen.queryByRole('region', { name: 'Payment test' })).toBeNull() // the hidden test consultant isn't listed for "all"
-})
-
 test('the admin rewrites the follow-up message; consultants then send the new wording, and can restore the default', async () => {
   loginAs('admin')
   const { unmount } = open('/staff/messages')

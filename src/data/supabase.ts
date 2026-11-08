@@ -321,7 +321,8 @@ export function createSupabaseRepo(clients: BackendClients): BookingRepo {
     async staffSchedules() {
       await requireStaff()
       const schedules = await result<Row[]>(staff.from('schedules').select('consultant_id,weekly,breaks,formats,max_per_day'))
-      const exceptions = await allRows(staff.from('schedule_exceptions').select('consultant_id,kind,starts_on,ends_on').order('id'))
+      const exceptions = await allRows(staff.from('schedule_exceptions').select('id,consultant_id,kind,starts_on,ends_on').order('id'))
+      const blocks = await allRows(staff.from('slot_blocks').select('consultant_id,starts_at').gte('starts_at', new Date(Date.now() - 864e5).toISOString()).order('starts_at'))
       return Object.fromEntries(schedules.map(r => {
         const ex = exceptions.filter(e => e.consultant_id === r.consultant_id)
         const dates = (kind: string) => ex.filter(e => e.kind === kind).flatMap(e => {
@@ -329,8 +330,25 @@ export function createSupabaseRepo(clients: BackendClients): BookingRepo {
           for (let d = e.starts_on; d <= e.ends_on; d = addDays(d, 1)) out.push(d)
           return out
         })
-        return [r.consultant_id, { consultantId: r.consultant_id, weekly: Object.fromEntries(Array.from({ length: 7 }, (_, d) => [d, r.weekly[d] ?? []])), breaks: r.breaks, formats: r.formats, maxPerDay: r.max_per_day ?? undefined, holidays: dates('holiday'), unavailable: dates('unavailable'), leave: ex.filter(e => e.kind === 'leave').map(e => ({ from: e.starts_on, to: e.ends_on })) }]
+        return [r.consultant_id, { consultantId: r.consultant_id, weekly: Object.fromEntries(Array.from({ length: 7 }, (_, d) => [d, r.weekly[d] ?? []])), breaks: r.breaks, formats: r.formats, maxPerDay: r.max_per_day ?? undefined, holidays: dates('holiday'), unavailable: dates('unavailable'), leave: ex.filter(e => e.kind === 'leave').map(e => ({ from: e.starts_on, to: e.ends_on })),
+          blocked: blocks.filter(x => x.consultant_id === r.consultant_id).map(x => new Date(x.starts_at).toISOString()),
+          exceptions: ex.map(e => ({ id: String(e.id), kind: e.kind, from: e.starts_on, to: e.ends_on })) }]
       })) as Record<string, ScheduleRules>
+    },
+    async addDayOff(id, from, to) {
+      await requireStaff()
+      await result(staff.rpc('add_exception', { p_consultant_id: id, p_kind: 'leave', p_starts_on: from, p_ends_on: to }))
+      changed()
+    },
+    async removeDayOff(_id, dayOffId) {
+      await requireStaff()
+      await result(staff.rpc('remove_exception', { p_id: dayOffId }))
+      changed()
+    },
+    async setSlotBlocked(id, startIso, blocked) {
+      await requireStaff()
+      await result(staff.rpc('set_slot_blocked', { p_consultant_id: id, p_starts_at: startIso, p_blocked: blocked }))
+      changed()
     },
     async saveSchedule(id, patch) {
       const rules = (await repo.staffSchedules())[id]

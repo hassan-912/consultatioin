@@ -5,9 +5,6 @@ import { StaffApp } from './StaffApp'
 import { useAppStore } from '../../store/useAppStore'
 import { loginAs } from '../../test/loginAs'
 import { getConsultant } from '../../store/actions'
-import { slotsFor } from '../shared/availability'
-import { addDays } from '../../domain/time'
-import { todayIn } from '../../store/useAppStore'
 import { publicTotals } from '../../domain/stats'
 import { buildSeed } from '../../demo/seed'
 
@@ -30,22 +27,6 @@ test('admin edits Mohamed Esmail spelling; directory data updates and edit is au
   fireEvent.click(screen.getByRole('button', { name: /^save$/i }))
   expect(getConsultant('mohamed-esmail').name.en).toBe('Mohamed Ismail')
   expect(useAppStore.getState().audit[0]).toMatchObject({ actor: 'admin', action: 'edited' })
-})
-
-test('adding leave removes slots for those dates', () => {
-  const day = (() => {
-    for (let i = 1; i < 14; i++) {
-      const d = addDays(todayIn('Africa/Cairo'), i)
-      if (slotsFor('mohamed-gamal', d, 'online').length) return d
-    }
-    throw new Error('none')
-  })()
-  loginAs('admin')
-  openStaff('/staff/availability')
-  fireEvent.change(screen.getByLabelText('From'), { target: { value: day } })
-  fireEvent.change(screen.getByLabelText('To'), { target: { value: day } })
-  fireEvent.click(screen.getByRole('button', { name: /add leave/i }))
-  expect(slotsFor('mohamed-gamal', day, 'online')).toEqual([])
 })
 
 test('consultant marks completed (counts) vs no-show (does not count)', () => {

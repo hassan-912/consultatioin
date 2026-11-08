@@ -22,14 +22,16 @@ export function slotsFor(consultantId: string, date: string, format: Format, dur
   const c = baseConsultants.find(x => x.id === consultantId)!
   const tz = branchById(c.branchId).timeZone
   const bookings = Object.values(s.bookings).filter(b => b.id !== excludeBookingId)
+  const rules = getRules(consultantId, s.scheduleOverrides)
+  const blocked = new Set(rules.blocked ?? [])
   return getSlots({
-    rules: getRules(consultantId, s.scheduleOverrides),
+    rules,
     date, format, durationMin, tz,
     busy: busyFromBookings(bookings, consultantId, s.now()),
     bufferMin: bookingConfig.bufferMin,
     stepMin: bookingConfig.slotStepMin,
     nowMs: s.now(),
-  })
+  }).filter(slot => !blocked.has(slot.startIso))
 }
 
 export function nextFor(consultantId: string, fromDate: string, format: Format): Slot | null {

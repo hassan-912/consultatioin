@@ -3,7 +3,7 @@ import type { IconName } from '../../components/Icon'
 
 export type StaffScreen =
   | 'overview' | 'salesLink' | 'myClients' | 'payments' | 'nextSteps' | 'checkin' | 'arrivals' | 'customers' | 'myCalendar' | 'myBookings' | 'history' | 'records'
-  | 'consultants' | 'availability' | 'freeSlots' | 'messages' | 'bookings' | 'paymentSettings' | 'kpi' | 'reviews' | 'audit' | 'decisions' | 'staffAccounts'
+  | 'consultants' | 'freeSlots' | 'messages' | 'bookings' | 'paymentSettings' | 'kpi' | 'reviews' | 'audit' | 'decisions' | 'staffAccounts'
 
 export const screens: { id: StaffScreen; path: string; icon: IconName }[] = [
   { id: 'overview', path: '', icon: 'layers' },
@@ -20,7 +20,6 @@ export const screens: { id: StaffScreen; path: string; icon: IconName }[] = [
   { id: 'records', path: 'records', icon: 'history' },
   { id: 'bookings', path: 'bookings', icon: 'list' },
   { id: 'consultants', path: 'consultants', icon: 'user' },
-  { id: 'availability', path: 'availability', icon: 'calendar' },
   { id: 'freeSlots', path: 'available-times', icon: 'clock' },
   { id: 'paymentSettings', path: 'payment-settings', icon: 'settings' },
   { id: 'messages', path: 'messages', icon: 'chat' },

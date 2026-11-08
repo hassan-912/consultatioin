@@ -12,7 +12,14 @@ export interface ScheduleRules {
   unavailable: string[]
   maxPerDay?: number
   formats: Format[]
+  /** Start times (ISO) the admin blocked: nobody can book the consultant then. */
+  blocked?: string[]
+  /** Days off as stored, with ids so the admin can remove them (live data). */
+  exceptions?: DayOff[]
 }
+
+/** A day off or a run of days off for one consultant. */
+export interface DayOff { id: string; kind: 'holiday' | 'leave' | 'unavailable'; from: string; to: string }
 
 export interface Busy { startIso: string; endIso: string }
 export interface Slot { startIso: string; endIso: string }

@@ -212,8 +212,24 @@ export function createLocalRepo(): BookingRepo {
     async staffAudit() { return get().audit },
     async staffSchedules() { return Object.fromEntries(consultants.map(c => [c.id, getRules(c.id)])) },
     async saveSchedule(id, patch) {
-      const baseLeave = getRules(id, {}).leave
-      editSchedule(id, patch.leave ? { ...patch, leave: patch.leave.filter(l => !baseLeave.some(b => b.from === l.from && b.to === l.to)) } : patch)
+      editSchedule(id, patch)
+    },
+    async addDayOff(id, from, to) {
+      if (!from || !to || to < from) throw new RepoError('INVALID_INPUT')
+      editSchedule(id, { leave: [...getRules(id).leave, { from, to }] })
+    },
+    async removeDayOff(id, dayOffId) {
+      const r = getRules(id)
+      const [kind, from, to] = dayOffId.split(':')
+      if (kind === 'leave') editSchedule(id, { leave: r.leave.filter(l => !(l.from === from && l.to === to)) })
+      else if (kind === 'holiday') editSchedule(id, { holidays: r.holidays.filter(d => d !== from) })
+      else if (kind === 'unavailable') editSchedule(id, { unavailable: r.unavailable.filter(d => d !== from) })
+      else throw new RepoError('NOT_FOUND')
+    },
+    async setSlotBlocked(id, startIso, blocked) {
+      const iso = new Date(startIso).toISOString()
+      const now = getRules(id).blocked ?? []
+      editSchedule(id, { blocked: blocked ? [...new Set([...now, iso])] : now.filter(x => x !== iso) })
     },
     async saveNextStep(id, nextStep, program) {
       const b = get().bookings[id]
