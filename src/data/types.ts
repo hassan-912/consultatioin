@@ -1,8 +1,8 @@
 import type { BookingEvent, CheckInVerdict } from '../domain/bookingStatus'
 import type { Slot } from '../domain/availability'
-import type { Actor, Booking, BookingStatus, ConsultantReviews, CustomerDetails, DecisionInput, Format, Lang, PayCurrency, PaymentMethodId, PendingDecision, Review, StaffReview } from '../domain/types'
+import type { Actor, Booking, BookingStatus, ConsultantReviews, CustomerDetails, DecisionInput, Format, Lang, PayCurrency, PaymentMethodId, PendingDecision, ProgramId, Review, StaffReview } from '../domain/types'
 import type { ScheduleRules } from '../domain/availability'
-import type { ConsultationRecord } from '../store/useAppStore'
+import type { ConsultationRecord, NextStep } from '../store/useAppStore'
 import type { StoredAssessment } from '../assessment/questions'
 import type { AuditEntry } from '../domain/types'
 
@@ -25,6 +25,12 @@ export interface ReserveDraft {
   /** The caller's previous hold from the same draft: reused for the same slot, released for another. */
   supersedes?: string
 }
+
+export interface FinanceCase {
+  bookingId: string; reference: string; name: string; phone: string; consultantId: string
+  nextStep: Exclude<NextStep, 'thinking'>; program?: ProgramId; at: number; handledAt?: number
+}
+export interface FreeSlot { consultantId: string; format: Format; startIso: string }
 
 export interface PaymentInput {
   method: PaymentMethodId
@@ -86,6 +92,16 @@ export interface BookingRepo {
   /** Admin: the decision is settled, so it is deleted (the audit log keeps its wording). */
   resolveDecision(id: string): Promise<void>
   staffRecords(): Promise<Record<string, ConsultationRecord>>
+  /** Consultant (own clients) or admin: what the client does next, and the program the consultant recommends. */
+  saveNextStep(bookingId: string, nextStep: NextStep, program: ProgramId | null): Promise<void>
+  /** Consultant (own) or admin: the "thinking" client has been followed up. */
+  markFollowedUp(bookingId: string): Promise<void>
+  /** Finance or admin: clients who will sign a contract or want a refund (no consultation notes). */
+  financeNextSteps(): Promise<FinanceCase[]>
+  /** Finance or admin: a contract/refund case has been dealt with. */
+  markFinanceHandled(bookingId: string): Promise<void>
+  /** Admin: every consultant's free times for `days` days from `fromDate`. */
+  freeSlots(fromDate: string, days: number): Promise<FreeSlot[]>
   saveRecord(bookingId: string, record: ConsultationRecord): Promise<void>
   staffAudit(): Promise<AuditEntry[]>
   staffSchedules(): Promise<Record<string, ScheduleRules>>

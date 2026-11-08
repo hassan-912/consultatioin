@@ -2,23 +2,26 @@ import type { StaffRole } from '../../domain/types'
 import type { IconName } from '../../components/Icon'
 
 export type StaffScreen =
-  | 'overview' | 'salesLink' | 'myClients' | 'payments' | 'checkin' | 'arrivals' | 'customers' | 'myCalendar' | 'myBookings' | 'records'
-  | 'consultants' | 'availability' | 'bookings' | 'paymentSettings' | 'kpi' | 'reviews' | 'audit' | 'decisions' | 'staffAccounts'
+  | 'overview' | 'salesLink' | 'myClients' | 'payments' | 'nextSteps' | 'checkin' | 'arrivals' | 'customers' | 'myCalendar' | 'myBookings' | 'history' | 'records'
+  | 'consultants' | 'availability' | 'freeSlots' | 'bookings' | 'paymentSettings' | 'kpi' | 'reviews' | 'audit' | 'decisions' | 'staffAccounts'
 
 export const screens: { id: StaffScreen; path: string; icon: IconName }[] = [
   { id: 'overview', path: '', icon: 'layers' },
   { id: 'salesLink', path: 'my-link', icon: 'copy' },
   { id: 'myClients', path: 'my-clients', icon: 'user' },
   { id: 'payments', path: 'payments', icon: 'card' },
+  { id: 'nextSteps', path: 'contracts-refunds', icon: 'check' },
   { id: 'checkin', path: 'checkin', icon: 'qr' },
   { id: 'arrivals', path: 'arrivals', icon: 'user' },
   { id: 'customers', path: 'customers', icon: 'table' },
   { id: 'myCalendar', path: 'my-calendar', icon: 'calendar' },
   { id: 'myBookings', path: 'my-bookings', icon: 'list' },
+  { id: 'history', path: 'history', icon: 'table' },
   { id: 'records', path: 'records', icon: 'history' },
   { id: 'bookings', path: 'bookings', icon: 'list' },
   { id: 'consultants', path: 'consultants', icon: 'user' },
   { id: 'availability', path: 'availability', icon: 'calendar' },
+  { id: 'freeSlots', path: 'available-times', icon: 'clock' },
   { id: 'paymentSettings', path: 'payment-settings', icon: 'settings' },
   { id: 'kpi', path: 'kpi', icon: 'sparkle' },
   { id: 'reviews', path: 'reviews', icon: 'star' },
@@ -29,9 +32,9 @@ export const screens: { id: StaffScreen; path: string; icon: IconName }[] = [
 
 export const permissions: Record<StaffRole, StaffScreen[]> = {
   admin: screens.map(s => s.id).filter(id => id !== 'salesLink' && id !== 'myClients'),
-  finance: ['overview', 'payments', 'customers', 'bookings', 'paymentSettings', 'audit'],
+  finance: ['overview', 'payments', 'nextSteps', 'customers', 'bookings', 'paymentSettings', 'audit'],
   reception: ['overview', 'checkin', 'arrivals', 'customers', 'bookings'],
-  consultant: ['overview', 'myCalendar', 'myBookings', 'records'],
+  consultant: ['overview', 'myCalendar', 'myBookings', 'history', 'records'],
   sales: ['salesLink', 'myClients'],
 }
 

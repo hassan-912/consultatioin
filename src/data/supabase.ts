@@ -258,8 +258,39 @@ export function createSupabaseRepo(clients: BackendClients): BookingRepo {
     },
     async staffRecords() {
       await requireStaff()
-      const rows = await allRows(staff.from('consultation_records').select('booking_id,notes,outcome').order('booking_id'))
-      return Object.fromEntries(rows.map(r => [r.booking_id, { notes: r.notes ?? '', outcome: r.outcome ?? 'none' }])) as Record<string, ConsultationRecord>
+      const rows = await allRows(staff.from('consultation_records').select('booking_id,notes,outcome,next_step,recommended_program,next_step_at,followed_up_at,finance_handled_at').order('booking_id'))
+      return Object.fromEntries(rows.map(r => [r.booking_id, {
+        notes: r.notes ?? '', outcome: r.outcome ?? 'none', nextStep: r.next_step ?? undefined, recommendedProgram: r.recommended_program ?? undefined,
+        nextStepAt: ms(r.next_step_at), followedUpAt: ms(r.followed_up_at), financeHandledAt: ms(r.finance_handled_at),
+      }])) as Record<string, ConsultationRecord>
+    },
+    async saveNextStep(id, nextStep, program) {
+      await requireStaff()
+      await result(staff.rpc('save_next_step', { p_booking_id: id, p_next_step: nextStep, p_program: program }))
+      changed()
+    },
+    async markFollowedUp(id) {
+      await requireStaff()
+      await result(staff.rpc('mark_followed_up', { p_booking_id: id }))
+      changed()
+    },
+    async financeNextSteps() {
+      await requireStaff()
+      const rows = await result<Row[]>(staff.rpc('finance_next_steps'))
+      return (rows ?? []).map(r => ({
+        bookingId: r.booking_id, reference: r.reference, name: r.customer_name, phone: r.customer_phone, consultantId: r.consultant_id,
+        nextStep: r.next_step, program: r.recommended_program ?? undefined, at: ms(r.next_step_at)!, handledAt: ms(r.handled_at),
+      }))
+    },
+    async markFinanceHandled(id) {
+      await requireStaff()
+      await result(staff.rpc('finance_mark_handled', { p_booking_id: id }))
+      changed()
+    },
+    async freeSlots(fromDate, days) {
+      await requireStaff()
+      const rows = await result<Row[]>(staff.rpc('staff_free_slots', { p_from: fromDate, p_days: days }))
+      return (rows ?? []).map(r => ({ consultantId: r.consultant_id, format: r.format, startIso: new Date(r.starts_at).toISOString() }))
     },
     async saveRecord(id, record) {
       await requireStaff()

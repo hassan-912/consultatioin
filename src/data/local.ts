@@ -6,9 +6,9 @@ import { publicTotals } from '../domain/stats'
 import { slotsFor } from '../features/shared/availability'
 import { InvalidTransition, checkInVerdict } from '../domain/bookingStatus'
 import { cleanPhone, normalizeDigits } from '../domain/phone'
-import { dateInZone } from '../domain/time'
+import { addDays, dateInZone } from '../domain/time'
 import { bookingConfig } from '../config/booking'
-import type { Booking } from '../domain/types'
+import type { Booking, Format } from '../domain/types'
 import { HoldExpired, RepoError, SlotTaken, type BookingRepo } from './types'
 import { staffAccounts } from '../config/staffAccounts'
 import { consultantBusy } from '../domain/bookingStatus'
@@ -214,8 +214,52 @@ export function createLocalRepo(): BookingRepo {
       const baseLeave = getRules(id, {}).leave
       editSchedule(id, patch.leave ? { ...patch, leave: patch.leave.filter(l => !baseLeave.some(b => b.from === l.from && b.to === l.to)) } : patch)
     },
+    async saveNextStep(id, nextStep, program) {
+      const b = get().bookings[id]
+      if (!b) throw new RepoError('NOT_FOUND')
+      if (!['checked-in', 'completed'].includes(b.status)) throw new RepoError('INVALID_TRANSITION')
+      const prev = get().records[id] ?? { notes: '', outcome: 'none' as const }
+      const changedStep = prev.nextStep !== nextStep
+      const next = {
+        ...prev, nextStep, recommendedProgram: program ?? (b.customer.program || undefined),
+        nextStepAt: changedStep ? get().now() : prev.nextStepAt ?? get().now(),
+        followedUpAt: changedStep ? undefined : prev.followedUpAt, financeHandledAt: changedStep ? undefined : prev.financeHandledAt,
+      }
+      useAppStore.setState(s => ({ records: { ...s.records, [id]: next } }))
+      get().addAudit({ actor: get().staffSession?.role ?? get().role, action: 'next-step', bookingRef: b.reference, to: nextStep })
+    },
+    async markFollowedUp(id) {
+      const r = get().records[id]
+      if (r?.nextStep !== 'thinking') throw new RepoError('INVALID_TRANSITION')
+      useAppStore.setState(s => ({ records: { ...s.records, [id]: { ...r, followedUpAt: get().now() } } }))
+    },
+    async financeNextSteps() {
+      const { records, bookings } = get()
+      return Object.entries(records)
+        .filter(([id, r]) => (r.nextStep === 'contract' || r.nextStep === 'refund') && bookings[id])
+        .map(([id, r]) => {
+          const b = bookings[id]
+          return { bookingId: id, reference: b.reference, name: b.customer.name, phone: b.customer.phone, consultantId: b.consultantId,
+            nextStep: r.nextStep as 'contract' | 'refund', program: r.recommendedProgram, at: r.nextStepAt ?? 0, handledAt: r.financeHandledAt }
+        })
+        .sort((a, b) => Number(!!a.handledAt) - Number(!!b.handledAt) || b.at - a.at)
+    },
+    async markFinanceHandled(id) {
+      const r = get().records[id]
+      if (!r || (r.nextStep !== 'contract' && r.nextStep !== 'refund') || r.financeHandledAt) throw new RepoError('INVALID_TRANSITION')
+      useAppStore.setState(s => ({ records: { ...s.records, [id]: { ...r, financeHandledAt: get().now() } } }))
+    },
+    async freeSlots(fromDate, days) {
+      const out: { consultantId: string; format: Format; startIso: string }[] = []
+      for (const c of consultants) for (let i = 0; i < days; i++) {
+        const date = addDays(fromDate, i)
+        for (const format of getRules(c.id).formats) for (const s of slotsFor(c.id, date, format)) out.push({ consultantId: c.id, format, startIso: s.startIso })
+      }
+      return out.sort((a, b) => a.consultantId.localeCompare(b.consultantId) || a.startIso.localeCompare(b.startIso))
+    },
     async saveRecord(id, record) {
-      useAppStore.setState(s => ({ records: { ...s.records, [id]: record } }))
+      // Keep the next step and follow-up fields; notes and outcome are saved separately.
+      useAppStore.setState(s => ({ records: { ...s.records, [id]: { ...s.records[id], ...record } } }))
       get().addAudit({ actor: get().role, action: 'edited', bookingRef: get().bookings[id]?.reference, to: record.outcome })
     },
     subscribe(onChange) {

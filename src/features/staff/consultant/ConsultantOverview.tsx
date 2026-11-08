@@ -11,6 +11,7 @@ import { StatusChip } from '../../../components/ui'
 import { Icon } from '../../../components/Icon'
 import { AssessmentRing } from '../../../assessment/StaffAssessment'
 import { ScreenTitle } from '../StaffApp'
+import { FollowUps, pendingFollowUps } from './FollowUps'
 
 const ACTIVE = ['confirmed', 'checked-in', 'completed']
 
@@ -30,11 +31,13 @@ export function ConsultantOverview() {
     .sort((a, b) => a.startIso.localeCompare(b.startIso))
   const toSubmit = bookings.filter(b => ['completed', 'checked-in'].includes(b.status) && !(records[b.id]?.notes.trim() || (records[b.id]?.outcome ?? 'none') !== 'none')).length
 
+  const followUps = pendingFollowUps(bookings, records).length
   const tiles = [
     { label: t('staff.consultantHome.today'), value: todays.length, icon: 'calendar' as const },
     { label: t('staff.consultantHome.arrived'), value: todays.filter(b => b.status === 'checked-in').length, icon: 'check' as const },
     { label: t('staff.consultantHome.toSubmit'), value: toSubmit, icon: 'list' as const, to: '/staff/records' },
     { label: t('staff.consultantHome.week'), value: week.length, icon: 'clock' as const, to: '/staff/my-bookings' },
+    { label: t('staff.followUps.tile'), value: followUps, icon: 'chat' as const },
   ]
 
   return (
@@ -42,7 +45,7 @@ export function ConsultantOverview() {
       <ScreenTitle title={t('staff.screens.overview')} />
       <p className="-mt-3 mb-5 text-sm text-muted">{formatDate(today, lang, 'date')}</p>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         {tiles.map(tile => {
           const body = (
             <>
@@ -70,6 +73,8 @@ export function ConsultantOverview() {
           <p className="rounded-2xl border border-dashed border-mist bg-white px-4 py-10 text-center text-sm text-muted">{t('staff.consultantHome.noneToday')}</p>
         )}
       </section>
+
+      <FollowUps bookings={bookings} records={records} />
 
       {week.length > 0 && (
         <section aria-labelledby="week-title" className="mt-8">

@@ -28,7 +28,18 @@ export interface BookingDraft {
 }
 
 export type Outcome = 'none' | 'pending' | 'approved' | 'refused' | 'withdrawn'
-export interface ConsultationRecord { notes: string; outcome: Outcome }
+/** What the client does after the consultation: contract and refund go to finance; thinking is a follow-up reminder. */
+export type NextStep = 'contract' | 'refund' | 'thinking'
+export interface ConsultationRecord {
+  notes: string
+  outcome: Outcome
+  nextStep?: NextStep
+  /** The program the consultant recommends (may differ from what the client chose when booking). */
+  recommendedProgram?: ProgramId
+  nextStepAt?: number
+  followedUpAt?: number
+  financeHandledAt?: number
+}
 
 
 export const todayIn = (tz: string, ms = Date.now()) =>

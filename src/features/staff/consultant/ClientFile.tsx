@@ -14,6 +14,7 @@ import { Icon } from '../../../components/Icon'
 import { AssessmentReport, AssessmentRing, useAssessmentResult } from '../../../assessment/StaffAssessment'
 import { Empty, SwapNote } from '../common'
 import { RecordFields } from './ConsultantDesk'
+import { NextStepPanel } from './NextStepPanel'
 import { useRecordDraft } from './recordDraft'
 
 /** One client's full file for the consultant: details, appointment, assessment, notes, and the PDF. Staff only. */
@@ -102,6 +103,7 @@ function ClientFileBody({ b, record }: { b: Booking; record?: Parameters<typeof 
 
       <Section title={t('staff.consultant.notes')} className="mt-4">
         <RecordFields draft={draft} />
+        <NextStepPanel b={b} record={record} />
       </Section>
     </>
   )

@@ -17,6 +17,7 @@ import { isSubmitted, useRecordDraft } from './recordDraft'
 import { ScreenTitle } from '../StaffApp'
 import { BookingMeta, Empty, Tabs } from '../common'
 import { AvailabilityBoard } from './AvailabilityBoard'
+import { NextStepPanel } from './NextStepPanel'
 
 function ConsultantPicker() {
   const { t, l } = useT()
@@ -131,6 +132,7 @@ function RecordCard({ b, record }: { b: Booking; record?: ConsultationRecord }) 
         <AssessmentRing bookingId={b.id} />
       </div>
       <div className="mt-4"><RecordFields draft={draft} /></div>
+      <NextStepPanel b={b} record={record} />
     </article>
   )
 }
