@@ -36,6 +36,8 @@ export interface Consultant {
   demoPrograms: boolean
   /** Not listed for customers (reachable only by link), e.g. the payment test consultant. */
   hidden?: boolean
+  /** The 5 EGP payment-test consultant: listed for everyone at Nasr City, flagged for staff. */
+  paymentTest?: boolean
   /** Price in EGP when it differs from the standard one (set on the server too: consultant_branches.price_amount). */
   price?: number
 }

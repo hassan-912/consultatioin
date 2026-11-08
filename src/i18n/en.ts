@@ -852,7 +852,7 @@ export const en = {
       autoConfirm: 'Automatic payment confirmation',
       autoConfirmOff: 'Off — enable only after a payment integration is verified.',
       sharedConfig: 'One payment configuration applies to all branches.',
-      adminTestBadge: 'Admin test only · 5 EGP',
+      adminTestBadge: 'Payment test · 5 EGP',
       bookTest: 'Book a test payment',
       currencyNote: 'Prices are set in EGP. Other currencies use the day’s exchange rate when the customer pays.',
       autoConfirmOn: 'On — a signed EasyKash payment for the right amount confirms the booking. Anything else goes to the finance queue.',

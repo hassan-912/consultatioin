@@ -92,7 +92,7 @@ export function ConsultantsAdmin() {
               <div className="min-w-0 flex-1">
                 <p className="flex flex-wrap items-center gap-2 font-semibold text-ink">
                   {l(c.name)}
-                  {c.hidden && (
+                  {c.paymentTest && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-gold-soft px-2 py-0.5 text-xs font-semibold text-gold-deep">
                       <Icon name="shield" size={12} />
                       {t('staff.admin.adminTestBadge')}
@@ -110,7 +110,7 @@ export function ConsultantsAdmin() {
                   {[!c.bio && t('placeholder.bio'), !c.photo && t('placeholder.photo'), !c.videoUrl && t('placeholder.video')].filter(Boolean).join(' / ')}
                 </p>
               </div>
-              {c.hidden && <TestBookingButton consultantId={c.id} />}
+              {c.paymentTest && <TestBookingButton consultantId={c.id} />}
               <Button variant="ghost" size="sm" disabled={isLive} title={isLive ? t('data.sourceManaged') : undefined} aria-label={`${t('staff.admin.editProfile')} ${c.name.en}`} onClick={() => setEditing(editing === c.id ? null : c.id)}>
                 <Icon name="settings" size={15} />
                 <span className="hidden sm:inline">{t('staff.admin.editProfile')}</span>

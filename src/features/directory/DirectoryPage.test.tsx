@@ -13,10 +13,10 @@ beforeEach(() => {
 
 const cards = () => screen.getAllByRole('article')
 
-test('before a location is chosen all seven consultants are listed behind the welcome screen, with both actions', () => {
+test('before a location is chosen all eight consultants (with the payment test) are listed behind the welcome screen, with both actions', () => {
   useAppStore.setState({ location: null })
   renderPage()
-  expect(cards()).toHaveLength(7)
+  expect(cards()).toHaveLength(8)
   for (const c of cards()) {
     expect(within(c).getByRole('link', { name: /view profile/i })).toBeInTheDocument()
     expect(within(c).getByRole('link', { name: /book consultation/i })).toBeInTheDocument()
@@ -42,7 +42,7 @@ test('home page no longer filters by branch or online / in person', () => {
   renderPage()
   expect(screen.queryByLabelText('Branch')).toBeNull()
   expect(screen.queryByRole('radio', { name: /^online$/i })).toBeNull()
-  expect(cards()).toHaveLength(4)
+  expect(cards()).toHaveLength(5) // 4 consultants + the payment test
 })
 
 test('a company holiday shows no slots on that date and still gives the next available appointment', () => {
@@ -71,4 +71,11 @@ test('Qena is an open branch; demo data is labelled and Wael never appears', () 
   expect(screen.queryByText(/opening soon/i)).toBeNull()
   expect(screen.getAllByText('Demo data').length).toBeGreaterThan(0)
   expect(document.body.textContent).not.toMatch(/Wael/)
+})
+
+test('the 5 EGP payment-test consultant is listed on the Nasr City page for everyone', () => {
+  renderPage()
+  const card = cards().find(c => c.textContent?.includes('Payment test'))
+  expect(card).toBeDefined()
+  expect(within(card!).getByRole('link', { name: /book consultation/i })).toBeInTheDocument()
 })
