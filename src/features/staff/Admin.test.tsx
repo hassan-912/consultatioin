@@ -106,3 +106,16 @@ test('audit log shows actions', () => {
   openStaff('/staff/audit')
   expect(screen.getByText('MG-AAAA-BBBB')).toBeInTheDocument()
 })
+
+test('the 5 EGP payment-test consultant is listed for the admin, with a button that opens its booking page', async () => {
+  loginAs('admin')
+  render(<MemoryRouter initialEntries={['/staff/consultants']}><Routes>
+    <Route path="/staff/*" element={<StaffApp />} />
+    <Route path="/book/:id" element={<p>BOOKING test-ek-q7m4x9</p>} />
+  </Routes></MemoryRouter>)
+  expect(screen.getByText('Payment test')).toBeInTheDocument()
+  expect(screen.getByText('Admin test only · 5 EGP')).toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: /book a test payment/i }))
+  expect(await screen.findByText('BOOKING test-ek-q7m4x9')).toBeInTheDocument()
+  expect(localStorage.getItem('mg-admin-test-key')).toBe('demo')
+})

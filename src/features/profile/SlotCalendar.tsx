@@ -55,7 +55,7 @@ export function SlotCalendar({ consultant }: { consultant: Consultant }) {
           }))}
         />
         <p className="flex items-center gap-1.5 text-sm text-slate">
-          <span className="font-semibold">{t('common.duration')}:</span> {t('common.durationRange', bookingConfig.durationRange)}
+          <span className="font-semibold">{t('common.duration')}:</span> {t('common.minutes', { n: bookingConfig.durationRange.max })}
         </p>
       </div>
       <div className="mt-5">

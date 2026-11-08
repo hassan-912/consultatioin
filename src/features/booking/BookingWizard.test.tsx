@@ -57,7 +57,7 @@ test('an already-selected format (single-format consultant) still moves on when 
 })
 
 test('details step blocks invalid phone and empty email with messages', () => {
-  useAppStore.getState().updateDraft({ step: 2, format: 'online', durationMin: 30, slotStartIso: firstSlot('online', 30) })
+  useAppStore.getState().updateDraft({ step: 2, format: 'online', durationMin: 45, slotStartIso: firstSlot('online', 45) })
   renderWizard()
   fireEvent.change(screen.getByLabelText(/full name/i), { target: { value: 'Sara Ali' } })
   fireEvent.change(screen.getByLabelText(/phone number/i), { target: { value: '01001234567' } })
@@ -68,16 +68,16 @@ test('details step blocks invalid phone and empty email with messages', () => {
 })
 
 test('review shows price and duration before payment', () => {
-  useAppStore.getState().updateDraft({ step: 3, format: 'in-person', durationMin: 30, slotStartIso: firstSlot('in-person', 30) })
+  useAppStore.getState().updateDraft({ step: 3, format: 'in-person', durationMin: 45, slotStartIso: firstSlot('in-person', 45) })
   useAppStore.getState().updateDetails(goodDetails)
   renderWizard()
   expect(screen.getAllByText('1,000 EGP').length).toBeGreaterThan(0)
-  expect(screen.getAllByText('15–30 min').length).toBeGreaterThan(0)
+  expect(screen.getAllByText('45 min').length).toBeGreaterThan(0)
   expect(screen.getByText(/Makram Ebeid/)).toBeInTheDocument()
 })
 
 test('payment step keeps the same reference across reloads; paying online confirms and opens the ticket', async () => {
-  useAppStore.getState().updateDraft({ step: 4, format: 'online', durationMin: 30, slotStartIso: firstSlot('online', 30) })
+  useAppStore.getState().updateDraft({ step: 4, format: 'online', durationMin: 45, slotStartIso: firstSlot('online', 45) })
   useAppStore.getState().updateDetails(goodDetails)
   const { unmount } = renderWizard()
   const ref1 = screen.getByTestId('booking-ref').textContent
@@ -96,7 +96,7 @@ test('payment step keeps the same reference across reloads; paying online confir
 
 test('expired reservation disables submit', async () => {
   vi.useFakeTimers({ shouldAdvanceTime: true })
-  useAppStore.getState().updateDraft({ step: 4, format: 'online', durationMin: 30, slotStartIso: firstSlot('online', 30) })
+  useAppStore.getState().updateDraft({ step: 4, format: 'online', durationMin: 45, slotStartIso: firstSlot('online', 45) })
   useAppStore.getState().updateDetails(goodDetails)
   renderWizard()
   act(() => useAppStore.setState({ timeOffsetMs: 31 * 60000 }))
@@ -107,7 +107,7 @@ test('expired reservation disables submit', async () => {
 })
 
 test('paying after the hold silently expired (throttled tab) shows the expired screen', () => {
-  useAppStore.getState().updateDraft({ step: 4, format: 'online', durationMin: 30, slotStartIso: firstSlot('online', 30) })
+  useAppStore.getState().updateDraft({ step: 4, format: 'online', durationMin: 45, slotStartIso: firstSlot('online', 45) })
   useAppStore.getState().updateDetails(goodDetails)
   renderWizard()
   useAppStore.setState({ timeOffsetMs: 31 * 60000 }) // no timer tick yet
@@ -125,9 +125,22 @@ class Boundary extends Component<{ children: ReactNode }, { error: Error | null 
 test('a reserve failure other than SlotTaken is surfaced, not swallowed', async () => {
   vi.spyOn(console, 'error').mockImplementation(() => {})
   vi.spyOn(repo, 'reserve').mockRejectedValueOnce(new Error('backend down'))
-  useAppStore.getState().updateDraft({ step: 4, format: 'online', durationMin: 30, slotStartIso: firstSlot('online', 30) })
+  useAppStore.getState().updateDraft({ step: 4, format: 'online', durationMin: 45, slotStartIso: firstSlot('online', 45) })
   useAppStore.getState().updateDetails(goodDetails)
   render(<Boundary><MemoryRouter initialEntries={[`/book/${ID}`]}><Routes><Route path="/book/:id" element={<BookingWizard />} /></Routes></MemoryRouter></Boundary>)
   expect(await screen.findByText(/CRASH: backend down/)).toBeInTheDocument()
   vi.restoreAllMocks()
+})
+
+test('every consultant offers 45-minute consultations starting on the hour, one per hour', () => {
+  for (const id of ['mohamed-gamal', 'ahmed-salama', 'mohamed-abdelaziz']) {
+    for (let i = 1; i < 6; i++) {
+      const slots = slotsFor(id, addDays(todayIn('Africa/Cairo'), i), 'online', 45)
+      for (const s of slots) {
+        expect(new Date(s.startIso).getUTCMinutes()).toBe(0)
+        expect(Date.parse(s.endIso) - Date.parse(s.startIso)).toBe(45 * 60000)
+      }
+      for (let k = 1; k < slots.length; k++) expect(Date.parse(slots[k].startIso) - Date.parse(slots[k - 1].startIso)).toBeGreaterThanOrEqual(60 * 60000)
+    }
+  }
 })

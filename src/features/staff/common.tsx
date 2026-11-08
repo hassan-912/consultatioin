@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react'
-import { bookingConfig } from '../../config/booking'
 import { useT } from '../../i18n'
 import type { Booking } from '../../domain/types'
 import { getConsultant } from '../../store/actions'
@@ -33,7 +32,7 @@ export function BookingMeta({ b, showStatus = true, showAssessment = true }: { b
       <p className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm text-muted">
         <span className="inline-flex items-center gap-1"><Icon name={b.format === 'online' ? 'video' : 'building'} size={14} />{l(c.name)}, {l(branchById(b.branchId).name)}</span>
         <span>{formatInZone(b.startIso, b.tz, lang, 'full')}</span>
-        <span>{t('common.durationRange', bookingConfig.durationRange)}</span>
+        <span>{t('common.minutes', { n: b.durationMin })}</span>
         <span className="font-semibold text-ink"><Ltr>{formatMoney(b.price, lang)}</Ltr></span>
       </p>
       {showAssessment && <StaffAssessment bookingId={b.id} />}

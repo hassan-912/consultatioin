@@ -1,4 +1,8 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { repo } from '../../../data'
+import { rememberAdminTestKey } from '../../../data/adminTest'
+import { errorKey } from '../../../data/feedback'
 import { isLive } from '../../../data/mode'
 import { useT } from '../../../i18n'
 import { useAppStore } from '../../../store/useAppStore'
@@ -49,6 +53,29 @@ function Editor({ c, onDone }: { c: Consultant; onDone: () => void }) {
   )
 }
 
+/** Admin-only consultants (the 5 EGP payment test): fetch this device's booking key, then open the booking page. */
+function TestBookingButton({ consultantId }: { consultantId: string }) {
+  const { t } = useT()
+  const navigate = useNavigate()
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<unknown>(null)
+  const open = async () => {
+    setBusy(true); setError(null)
+    try {
+      rememberAdminTestKey(await repo.adminTestKey())
+      navigate(`/book/${consultantId}`)
+    } catch (e) { setError(e); setBusy(false) }
+  }
+  return (
+    <div className="grid justify-items-end gap-1">
+      <Button variant="gold" size="sm" onClick={open} disabled={busy}>
+        <Icon name="card" size={15} />{t('staff.admin.bookTest')}
+      </Button>
+      {error != null && <span role="alert" className="text-xs text-bad">{t(errorKey(error))}</span>}
+    </div>
+  )
+}
+
 export function ConsultantsAdmin() {
   const { t, l } = useT()
   const overrides = useAppStore(s => s.consultantOverrides)
@@ -65,6 +92,12 @@ export function ConsultantsAdmin() {
               <div className="min-w-0 flex-1">
                 <p className="flex flex-wrap items-center gap-2 font-semibold text-ink">
                   {l(c.name)}
+                  {c.hidden && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-gold-soft px-2 py-0.5 text-xs font-semibold text-gold-deep">
+                      <Icon name="shield" size={12} />
+                      {t('staff.admin.adminTestBadge')}
+                    </span>
+                  )}
                   {c.nameNeedsConfirmation && (
                     <span className="inline-flex items-center gap-1 rounded-full bg-warn-soft px-2 py-0.5 text-xs font-semibold text-warn">
                       <Icon name="alert" size={12} />
@@ -77,6 +110,7 @@ export function ConsultantsAdmin() {
                   {[!c.bio && t('placeholder.bio'), !c.photo && t('placeholder.photo'), !c.videoUrl && t('placeholder.video')].filter(Boolean).join(' / ')}
                 </p>
               </div>
+              {c.hidden && <TestBookingButton consultantId={c.id} />}
               <Button variant="ghost" size="sm" disabled={isLive} title={isLive ? t('data.sourceManaged') : undefined} aria-label={`${t('staff.admin.editProfile')} ${c.name.en}`} onClick={() => setEditing(editing === c.id ? null : c.id)}>
                 <Icon name="settings" size={15} />
                 <span className="hidden sm:inline">{t('staff.admin.editProfile')}</span>

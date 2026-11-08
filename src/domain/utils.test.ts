@@ -55,8 +55,9 @@ describe('time', () => {
 
 describe('pricing', () => {
   test('price by format and duration', () => {
-    expect(priceFor('online', 30)).toEqual({ amount: 1000, currency: 'EGP' })
-    expect(priceFor('in-person', 30)).toEqual({ amount: 1000, currency: 'EGP' })
-    expect(() => priceFor('online', 45)).toThrow()
+    // Every consultation is a fixed 45 minutes.
+    expect(priceFor('online', 45)).toEqual({ amount: 1000, currency: 'EGP' })
+    expect(priceFor('in-person', 45)).toEqual({ amount: 1000, currency: 'EGP' })
+    expect(() => priceFor('online', 30)).toThrow()
   })
 })

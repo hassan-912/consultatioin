@@ -50,7 +50,7 @@ export interface BookingConfig {
   prices: Record<Format, Record<number, number>>
   currency: 'EGP'
   autoConfirm: false
-  slotStepMin: 15
+  slotStepMin: number
 }
 
 /** `easykash` is the only checkout method; the others remain for bookings paid before it. */

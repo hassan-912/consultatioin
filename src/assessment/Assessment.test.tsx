@@ -34,7 +34,7 @@ beforeEach(() => {
 })
 
 test('tourism booking asks the situation questions with no score and will not continue until they are answered', () => {
-  useAppStore.getState().updateDraft({ step: 2, format: 'in-person', durationMin: 30, slotStartIso: slot() })
+  useAppStore.getState().updateDraft({ step: 2, format: 'in-person', durationMin: 45, slotStartIso: slot() })
   useAppStore.getState().updateDetails(details)
   at(`/book/${ID}`)
   expect(screen.getByText('A few questions about your situation')).toBeInTheDocument()
@@ -52,7 +52,7 @@ test('tourism booking asks the situation questions with no score and will not co
 })
 
 test('answers are saved with the hold; the consultant and admin see the score, finance and the customer do not', async () => {
-  useAppStore.getState().updateDraft({ step: 4, format: 'in-person', durationMin: 30, slotStartIso: slot(), assessment: { program: 'tourism', answers: strong } })
+  useAppStore.getState().updateDraft({ step: 4, format: 'in-person', durationMin: 45, slotStartIso: slot(), assessment: { program: 'tourism', answers: strong } })
   useAppStore.getState().updateDetails(details)
   const wizard = at(`/book/${ID}`)
   await waitFor(() => expect(Object.keys(useAppStore.getState().assessments)).toHaveLength(1), { timeout: 5000 })

@@ -33,28 +33,28 @@ interface Spec { c: string; day: number; at: [number, number]; format: Format; d
 
 const plan: Spec[] = [
   // Today — reception arrivals
-  { c: 'mohamed-gamal', day: 0, at: [11, 0], format: 'in-person', dur: 30, status: 'confirmed', txn: true, sent: true },
-  { c: 'ahmed-salama', day: 0, at: [12, 0], format: 'in-person', dur: 30, status: 'confirmed', txn: true, sent: true },
-  { c: 'mohamed-esmail', day: 0, at: [15, 0], format: 'in-person', dur: 30, status: 'checked-in', txn: true, sent: true },
-  { c: 'mohamed-salah', day: 0, at: [16, 0], format: 'in-person', dur: 30, status: 'confirmed', txn: true, sent: true },
-  { c: 'mohamed-abdelaziz', day: 0, at: [14, 0], format: 'in-person', dur: 30, status: 'confirmed', txn: true, sent: true },
+  { c: 'mohamed-gamal', day: 0, at: [11, 0], format: 'in-person', dur: 45, status: 'confirmed', txn: true, sent: true },
+  { c: 'ahmed-salama', day: 0, at: [12, 0], format: 'in-person', dur: 45, status: 'confirmed', txn: true, sent: true },
+  { c: 'mohamed-esmail', day: 0, at: [15, 0], format: 'in-person', dur: 45, status: 'checked-in', txn: true, sent: true },
+  { c: 'mohamed-salah', day: 0, at: [16, 0], format: 'in-person', dur: 45, status: 'confirmed', txn: true, sent: true },
+  { c: 'mohamed-abdelaziz', day: 0, at: [14, 0], format: 'in-person', dur: 45, status: 'confirmed', txn: true, sent: true },
   // Finance queue
-  { c: 'mohamed-gamal', day: 1, at: [10, 0], format: 'online', dur: 30, status: 'on-hold', txn: true, receipt: true },
-  { c: 'ahmed-tarek', day: 1, at: [11, 30], format: 'in-person', dur: 30, status: 'on-hold', txn: true },
-  { c: 'mohamed-abdelaziz', day: 2, at: [16, 0], format: 'online', dur: 30, status: 'on-hold', txn: true, receipt: true },
-  { c: 'ahmed-khalil', day: 2, at: [12, 0], format: 'online', dur: 30, status: 'on-hold', txn: true },
-  { c: 'mohamed-esmail', day: 3, at: [14, 0], format: 'online', dur: 30, status: 'late-transfer', txn: true, receipt: true },
+  { c: 'mohamed-gamal', day: 1, at: [10, 0], format: 'online', dur: 45, status: 'on-hold', txn: true, receipt: true },
+  { c: 'ahmed-tarek', day: 1, at: [11, 30], format: 'in-person', dur: 45, status: 'on-hold', txn: true },
+  { c: 'mohamed-abdelaziz', day: 2, at: [16, 0], format: 'online', dur: 45, status: 'on-hold', txn: true, receipt: true },
+  { c: 'ahmed-khalil', day: 2, at: [12, 0], format: 'online', dur: 45, status: 'on-hold', txn: true },
+  { c: 'mohamed-esmail', day: 3, at: [14, 0], format: 'online', dur: 45, status: 'late-transfer', txn: true, receipt: true },
   // Confirmed, awaiting ticket send
-  { c: 'ahmed-salama', day: 1, at: [15, 0], format: 'online', dur: 30, status: 'confirmed', txn: true },
+  { c: 'ahmed-salama', day: 1, at: [15, 0], format: 'online', dur: 45, status: 'confirmed', txn: true },
   // Upcoming confirmed
-  { c: 'mohamed-gamal', day: 2, at: [14, 0], format: 'in-person', dur: 30, status: 'confirmed', txn: true, sent: true },
-  { c: 'mohamed-salah', day: 3, at: [11, 0], format: 'in-person', dur: 30, status: 'confirmed', txn: true, sent: true },
+  { c: 'mohamed-gamal', day: 2, at: [14, 0], format: 'in-person', dur: 45, status: 'confirmed', txn: true, sent: true },
+  { c: 'mohamed-salah', day: 3, at: [11, 0], format: 'in-person', dur: 45, status: 'confirmed', txn: true, sent: true },
   // History
-  { c: 'mohamed-gamal', day: -1, at: [10, 0], format: 'online', dur: 30, status: 'completed', txn: true, sent: true },
-  { c: 'ahmed-tarek', day: -1, at: [12, 0], format: 'in-person', dur: 30, status: 'completed', txn: true, sent: true },
-  { c: 'ahmed-salama', day: -2, at: [11, 0], format: 'in-person', dur: 30, status: 'no-show', txn: true, sent: true },
-  { c: 'ahmed-khalil', day: -1, at: [14, 0], format: 'online', dur: 30, status: 'cancelled', txn: true },
-  { c: 'mohamed-abdelaziz', day: -2, at: [10, 0], format: 'online', dur: 30, status: 'expired' },
+  { c: 'mohamed-gamal', day: -1, at: [10, 0], format: 'online', dur: 45, status: 'completed', txn: true, sent: true },
+  { c: 'ahmed-tarek', day: -1, at: [12, 0], format: 'in-person', dur: 45, status: 'completed', txn: true, sent: true },
+  { c: 'ahmed-salama', day: -2, at: [11, 0], format: 'in-person', dur: 45, status: 'no-show', txn: true, sent: true },
+  { c: 'ahmed-khalil', day: -1, at: [14, 0], format: 'online', dur: 45, status: 'cancelled', txn: true },
+  { c: 'mohamed-abdelaziz', day: -2, at: [10, 0], format: 'online', dur: 45, status: 'expired' },
 ]
 
 const rulesById = Object.fromEntries(buildScheduleRules().map(r => [r.consultantId, r]))

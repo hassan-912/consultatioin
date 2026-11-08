@@ -73,6 +73,8 @@ export interface BookingRepo {
   setReferral(manageToken: string, code: string): Promise<boolean>
   /** Reception/admin: move a confirmed or checked-in booking to another consultant who is free at that time. */
   reassignConsultant(bookingId: string, consultantId: string, reason: string): Promise<Booking>
+  /** Admin: the key that lets this device book admin-only (payment test) consultants. */
+  adminTestKey(): Promise<string>
   /** Admin: every review, newest first, hidden ones included. */
   staffReviews(): Promise<StaffReview[]>
   /** Admin: hide a review from the public profile, or restore it. */

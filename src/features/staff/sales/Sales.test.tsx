@@ -44,7 +44,7 @@ test('a ?ref= link is remembered and cleaned from the address; junk codes are ig
 test('a booking made through a sales link carries the sales name; that sales person sees it with the assessment, reception sees no assessment', async () => {
   const code = localReferralCode('mona.sales')
   captureReferral({ search: `?ref=${code}`, hash: '#/', pathname: '/' })
-  useAppStore.getState().updateDraft({ step: 4, format: 'in-person', durationMin: 30, slotStartIso: slot(), assessment: { program: 'tourism', answers: { age_bracket: 'age_opt_2' } } })
+  useAppStore.getState().updateDraft({ step: 4, format: 'in-person', durationMin: 45, slotStartIso: slot(), assessment: { program: 'tourism', answers: { age_bracket: 'age_opt_2' } } })
   useAppStore.getState().updateDetails({ name: 'Sara Ali', phone: '+201001234567', email: 'sara@example.com', program: 'tourism' })
   const wizard = at(`/book/${ID}`)
   await waitFor(() => expect(Object.values(useAppStore.getState().bookings)[0]?.salesCode).toBe(code), { timeout: 5000 })
@@ -82,7 +82,7 @@ test('reception can change the consultant after a scan (first option) or keep th
   const today = todayIn('Africa/Cairo')
   const mk = (id: string, consultantId: string): Booking => ({
     id, reference: `MG-SWAP-${id.toUpperCase()}`, qrToken: id.padEnd(32, '0'), manageToken: `m${id}`.padEnd(32, '0'),
-    consultantId, branchId: 'nasr-city', format: 'in-person', durationMin: 30,
+    consultantId, branchId: 'nasr-city', format: 'in-person', durationMin: 45,
     startIso: zonedDateTimeToIso(today, 23 * 60, 'Africa/Cairo'), endIso: zonedDateTimeToIso(today, 23 * 60 + 30, 'Africa/Cairo'),
     tz: 'Africa/Cairo', price: { amount: 1000, currency: 'EGP' },
     customer: { name: 'Sara', phone: '+201001234567', email: '', channel: 'whatsapp', consultationLang: 'en', program: 'tourism', note: '' },

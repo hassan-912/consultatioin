@@ -29,7 +29,7 @@ test('anonymous RPC requests cannot inherit staff Authorization; customer auth i
   expect(h.clients.customer).not.toBe(h.clients.staff)
   expect(() => h.clients.customer.auth.getSession).toThrow(/accessToken/)
   const slots = await h.repo.availableSlots('mohamed-gamal', '2026-11-02', 'online')
-  expect(slots[0]).toEqual({ startIso: '2026-11-02T08:00:00.000Z', endIso: '2026-11-02T08:30:00.000Z' })
+  expect(slots[0]).toEqual({ startIso: '2026-11-02T08:00:00.000Z', endIso: '2026-11-02T08:45:00.000Z' })
   expect(h.calls[0].headers.get('authorization')).not.toContain('real-staff-jwt')
   expect(h.calls[0].body).toEqual({ p_consultant_id: 'mohamed-gamal', p_date: '2026-11-02', p_format: 'online' })
 })

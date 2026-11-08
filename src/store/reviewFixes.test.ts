@@ -8,14 +8,14 @@ const end = new Date(NOW + 2 * 86400000 + 30 * 60000).toISOString()
 
 const mk = (id: string, over: Partial<Booking>): Booking => ({
   id, reference: `MG-${id.toUpperCase().padEnd(4, 'X')}-TEST`, qrToken: id.padEnd(32, '0'), manageToken: `m${id}`.padEnd(32, '0'),
-  consultantId: 'mohamed-gamal', branchId: 'nasr-city', format: 'online', durationMin: 30, startIso: start, endIso: end,
+  consultantId: 'mohamed-gamal', branchId: 'nasr-city', format: 'online', durationMin: 45, startIso: start, endIso: end,
   tz: 'Africa/Cairo', price: { amount: 900, currency: 'EGP' },
   customer: { name: 'X', phone: '+201001234567', email: 'x@e.com', channel: 'email', consultationLang: 'en', program: 'immigration', note: '' },
   status: 'on-hold', holdExpiresAt: NOW - 60000, createdAt: NOW - 3600000, ...over,
 })
 
 const draftFor = (slotStartIso: string, bookingId: string | null = null) => ({
-  ...emptyDraft(), consultantId: 'mohamed-gamal', format: 'online' as const, durationMin: 30, slotStartIso, bookingId,
+  ...emptyDraft(), consultantId: 'mohamed-gamal', format: 'online' as const, durationMin: 45, slotStartIso, bookingId,
   details: { ...emptyDraft().details, name: 'Sara', phone: '+201001234567', email: 's@e.com', program: 'immigration' as const },
 })
 

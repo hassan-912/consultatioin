@@ -97,7 +97,7 @@ export function SummaryCard({ consultant, branch, format, durationMin, slotStart
         {row(t('common.format'), format ? t(`format.${format}`) : '—')}
         {row(t('common.date'), slotStartIso ? formatInZone(slotStartIso, branch.timeZone, lang, 'date') : '—')}
         {row(t('common.time'), slotStartIso ? <Ltr>{formatInZone(slotStartIso, branch.timeZone, lang, 'time')}</Ltr> : '—')}
-        {row(t('common.duration'), durationMin ? t('common.durationRange', bookingConfig.durationRange) : '—')}
+        {row(t('common.duration'), durationMin ? t('common.minutes', { n: bookingConfig.durationRange.max }) : '—')}
       </dl>
       <div className="mt-2 flex items-center justify-between border-t border-line pt-4">
         <span className="font-semibold text-ink">{t('booking.total')}</span>

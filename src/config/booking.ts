@@ -1,17 +1,20 @@
 import type { BookingConfig } from '../domain/types'
 
-// Demo values — final durations, buffers, deadline and prices are pending decisions.
+/** Every consultation is 45 minutes and starts on the hour (one per hour per consultant). */
+export const consultationMinutes = 45
+
 export const bookingConfig: BookingConfig = {
-  durations: { online: [30], 'in-person': [30] },
-  durationRange: { min: 15, max: 30 },
+  durations: { online: [consultationMinutes], 'in-person': [consultationMinutes] },
+  durationRange: { min: consultationMinutes, max: consultationMinutes },
   bufferMin: 10,
   holdMinutes: 30,
   // One price for every consultation, online or in person.
   prices: {
-    online: { 30: 1000 },
-    'in-person': { 30: 1000 },
+    online: { [consultationMinutes]: 1000 },
+    'in-person': { [consultationMinutes]: 1000 },
   },
   currency: 'EGP',
   autoConfirm: false,
-  slotStepMin: 15,
+  // Slots start on the hour: 45 minutes plus the 10-minute buffer fit inside each hour.
+  slotStepMin: 60,
 }

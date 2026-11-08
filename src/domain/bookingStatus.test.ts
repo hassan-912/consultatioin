@@ -85,7 +85,7 @@ describe('store actions', () => {
   beforeEach(() => useAppStore.setState({ bookings: {}, audit: [], timeOffsetMs: 0 }))
   const draft = () => ({
     ...useAppStore.getState().draft,
-    consultantId: 'mohamed-gamal', format: 'online' as const, durationMin: 30,
+    consultantId: 'mohamed-gamal', format: 'online' as const, durationMin: 45,
     slotStartIso: new Date(Date.now() + 86400000).toISOString(),
     details: { ...useAppStore.getState().draft.details, name: 'Sara', phone: '+201001234567', email: 's@e.com' },
   })

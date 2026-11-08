@@ -52,7 +52,8 @@ describe('consultants', () => {
 
 describe('booking & payments', () => {
   test('durations and flags', () => {
-    expect(bookingConfig.durationRange).toEqual({ min: 15, max: 30 })
+    expect(bookingConfig.durationRange).toEqual({ min: 45, max: 45 })
+    expect(bookingConfig.slotStepMin).toBe(60)
     expect(Object.values(bookingConfig.prices).flatMap(Object.values)).toEqual([1000, 1000])
     expect(bookingConfig.autoConfirm).toBe(false)
     expect(bookingConfig.holdMinutes).toBe(30)

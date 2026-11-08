@@ -3,6 +3,8 @@ import type { BackendClients } from '../lib/supabase'
 import type { Booking, CustomerDetails, Format, AuditEntry, PendingDecision, Review, StaffReview } from '../domain/types'
 import type { ScheduleRules } from '../domain/availability'
 import { dateInZone, addDays } from '../domain/time'
+import { consultationMinutes } from '../config/booking'
+import { adminTestKeyOnThisDevice } from './adminTest'
 import { HoldExpired, RepoError, SlotTaken, type BookingRepo, type PaymentInput } from './types'
 import type { ConsultationRecord } from '../store/useAppStore'
 import type { StoredAssessment } from '../assessment/questions'
@@ -98,7 +100,7 @@ export function createSupabaseRepo(clients: BackendClients): BookingRepo {
       const starts = await result<string[]>(customer.rpc(rescheduleToken ? 'reschedule_slots' : 'available_slots', rescheduleToken
         ? { p_manage_token: rescheduleToken, p_date: date }
         : { p_consultant_id: id, p_date: date, p_format: format }))
-      return (starts ?? []).map(s => ({ startIso: new Date(s).toISOString(), endIso: new Date(Date.parse(s) + 30 * 60000).toISOString() }))
+      return (starts ?? []).map(s => ({ startIso: new Date(s).toISOString(), endIso: new Date(Date.parse(s) + consultationMinutes * 60000).toISOString() }))
     },
     async reserve(d) {
       if (d.supersedes) {
@@ -112,7 +114,7 @@ export function createSupabaseRepo(clients: BackendClients): BookingRepo {
           }
         }
       }
-      const r = await result<Row>(customer.rpc('reserve_slot', { p_consultant_id: d.consultantId, p_format: d.format, p_starts_at: d.startIso, p_details: { ...d.details, lang: d.details.consultationLang } }))
+      const r = await result<Row>(customer.rpc('reserve_slot', { p_consultant_id: d.consultantId, p_format: d.format, p_starts_at: d.startIso, p_details: { ...d.details, lang: d.details.consultationLang, testKey: adminTestKeyOnThisDevice() } }))
       const reservation = { bookingId: r.booking_id, reference: r.reference, manageToken: r.manage_token, holdExpiresAt: ms(r.hold_expires_at)! }
       holds.set(reservation.bookingId, reservation)
       changed()
@@ -225,6 +227,7 @@ export function createSupabaseRepo(clients: BackendClients): BookingRepo {
       changed()
       return staffRow(id)
     },
+    async adminTestKey() { await requireStaff(); return result<string>(staff.rpc('admin_test_key')) },
     async staffReviews() {
       await requireStaff()
       const rows = await allRows(staff.from('consultant_reviews').select('id,booking_id,consultant_id,rating,comment,reviewer_name,hidden,created_at').order('created_at', { ascending: false }).order('id'))

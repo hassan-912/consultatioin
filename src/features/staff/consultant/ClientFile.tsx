@@ -6,7 +6,6 @@ import { useAppStore } from '../../../store/useAppStore'
 import { getConsultant } from '../../../store/actions'
 import { branchById } from '../../../config/branches'
 import { programName } from '../../../config/programs'
-import { bookingConfig } from '../../../config/booking'
 import { formatInZone } from '../../../domain/time'
 import { formatMoney } from '../../../domain/pricing'
 import type { Booking } from '../../../domain/types'
@@ -91,7 +90,7 @@ function ClientFileBody({ b, record }: { b: Booking; record?: Parameters<typeof 
             [t('staff.client.consultant'), l(c.name)],
             [t('staff.client.when'), <Ltr>{formatInZone(b.startIso, b.tz, lang, 'full')}</Ltr>],
             [t('staff.client.format'), b.format === 'online' ? t('format.online') : `${t('format.in-person')} · ${l(branch.name)}`],
-            [t('staff.client.length'), t('common.durationRange', bookingConfig.durationRange)],
+            [t('staff.client.length'), t('common.minutes', { n: b.durationMin })],
             [t('staff.client.price'), <Ltr>{formatMoney(b.price, lang)}</Ltr>],
           ]} />
         </Section>

@@ -1,5 +1,4 @@
 import { forwardRef } from 'react'
-import { bookingConfig } from '../../config/booking'
 import { translate, useT, type TKey, type Vars } from '../../i18n'
 import type { Booking, L10n, Lang } from '../../domain/types'
 import { branchById } from '../../config/branches'
@@ -90,7 +89,7 @@ export const BoardingPass = forwardRef<HTMLDivElement, { booking: Booking; lang?
         {b.salesName && field(t('sales.advisor'), b.salesName, true)}
         {field(t('common.date'), formatInZone(b.startIso, b.tz, lang, 'date'), true)}
         {field(t('common.time'), <><Ltr>{formatInZone(b.startIso, b.tz, lang, 'time')}</Ltr> <span className="text-xs font-normal text-muted">{zoneLabel(b.tz, lang, Date.parse(b.startIso))}</span></>)}
-        {field(t('common.duration'), t('common.durationRange', bookingConfig.durationRange))}
+        {field(t('common.duration'), t('common.minutes', { n: b.durationMin }))}
         {field(t('ticket.gate'), t(`format.${b.format}`), true)}
         {b.format === 'in-person' && field(t('booking.branchAddress'), <span className="font-normal text-slate">{l(branch.address)}</span>, true)}
       </div>

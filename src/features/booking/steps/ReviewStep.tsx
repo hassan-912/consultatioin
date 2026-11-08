@@ -35,7 +35,7 @@ export function ReviewStep({ consultant, branch, format, durationMin, slotStartI
       {block(t('common.consultant'), 0, (
         <>
           <p className="font-semibold text-ink">{l(consultant.name)}</p>
-          <p className="text-sm text-slate">{t(`format.${format}`)} · {t('common.durationRange', bookingConfig.durationRange)}</p>
+          <p className="text-sm text-slate">{t(`format.${format}`)} · {t('common.minutes', { n: bookingConfig.durationRange.max })}</p>
         </>
       ))}
       {block(t('common.date'), 1, <TimeWithZone iso={slotStartIso} tz={branch.timeZone} showLocal={format === 'online'} />)}
@@ -60,7 +60,7 @@ export function ReviewStep({ consultant, branch, format, durationMin, slotStartI
       <div className="flex items-center justify-between rounded-2xl bg-slate-deep px-5 py-4 text-white">
         <div>
           <p className="text-sm text-mist">{t('booking.total')}</p>
-          <p className="text-sm text-mist">{t('common.durationRange', bookingConfig.durationRange)}</p>
+          <p className="text-sm text-mist">{t('common.minutes', { n: bookingConfig.durationRange.max })}</p>
         </div>
         <p className="font-display text-3xl font-semibold"><Ltr>{formatMoney(price, lang)}</Ltr></p>
       </div>

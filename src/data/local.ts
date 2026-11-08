@@ -177,6 +177,8 @@ export function createLocalRepo(): BookingRepo {
       get().addAudit({ actor: get().staffSession?.role ?? 'reception', action: 'consultant-changed', bookingRef: b.reference, from: b.consultantId, to: consultantId, note: why })
       return next
     },
+    // Prototype: admin-only consultants aren't enforced locally.
+    async adminTestKey() { return 'demo' },
     async staffReviews() {
       return Object.entries(get().reviews)
         .map(([bookingId, r]) => ({ ...r, id: bookingId, hidden: !!r.hidden, bookingRef: get().bookings[bookingId]?.reference }))

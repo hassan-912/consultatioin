@@ -3,7 +3,6 @@ import { translate } from '../../../i18n'
 import { getConsultant } from '../../../store/actions'
 import { branchById } from '../../../config/branches'
 import { contact } from '../../../config/contact'
-import { bookingConfig } from '../../../config/booking'
 import { formatInZone, zoneLabel } from '../../../domain/time'
 
 /** The booking-confirmed WhatsApp message finance sends, in the customer's chosen language. */
@@ -24,7 +23,7 @@ export function buildConfirmationMessage(b: Booking, lang: Lang, sender: string,
     `${t('common.consultant')}: ${consultant.name[lang]}`,
     `${t('common.date')}: ${formatInZone(b.startIso, b.tz, lang, 'date')}`,
     `${t('common.time')}: ${formatInZone(b.startIso, b.tz, lang, 'time')} (${zoneLabel(b.tz, lang, Date.parse(b.startIso))})`,
-    `${t('common.duration')}: ${t('common.durationRange', bookingConfig.durationRange)}`,
+    `${t('common.duration')}: ${t('common.minutes', { n: b.durationMin })}`,
     `${t('common.format')}: ${t(`format.${b.format}`)}`,
     where,
     '',
