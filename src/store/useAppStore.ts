@@ -80,7 +80,7 @@ export interface AppState {
   setLang: (l: Lang) => void
 
   filters: Filters
-  /** Branch picked on the welcome screen; null until the visitor chooses. */
+  /** Branch picked for this page load only; refreshing asks the visitor to choose again. */
   location: BranchId | null
   setLocation: (b: BranchId | null) => void
   setFilters: (p: Partial<Filters>) => void
@@ -184,13 +184,14 @@ export const useAppStore = create<AppState>()(
       name: uiStorageKey,
       // localStorage so a booking link opens in any tab or window of the same browser.
       storage: createJSONStorage(() => localStorage),
-      partialize: ({ setLang: _a, now: _b, ...rest }) => isLive
-        ? { lang: rest.lang, filters: rest.filters, senderName: rest.senderName, location: rest.location }
+      partialize: ({ setLang: _a, now: _b, location: _location, ...rest }) => isLive
+        ? { lang: rest.lang, filters: rest.filters, senderName: rest.senderName }
         : rest,
       merge: (persisted, current) => {
-        if (!isLive) { const saved = persisted as Partial<AppState> | undefined; return { ...current, ...saved, filters: freshFilters(saved?.filters) } }
         const saved = persisted as Partial<AppState> | undefined
-        return { ...current, lang: saved?.lang === 'en' ? 'en' : 'ar', filters: saved?.filters ? freshFilters(saved.filters) : current.filters, senderName: saved?.senderName ?? '', location: saved?.location ?? null }
+        // Ignore legacy saved locations without clearing this tab's current choice on storage events.
+        if (!isLive) return { ...current, ...saved, location: current.location, filters: freshFilters(saved?.filters) }
+        return { ...current, lang: saved?.lang === 'en' ? 'en' : 'ar', filters: saved?.filters ? freshFilters(saved.filters) : current.filters, senderName: saved?.senderName ?? '' }
       },
       onRehydrateStorage: () => state => {
         if (state) applyDocumentLang(state.lang)

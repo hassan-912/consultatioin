@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect } from 'react'
 import { MotionConfig } from 'framer-motion'
-import { Route, Routes, useLocation } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { applyDocumentLang, useAppStore } from './store/useAppStore'
 import { expireDue, seedIfNeeded } from './store/actions'
 import { DirectoryPage } from './features/directory/DirectoryPage'
@@ -25,6 +25,7 @@ const TeamPage = lazy(() => import('./features/team/TeamPage').then(m => ({ defa
 
 export default function App() {
   const lang = useAppStore(s => s.lang)
+  const location = useAppStore(s => s.location)
   const { pathname } = useLocation()
 
   useEffect(() => {
@@ -56,7 +57,7 @@ export default function App() {
       <Suspense fallback={null}>
       <Routes>
         <Route path="/" element={<DirectoryPage />} />
-        <Route path="/consultant/:id" element={<ProfilePage />} />
+        <Route path="/consultant/:id" element={location ? <ProfilePage /> : <Navigate to="/" replace />} />
         <Route path="/book/:id" element={<BookingWizard />} />
         <Route path="/ticket/:token" element={<TicketPage />} />
         <Route path="/booking/:token" element={<BookingPage />} />
@@ -64,7 +65,7 @@ export default function App() {
         <Route path="/pay/return" element={<PayReturnPage />} />
         {!isLive && <Route path="/pay/demo" element={<DemoPayPage />} />}
         <Route path="/meet/:token" element={<MeetPage />} />
-        <Route path="/team" element={<TeamPage />} />
+        <Route path="/team" element={location ? <TeamPage /> : <Navigate to="/" replace />} />
         <Route path="/staff/*" element={<StaffApp />} />
         <Route path="*" element={<DirectoryPage />} />
       </Routes>

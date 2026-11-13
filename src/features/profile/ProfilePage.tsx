@@ -33,7 +33,7 @@ function Profile({ c, t, l }: { c: ReturnType<typeof getConsultant> } & Pick<Ret
     <>
       <Header />
       <section aria-labelledby="profile-name" className="bg-slate-deep text-white">
-        <div className="mx-auto max-w-6xl px-4 pb-10 pt-6 sm:px-6">
+        <div className="mx-auto max-w-7xl px-4 pb-10 pt-6 sm:px-6">
           <Link to="/" className="inline-flex min-h-11 items-center gap-1.5 text-sm font-semibold text-mist hover:text-white">
             <Icon name="chevron" size={16} className="rotate-180" />
             {t('profile.back')}
@@ -57,7 +57,7 @@ function Profile({ c, t, l }: { c: ReturnType<typeof getConsultant> } & Pick<Ret
         </div>
       </section>
 
-      <main id="main" className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)] gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+      <main id="main" className="mx-auto grid max-w-7xl grid-cols-[minmax(0,1fr)] gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,1fr)_380px]">
         <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6">
           <section aria-labelledby="about" className="rounded-3xl bg-white p-5 ring-1 ring-line sm:p-6">
             <h2 id="about" className="mb-3 text-lg font-semibold text-ink">{t('profile.about')}</h2>

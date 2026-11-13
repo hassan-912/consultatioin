@@ -3,7 +3,7 @@ import { programs } from './programs'
 import { bios } from './bios'
 
 type Seed = Pick<Consultant, 'id' | 'name' | 'branchId' | 'experienceYears'> &
-  Partial<Pick<Consultant, 'title' | 'experienceLabel' | 'nameNeedsConfirmation' | 'hidden' | 'paymentTest' | 'price' | 'videoUrl'>>
+  Partial<Pick<Consultant, 'title' | 'experienceLabel' | 'nameNeedsConfirmation' | 'hidden' | 'paymentTest' | 'price' | 'videoUrl' | 'videoPoster'>>
 
 // Names, branches and years come from the company brief; titles and photos match mg-visa.com/about-us.
 // Every consultant handles every program.
@@ -23,6 +23,7 @@ export const consultants: Consultant[] = [
   make({
     id: 'mohamed-gamal',
     videoUrl: '/videos/consultants/mohamed-gamal.mp4',
+    videoPoster: '/videos/consultants/mohamed-gamal.webp',
     name: { en: 'Mohamed Gamal', ar: 'محمد جمال' },
     title: { en: 'Senior Immigration Specialist & Contract Manager', ar: 'أخصائي هجرة أول ومدير التعاقدات' },
     branchId: 'nasr-city',
@@ -31,6 +32,7 @@ export const consultants: Consultant[] = [
   make({
     id: 'ahmed-salama',
     videoUrl: '/videos/consultants/ahmed-salama.mp4',
+    videoPoster: '/videos/consultants/ahmed-salama.webp',
     name: { en: 'Ahmed Salama', ar: 'أحمد سلامة' },
     title: { en: 'Immigration Specialist', ar: 'أخصائي هجرة' },
     branchId: 'nasr-city',

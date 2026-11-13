@@ -96,18 +96,18 @@ test('staff hydration uses authorized rows, clears snapshots on logout, and keep
 test('live UI persistence excludes bookings, records, audit, staff session and customer draft', () => {
   useAppStore.setState({ staffSession: { username: 'prototype', role: 'admin', consultantId: null }, records: { secret: { notes: 'private', outcome: 'none' } } })
   const stored = JSON.parse(localStorage.getItem('mg-live-ui-v1')!)
-  expect(Object.keys(stored.state).sort()).toEqual(['filters', 'lang', 'location', 'senderName'])
+  expect(Object.keys(stored.state).sort()).toEqual(['filters', 'lang', 'senderName'])
   expect(localStorage.getItem('mg-proto-v1')).toBeNull()
 })
-test('live rehydration ignores staff session/records and leaves existing prototype persistence untouched', async () => {
+test('live rehydration ignores saved branch choices, staff session/records and leaves prototype persistence untouched', async () => {
   const prototype = JSON.stringify({ state: { bookings: { retained: 'original' } }, version: 0 })
   localStorage.setItem('mg-proto-v1', prototype)
   localStorage.setItem('mg-live-ui-v1', JSON.stringify({ state: { lang: 'en', staffSession: { username: 'admin', role: 'admin' }, bookings: { secret: booking }, records: { private: 'notes' } }, version: 0 }))
-  useAppStore.setState({ staffSession: null, bookings: {}, records: {} })
+  useAppStore.setState({ staffSession: null, bookings: {}, records: {}, location: null })
   // Set the storage after setState, which persists only allowed UI keys.
-  localStorage.setItem('mg-live-ui-v1', JSON.stringify({ state: { lang: 'en', staffSession: { username: 'admin', role: 'admin' }, bookings: { secret: booking }, records: { private: 'notes' } }, version: 0 }))
+  localStorage.setItem('mg-live-ui-v1', JSON.stringify({ state: { location: 'dubai', lang: 'en', staffSession: { username: 'admin', role: 'admin' }, bookings: { secret: booking }, records: { private: 'notes' } }, version: 0 }))
   await useAppStore.persist.rehydrate()
-  expect(useAppStore.getState()).toMatchObject({ staffSession: null, bookings: {}, records: {}, lang: 'en' })
+  expect(useAppStore.getState()).toMatchObject({ staffSession: null, bookings: {}, records: {}, lang: 'en', location: null })
   expect(localStorage.getItem('mg-proto-v1')).toBe(prototype)
   expect(await signIn('admin', 'anything')).toBe(false)
 })

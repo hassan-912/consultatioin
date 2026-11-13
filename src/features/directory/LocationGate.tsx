@@ -19,7 +19,7 @@ export const LOCATIONS: { id: BranchId; name?: L10n; sub?: L10n; country: L10n }
 ]
 export const locationName = (id: BranchId): L10n => LOCATIONS.find(x => x.id === id)?.name ?? branchById(id).name
 
-/** Full-screen welcome: pick a branch before browsing consultants. Remembered; changeable from the home page. */
+/** Full-screen welcome: pick a branch on each page load before browsing consultants. */
 export function LocationGate() {
   const { t, l, lang } = useT()
   const setLocation = useAppStore(s => s.setLocation)
@@ -41,7 +41,7 @@ export function LocationGate() {
   }
 
   return (
-    <div role="dialog" aria-modal="true" aria-labelledby="gate-title" className="fixed inset-0 z-50 overflow-y-auto bg-slate-deep text-white">
+    <div role="dialog" aria-modal="true" aria-labelledby="gate-title" className="fixed inset-0 z-50 overflow-x-hidden overflow-y-auto bg-slate-deep text-white">
       <div className="grain pointer-events-none absolute inset-0" aria-hidden />
       <div className="pointer-events-none absolute -top-48 start-1/2 size-[640px] -translate-x-1/2 rounded-full bg-navy/70 blur-3xl rtl:translate-x-1/2" aria-hidden />
       <div className="pointer-events-none absolute -bottom-40 -end-24 size-[420px] rounded-full bg-gold/10 blur-3xl" aria-hidden />

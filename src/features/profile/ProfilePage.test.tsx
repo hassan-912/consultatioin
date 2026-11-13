@@ -33,9 +33,12 @@ test('profile hides internal stats: activity, KPI score and approval rate', () =
   expect(screen.queryByText(/historical application approvals/i)).toBeNull()
 })
 
-test('video player exposes captions and playback controls', () => {
+test('introduction video keeps native playback controls without a duplicate toolbar', () => {
   open('mohamed-gamal')
-  const video = screen.getByRole('region', { name: /introduction video/i })
-  expect(within(video).getByRole('button', { name: /play/i })).toBeInTheDocument()
-  expect(within(video).getByRole('button', { name: /captions/i })).toBeInTheDocument()
+  const region = screen.getByRole('region', { name: /introduction video/i })
+  const video = region.querySelector('video')
+  expect(video).toHaveAttribute('controls')
+  expect(video).toHaveAttribute('playsinline')
+  expect(video).toHaveAttribute('src', '/videos/consultants/mohamed-gamal.mp4')
+  expect(within(region).queryAllByRole('button')).toHaveLength(0)
 })

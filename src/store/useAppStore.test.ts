@@ -13,6 +13,22 @@ test('setLang switches document direction', () => {
   expect(document.documentElement.dir).toBe('ltr')
 })
 
+test('branch choice lasts only for this page load, ignoring older saved choices', async () => {
+  useAppStore.getState().setLocation('nasr-city')
+  expect(JSON.parse(localStorage.getItem('mg-proto-v1')!).state.location).toBeUndefined()
+
+  useAppStore.setState({ location: null })
+  localStorage.setItem('mg-proto-v1', JSON.stringify({ state: { location: 'dubai', lang: 'en' }, version: 0 }))
+  await useAppStore.persist.rehydrate()
+  expect(useAppStore.getState().location).toBeNull()
+  expect(useAppStore.getState().lang).toBe('en')
+
+  useAppStore.getState().setLocation('sheikh-zayed')
+  localStorage.setItem('mg-proto-v1', JSON.stringify({ state: { location: 'dubai' }, version: 0 }))
+  await useAppStore.persist.rehydrate()
+  expect(useAppStore.getState().location).toBe('sheikh-zayed')
+})
+
 test('language switch keeps filters and booking draft through rehydration', async () => {
   const s = useAppStore.getState()
   s.setFilters({ branch: 'dubai' })

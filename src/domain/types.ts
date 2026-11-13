@@ -28,6 +28,7 @@ export interface Consultant {
   photo: string | null
   bio: L10n | null
   videoUrl: string | null
+  videoPoster?: string
   programs: ProgramId[]
   languages: L10n[] | null
   qualifications: L10n[] | null
