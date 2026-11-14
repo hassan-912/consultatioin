@@ -157,12 +157,23 @@ export interface Review {
   at: number
 }
 
+/** pending: waiting for its consultant; approved: on the public profile; rejected: kept but never shown. */
+export type ReviewStatus = 'pending' | 'approved' | 'rejected'
+
 /** Admin view of a review: includes hidden ones and which booking it came from. */
 export interface StaffReview extends Review {
   id: string
   consultantId: string
   bookingRef?: string
   hidden: boolean
+  status: ReviewStatus
+}
+
+/** A consultant's view of a review about them. */
+export interface ConsultantReview extends Review {
+  id: string
+  status: ReviewStatus
+  bookingRef?: string
 }
 
 export interface ConsultantReviews {

@@ -122,7 +122,7 @@ export function createLocalRepo(): BookingRepo {
       return getConsultants().map(c => ({ consultantId: c.id, formats: getRules(c.id).formats, listed: !c.hidden, ...publicTotals(Object.values(get().bookings), c.id, get().now(), demoStats[c.id]) }))
     },
     async consultantReviews(consultantId) {
-      const list = Object.values(get().reviews).filter(r => r.consultantId === consultantId && !r.hidden).sort((a, b) => b.at - a.at)
+      const list = Object.values(get().reviews).filter(r => r.consultantId === consultantId && !r.hidden && r.status === 'approved').sort((a, b) => b.at - a.at)
       const average = list.length ? Math.round((list.reduce((n, r) => n + r.rating, 0) / list.length) * 10) / 10 : null
       return { average, count: list.length, reviews: list.slice(0, 20).map(r => ({ rating: r.rating, comment: r.comment, name: r.name, at: r.at })) }
     },
@@ -137,7 +137,7 @@ export function createLocalRepo(): BookingRepo {
       const text = comment.trim()
       if (!Number.isInteger(rating) || rating < 1 || rating > 5 || text.length > 500) throw new RepoError('INVALID_INPUT')
       const review = { rating, comment: text, name: b.customer.name.trim().split(/\s+/)[0] || 'Customer', at: get().now() }
-      useAppStore.setState(s => ({ reviews: { ...s.reviews, [b.id]: { ...review, consultantId: b.consultantId } } }))
+      useAppStore.setState(s => ({ reviews: { ...s.reviews, [b.id]: { ...review, consultantId: b.consultantId, status: 'pending' } } }))
       get().addAudit({ actor: 'customer', action: 'reviewed', bookingRef: b.reference, to: String(rating) })
       return review
     },
@@ -224,7 +224,7 @@ export function createLocalRepo(): BookingRepo {
     },
     async staffReviews() {
       return Object.entries(get().reviews)
-        .map(([bookingId, r]) => ({ ...r, id: bookingId, hidden: !!r.hidden, bookingRef: get().bookings[bookingId]?.reference }))
+        .map(([bookingId, r]) => ({ ...r, id: bookingId, hidden: !!r.hidden, status: r.status ?? 'pending', bookingRef: get().bookings[bookingId]?.reference }))
         .sort((a, b) => b.at - a.at)
     },
     async setReviewHidden(id, hidden) {
@@ -232,6 +232,25 @@ export function createLocalRepo(): BookingRepo {
       if (!r) throw new RepoError('NOT_FOUND')
       useAppStore.setState(s => ({ reviews: { ...s.reviews, [id]: { ...r, hidden } } }))
       get().addAudit({ actor: 'admin', action: hidden ? 'review-hidden' : 'review-shown', bookingRef: get().bookings[id]?.reference, to: String(r.rating) })
+    },
+    async myReviews() {
+      const session = get().staffSession
+      if (session?.role !== 'consultant' || !session.consultantId) throw new RepoError('FORBIDDEN')
+      return Object.entries(get().reviews)
+        .filter(([, r]) => r.consultantId === session.consultantId)
+        .map(([bookingId, r]) => ({ rating: r.rating, comment: r.comment, name: r.name, at: r.at, id: bookingId, status: r.status ?? 'pending', bookingRef: get().bookings[bookingId]?.reference }))
+        .sort((a, b) => b.at - a.at)
+    },
+    async setReviewStatus(id, status) {
+      const session = get().staffSession
+      const isAdmin = session?.role === 'admin'
+      if (!isAdmin && (session?.role !== 'consultant' || !session.consultantId)) throw new RepoError('FORBIDDEN')
+      const r = get().reviews[id]
+      if (!r) throw new RepoError('NOT_FOUND')
+      if (!isAdmin && r.consultantId !== session!.consultantId) throw new RepoError('FORBIDDEN')
+      if ((r.status ?? 'pending') === status) return
+      useAppStore.setState(s => ({ reviews: { ...s.reviews, [id]: { ...r, status } } }))
+      get().addAudit({ actor: isAdmin ? 'admin' : 'consultant', action: `review-${status}`, bookingRef: get().bookings[id]?.reference, from: r.status ?? 'pending', to: status })
     },
     async staffDecisions() { return get().decisions },
     async saveDecision({ id, ...d }) {

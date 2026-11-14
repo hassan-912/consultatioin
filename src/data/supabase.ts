@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { BackendClients } from '../lib/supabase'
-import type { Booking, CustomerDetails, Format, AuditEntry, PendingDecision, Review, StaffReview } from '../domain/types'
+import type { Booking, CustomerDetails, Format, AuditEntry, PendingDecision, Review, StaffReview, ConsultantReview } from '../domain/types'
 import type { ScheduleRules } from '../domain/availability'
 import { dateInZone, addDays } from '../domain/time'
 import { consultationMinutes } from '../config/booking'
@@ -213,6 +213,16 @@ export function createSupabaseRepo(clients: BackendClients): BookingRepo {
     async submitReview(token, rating, comment) {
       return mapReview(await result<Row>(customer.rpc('submit_review', { p_manage_token: token, p_rating: rating, p_comment: comment })))
     },
+    async myReviews() {
+      await requireStaff()
+      const rows = await result<Row[]>(staff.rpc('consultant_my_reviews'))
+      return (rows ?? []).map(r => ({ ...mapReview(r), id: r.id, status: r.status, bookingRef: r.booking_ref ?? undefined })) as ConsultantReview[]
+    },
+    async setReviewStatus(id, status) {
+      await requireStaff()
+      await result(staff.rpc('consultant_set_review_status', { p_review_id: id, p_status: status }))
+      changed()
+    },
     async saveAssessment(token, a) {
       await result(customer.rpc('save_assessment', { p_manage_token: token, p_program: a.program, p_answers: a.answers }))
     },
@@ -276,11 +286,11 @@ export function createSupabaseRepo(clients: BackendClients): BookingRepo {
     },
     async staffReviews() {
       await requireStaff()
-      const rows = await allRows(staff.from('consultant_reviews').select('id,booking_id,consultant_id,rating,comment,reviewer_name,hidden,created_at').order('created_at', { ascending: false }).order('id'))
+      const rows = await allRows(staff.from('consultant_reviews').select('id,booking_id,consultant_id,rating,comment,reviewer_name,hidden,status,created_at').order('created_at', { ascending: false }).order('id'))
       const ids = [...new Set(rows.map(r => r.booking_id))]
       const refs = ids.length ? await result<Row[]>(staff.from('bookings').select('id,reference').in('id', ids)) : []
       const byId = new Map(refs.map(r => [r.id, r.reference]))
-      return rows.map(r => ({ ...mapReview({ ...r, name: r.reviewer_name }), id: r.id, consultantId: r.consultant_id, bookingRef: byId.get(r.booking_id), hidden: !!r.hidden })) as StaffReview[]
+      return rows.map(r => ({ ...mapReview({ ...r, name: r.reviewer_name }), id: r.id, consultantId: r.consultant_id, bookingRef: byId.get(r.booking_id), hidden: !!r.hidden, status: r.status ?? 'pending' })) as StaffReview[]
     },
     async setReviewHidden(id, hidden) {
       await requireStaff()

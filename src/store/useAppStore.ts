@@ -4,7 +4,7 @@ import type { ReadinessRequest } from '../data/types'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { isLive, uiStorageKey } from '../data/mode'
 import type {
-  AuditEntry, Booking, BranchId, Consultant, CustomerDetails, Format, Lang, PendingDecision, ProgramId, Review, StaffRole,
+  AuditEntry, Booking, BranchId, Consultant, CustomerDetails, Format, Lang, PendingDecision, ProgramId, Review, ReviewStatus, StaffRole,
 } from '../domain/types'
 import { pendingDecisions } from '../config/pendingDecisions'
 import type { ScheduleRules } from '../domain/availability'
@@ -112,7 +112,7 @@ export interface AppState {
   lastCustomerBookingId: string | null
   records: Record<string, ConsultationRecord>
   /** Prototype only: customer reviews keyed by booking id. */
-  reviews: Record<string, Review & { consultantId: string; hidden?: boolean }>
+  reviews: Record<string, Review & { consultantId: string; hidden?: boolean; status?: ReviewStatus }>
   /** Prototype only: booking-form assessment answers keyed by booking id. */
   assessments: Record<string, StoredAssessment>
   /** Prototype only: the admin's open decisions. */

@@ -1,6 +1,6 @@
 import type { BookingEvent, CheckInVerdict } from '../domain/bookingStatus'
 import type { Slot } from '../domain/availability'
-import type { Actor, Booking, BookingStatus, ConsultantReviews, CustomerDetails, DecisionInput, Format, Lang, PayCurrency, PaymentMethodId, PendingDecision, ProgramId, Review, StaffReview } from '../domain/types'
+import type { Actor, Booking, BookingStatus, ConsultantReviews, CustomerDetails, DecisionInput, Format, Lang, PayCurrency, PaymentMethodId, PendingDecision, ProgramId, Review, ReviewStatus, ConsultantReview, StaffReview } from '../domain/types'
 import type { ScheduleRules } from '../domain/availability'
 import type { ConsultationRecord, NextStep } from '../store/useAppStore'
 import type { MessageTemplateKey, MessageTemplates } from '../config/messageTemplates'
@@ -92,6 +92,10 @@ export interface BookingRepo {
   getReview(manageToken: string): Promise<Review | null>
   /** Allowed once, after the consultation is marked completed. */
   submitReview(manageToken: string, rating: number, comment: string): Promise<Review>
+  /** Consultant: every review about the signed-in consultant, newest first, any status. */
+  myReviews(): Promise<ConsultantReview[]>
+  /** The review's own consultant (or an admin) approves, rejects, or returns a review to pending. */
+  setReviewStatus(reviewId: string, status: ReviewStatus): Promise<void>
   /** Customer: the booking form's situation answers, saved with the hold. Never readable by the customer. */
   saveAssessment(manageToken: string, assessment: StoredAssessment): Promise<void>
   /** Admin and the booking's consultant: answers keyed by booking id. */
