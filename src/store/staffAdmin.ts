@@ -26,12 +26,6 @@ export async function saveStaff(p: StaffProfile, client: SupabaseClient | null =
   if (error) throw new RepoError(codeOf(error.message))
 }
 
-/** Admin: this account also sees the clients who weren't ready (audited). */
-export async function setSalesManager(userId: string, on: boolean, client: SupabaseClient | null = staffClient): Promise<void> {
-  const { error } = await need(client).rpc('admin_set_sales_manager', { p_user_id: userId, p_on: on })
-  if (error) throw new RepoError(codeOf(error.message))
-}
-
 /** People who signed themselves up and wait for an admin. */
 export async function listAccessRequests(client: SupabaseClient | null = staffClient): Promise<AccessRequest[]> {
   const { data, error } = await need(client).from('staff_access_requests').select('user_id,email,display_name,provider,created_at').order('created_at').order('user_id')

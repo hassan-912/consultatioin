@@ -14,7 +14,6 @@ import { staffAccounts } from '../config/staffAccounts'
 import { consultantBusy } from '../domain/bookingStatus'
 import { localReferralCode } from './referral'
 import { MAX_TEMPLATE_LENGTH } from '../config/messageTemplates'
-import { mergeRules } from '../assessment/readiness'
 
 const get = () => useAppStore.getState()
 
@@ -181,43 +180,6 @@ export function createLocalRepo(): BookingRepo {
     },
     // Prototype: admin-only consultants aren't enforced locally.
     async adminTestKey() { return 'demo' },
-    async readinessRules() { return mergeRules(get().readinessRules) },
-    async saveReadinessRules(rules) {
-      if (get().staffSession?.role !== 'admin') throw new RepoError('FORBIDDEN')
-      useAppStore.setState({ readinessRules: rules })
-      get().addAudit({ actor: 'admin', action: 'readiness-rules' })
-    },
-    async submitReadinessRequest(r) {
-      if (!r.name.trim() || !cleanPhone(r.phone) || !r.reasons.length) throw new RepoError('INVALID_INPUT')
-      const id = crypto.randomUUID()
-      useAppStore.setState(s => ({ readinessRequests: { ...s.readinessRequests, [id]: { ...r, phone: cleanPhone(r.phone) ?? r.phone, id, createdAt: get().now(), status: 'open' } } }))
-    },
-    async readinessRequests() {
-      const session = get().staffSession
-      if (session?.role !== 'admin' && !session?.salesManager) throw new RepoError('FORBIDDEN')
-      return Object.values(get().readinessRequests).sort((a, b) => Number(b.status === 'open') - Number(a.status === 'open') || b.createdAt - a.createdAt)
-    },
-    async readinessSalesPeople() {
-      const session = get().staffSession
-      if (session?.role !== 'admin' && !session?.salesManager) throw new RepoError('FORBIDDEN')
-      return staffAccounts.filter(a => a.role === 'sales').map(a => ({ id: a.username, name: a.username }))
-    },
-    async assignReadinessRequest(id, salesPersonId) {
-      const session = get().staffSession
-      if (session?.role !== 'admin' && !session?.salesManager) throw new RepoError('FORBIDDEN')
-      const r = get().readinessRequests[id]
-      if (!r) throw new RepoError('NOT_FOUND')
-      const person = salesPersonId ? staffAccounts.find(a => a.role === 'sales' && a.username === salesPersonId) : undefined
-      if (salesPersonId && !person) throw new RepoError('INVALID_INPUT')
-      useAppStore.setState(s => ({ readinessRequests: { ...s.readinessRequests, [id]: { ...r, assignedTo: person?.username, assignedName: person?.username } } }))
-    },
-    async setReadinessStatus(id, status) {
-      const session = get().staffSession
-      if (session?.role !== 'admin' && !session?.salesManager) throw new RepoError('FORBIDDEN')
-      const r = get().readinessRequests[id]
-      if (!r) throw new RepoError('NOT_FOUND')
-      useAppStore.setState(s => ({ readinessRequests: { ...s.readinessRequests, [id]: { ...r, status, handledAt: status === 'open' ? undefined : get().now() } } }))
-    },
     async setConsultantListed(id, listed) {
       if (!consultants.some(c => c.id === id)) throw new RepoError('INVALID_INPUT')
       editConsultant(id, { hidden: !listed })

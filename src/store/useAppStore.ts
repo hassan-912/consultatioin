@@ -1,6 +1,4 @@
 import { create } from 'zustand'
-import type { ReadinessRules } from '../assessment/readiness'
-import type { ReadinessRequest } from '../data/types'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { isLive, uiStorageKey } from '../data/mode'
 import type {
@@ -93,8 +91,7 @@ export interface AppState {
 
   role: StaffRole
   setRole: (r: StaffRole) => void
-  /** salesManager: this account also sees the clients who weren't ready (set by the admin). */
-  staffSession: { username: string; role: StaffRole; consultantId: string | null; salesManager?: boolean } | null
+  staffSession: { username: string; role: StaffRole; consultantId: string | null } | null
   /**
    * Live only: signed up (email or Google) but not approved by an admin yet. needsName: no request is filed until
    * they choose a username (taken: their pick was already in use).
@@ -121,9 +118,6 @@ export interface AppState {
   scheduleOverrides: Record<string, Partial<ScheduleRules>>
   kpiOverrides: Record<string, number>
   approvalMinSample: number | null
-  /** Prototype only: the admin's readiness rules and the requests from clients who weren't ready. */
-  readinessRules: Partial<ReadinessRules>
-  readinessRequests: Record<string, ReadinessRequest>
   seeded: boolean
 
   timeOffsetMs: number
@@ -172,8 +166,6 @@ export const useAppStore = create<AppState>()(
       scheduleOverrides: {},
       kpiOverrides: {},
       approvalMinSample: null,
-      readinessRules: {},
-      readinessRequests: {},
       seeded: false,
 
       timeOffsetMs: 0,
