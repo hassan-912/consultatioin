@@ -779,6 +779,9 @@ export const en = {
     },
     nextStep: {
       title: 'Next step',
+      sendAssessment: 'Send assessment on WhatsApp',
+      assessmentSent: 'Assessment sent on WhatsApp — {date}',
+      assessmentMessage: 'Hello {name}, thank you for your consultation with MG. Here is your file assessment: {link}',
       hint: 'What did the client decide after the consultation?',
       contract: 'Will sign the contract',
       refund: 'Wants a refund',

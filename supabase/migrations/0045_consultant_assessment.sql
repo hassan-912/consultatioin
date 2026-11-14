@@ -44,6 +44,7 @@ grant execute on function public.get_my_assessment(text) to anon, authenticated;
 
 -- First WhatsApp send of the assessment link: stamped once, audited once.
 alter table public.bookings add column assessment_sent_at timestamptz;
+grant select (assessment_sent_at) on public.bookings to authenticated;
 
 create function public.staff_mark_assessment_sent(p_booking_id uuid)
 returns timestamptz language plpgsql volatile security definer set search_path = ''

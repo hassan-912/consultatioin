@@ -85,6 +85,8 @@ export interface BookingRepo {
   staffAssessments(): Promise<Record<string, StoredAssessment>>
   /** Customer: their own assessment (filled in by the consultant), or null. */
   myAssessment(manageToken: string): Promise<StoredAssessment | null>
+  /** Consultant/admin: stamp the first WhatsApp send of the assessment link; later calls keep the first time. */
+  markAssessmentSent(bookingId: string): Promise<number>
   /** The booking's own consultant (or an admin) fills in or updates the client's assessment. */
   staffSaveAssessment(bookingId: string, assessment: StoredAssessment): Promise<void>
   /** Sales: the caller's personal referral code (created on first use). */

@@ -146,6 +146,18 @@ export function createLocalRepo(): BookingRepo {
       useAppStore.setState(s => ({ assessments: { ...s.assessments, [b.id]: a } }))
     },
     async myAssessment(token) { return get().assessments[mustFind(token).id] ?? null },
+    async markAssessmentSent(bookingId) {
+      const session = get().staffSession
+      const b = get().bookings[bookingId]
+      const isAdmin = session?.role === 'admin'
+      if (!isAdmin && (session?.role !== 'consultant' || !b || b.consultantId !== session.consultantId)) throw new RepoError('FORBIDDEN')
+      if (!b) throw new RepoError('NOT_FOUND')
+      if (b.assessmentSentAt) return b.assessmentSentAt
+      const at = get().now()
+      useAppStore.setState(s => ({ bookings: { ...s.bookings, [bookingId]: { ...b, assessmentSentAt: at } } }))
+      get().addAudit({ actor: isAdmin ? 'admin' : 'consultant', action: 'assessment-sent', bookingRef: b.reference, to: 'whatsapp' })
+      return at
+    },
     async staffSaveAssessment(bookingId, a) {
       const session = get().staffSession
       const b = get().bookings[bookingId]

@@ -8,6 +8,44 @@ import type { ConsultationRecord, NextStep } from '../../../store/useAppStore'
 import { Button } from '../../../components/ui'
 import { SelectField, TextArea } from '../../../components/fields'
 import { Icon, type IconName } from '../../../components/Icon'
+import { translate } from '../../../i18n'
+import { whatsappLink } from '../finance/whatsappMessage'
+import { formatInZone } from '../../../domain/time'
+
+/** Public address of the client's assessment report (their manage link). */
+export function assessmentUrl(manageToken: string) {
+  const site = import.meta.env.VITE_SITE_URL || `${window.location.origin}${window.location.pathname}`
+  const url = new URL(site)
+  url.search = ''
+  url.hash = `/booking/${manageToken}/assessment`
+  return url.toString()
+}
+
+/** Contract or thinking: send the client their assessment link on WhatsApp, once. Later contact is the follow-up. */
+function SendAssessment({ b }: { b: Booking }) {
+  const { t, lang } = useT()
+  const [busy, setBusy] = useState(false)
+  if (b.assessmentSentAt) {
+    return <p className="mt-3 text-sm font-semibold text-ok"><Icon name="check" size={14} className="me-1 inline" />{t('staff.nextStep.assessmentSent', { date: formatInZone(b.assessmentSentAt, b.tz, lang, 'full') })}</p>
+  }
+  const send = async () => {
+    setBusy(true)
+    // Open the tab now (inside the click) so pop-up blockers allow it; point it at WhatsApp once the link is known.
+    const tab = window.open('', '_blank')
+    try {
+      const token = b.manageToken || await repo.staffManageToken(b.id)
+      const text = translate(b.customer.consultationLang, 'staff.nextStep.assessmentMessage', { name: b.customer.name.trim().split(/\s+/)[0], link: assessmentUrl(token) })
+      const url = whatsappLink(b.customer.phone, text)
+      if (tab) tab.location.href = url; else window.open(url, '_blank')
+      await repo.markAssessmentSent(b.id)
+    } catch (e) { tab?.close(); reportActionError(e) } finally { setBusy(false) }
+  }
+  return (
+    <Button className="mt-3" variant="ghost" disabled={busy} onClick={() => void send()}>
+      <Icon name="chat" size={16} />{t('staff.nextStep.sendAssessment')}
+    </Button>
+  )
+}
 
 const STEPS: { id: NextStep; icon: IconName; tone: string }[] = [
   { id: 'contract', icon: 'check', tone: 'border-ok bg-ok-soft text-ok' },
@@ -74,6 +112,7 @@ export function NextStepPanel({ b, record }: { b: Booking; record?: Consultation
           {saved ? `${t('staff.nextStep.saved')} — ` : ''}{t(step === 'thinking' ? 'staff.nextStep.toFollowUp' : 'staff.nextStep.toFinance')}
         </p>
       )}
+      {(saved || (!dirty && record?.nextStep)) && (step === 'contract' || step === 'thinking') && <SendAssessment b={b} />}
     </section>
   )
 }

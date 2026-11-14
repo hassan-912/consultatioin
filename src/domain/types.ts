@@ -138,6 +138,8 @@ export interface Booking {
   meetingUrl?: string
   ticketSentVia?: Channel
   ticketSentAt?: number
+  /** When the consultant first sent the client their assessment link on WhatsApp. */
+  assessmentSentAt?: number
   /** Sales person whose link the customer booked through. */
   salesName?: string
   /** Prototype only: the referral code the booking came in with. */

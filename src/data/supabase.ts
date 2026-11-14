@@ -11,7 +11,7 @@ import type { ConsultationRecord } from '../store/useAppStore'
 import type { StoredAssessment } from '../assessment/questions'
 
 type Row = Record<string, any> // JSON returned by RPCs and explicitly selected table columns.
-export const STAFF_BOOKING_COLUMNS = 'id,reference,consultant_id,branch_id,format,starts_at,ends_at,tz,price_amount,price_currency,customer_name,customer_phone,customer_email,channel,lang,program,note,status,hold_expires_at,reject_reason,meeting_url,checked_in_at,ticket_sent_at,ticket_sent_via,sales_name,swap_reason,swapped_from,created_at'
+export const STAFF_BOOKING_COLUMNS = 'id,reference,consultant_id,branch_id,format,starts_at,ends_at,tz,price_amount,price_currency,customer_name,customer_phone,customer_email,channel,lang,program,note,status,hold_expires_at,reject_reason,meeting_url,checked_in_at,ticket_sent_at,ticket_sent_via,assessment_sent_at,sales_name,swap_reason,swapped_from,created_at'
 const mapReview = (r: Row): Review => ({ rating: Number(r.rating), comment: r.comment ?? '', name: r.name, at: Date.parse(r.created_at) })
 const ms = (v: unknown) => v == null ? undefined : Date.parse(String(v))
 export function mapBooking(r: Row, audience: 'customer' | 'staff' = 'customer'): Booking {
@@ -26,7 +26,7 @@ export function mapBooking(r: Row, audience: 'customer' | 'staff' = 'customer'):
     price: { amount: r.price_amount, currency: r.price_currency }, status: r.status,
     customer: { name: c.name, phone: c.phone, email: c.email ?? '', channel: c.channel, consultationLang: c.lang, program: c.program ?? '', note: c.note ?? '' } as CustomerDetails,
     holdExpiresAt: ms(r.hold_expires_at) ?? 0, createdAt: ms(r.created_at)!, rejectReason: r.reject_reason ?? undefined,
-    checkedInAt: ms(r.checked_in_at), ticketSentAt: ms(r.ticket_sent_at), ticketSentVia: r.ticket_sent_via ?? undefined, meetingUrl,
+    checkedInAt: ms(r.checked_in_at), ticketSentAt: ms(r.ticket_sent_at), assessmentSentAt: ms(r.assessment_sent_at), ticketSentVia: r.ticket_sent_via ?? undefined, meetingUrl,
     salesName: r.sales_name ?? undefined, swapReason: r.swap_reason ?? undefined, swappedFrom: r.swapped_from ?? undefined,
     payment: p ? { method: p.method, txnRef: p.txn_ref, submittedAt: ms(p.submitted_at)!, hasReceipt: p.has_receipt ?? !!p.receipt_path, receiptPath: p.receipt_path ?? undefined } : undefined,
   }
@@ -233,6 +233,12 @@ export function createSupabaseRepo(clients: BackendClients): BookingRepo {
     async myAssessment(token) {
       const r = await result<Row | null>(customer.rpc('get_my_assessment', { p_manage_token: token }))
       return r ? { program: r.program, answers: r.answers ?? {} } as StoredAssessment : null
+    },
+    async markAssessmentSent(bookingId) {
+      await requireStaff()
+      const at = await result<string>(staff.rpc('staff_mark_assessment_sent', { p_booking_id: bookingId }))
+      changed()
+      return Date.parse(at)
     },
     async staffSaveAssessment(bookingId, a) {
       await requireStaff()

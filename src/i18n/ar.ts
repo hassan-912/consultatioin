@@ -781,6 +781,9 @@ export const ar: Dict = {
     },
     nextStep: {
       title: 'الخطوة التالية',
+      sendAssessment: 'أرسل التقييم على واتساب',
+      assessmentSent: 'تم إرسال التقييم على واتساب — {date}',
+      assessmentMessage: 'أهلًا {name}، شكرًا على استشارتك مع إم جي. هذا تقييم ملفك: {link}',
       hint: 'ماذا قرر العميل بعد الاستشارة؟',
       contract: 'سيوقّع العقد',
       refund: 'يريد استرداد المبلغ',
