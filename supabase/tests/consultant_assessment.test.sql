@@ -47,8 +47,8 @@ select is(pg_temp.sent('00000000-0000-0000-0000-0000000000f3'), 'ERR:P0001:FORBI
 create temp table first_send as select pg_temp.sent('00000000-0000-0000-0000-0000000000f2') as at;
 select is(pg_temp.sent('00000000-0000-0000-0000-0000000000f2'), (select at from first_send), 'a second send keeps the first time');
 select is((select count(*)::int from audit_log where action = 'assessment-sent' and booking_id = (select id from bk)), 1, 'the send is audited once');
-select is(pg_temp.q('anon', null, $q$select public.submit_readiness_request('{}'::jsonb)::text$q$) like 'ERR:42501:%', true, 'nobody can file a readiness request');
-select is(pg_temp.q('anon', null, format('select public.save_assessment(%L, %L, %L::jsonb)::text', repeat('c', 32), 'tourism', '{}')) like 'ERR:42501:%', true, 'customers can no longer write the assessment');
+select is(pg_temp.q('anon', null, $q$select public.submit_readiness_request('{}'::jsonb)::text$q$), 'ERR:P0001:INVALID_INPUT', 'clients can file readiness requests again (0048)');
+select is(pg_temp.q('anon', null, format('select public.save_assessment(%L, %L, %L::jsonb)::text', repeat('c', 32), 'tourism', '{"age":"31"}')), 'ERR:P0001:INVALID_TRANSITION', 'a customer cannot overwrite the consultant''s assessment');
 
 select * from finish();
 rollback;

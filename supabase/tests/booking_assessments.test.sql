@@ -39,7 +39,7 @@ values
 select ok(has_function_privilege('anon', 'public.save_assessment(text,text,jsonb)', 'execute'), 'anon may save answers');
 select ok(not has_table_privilege('anon', 'public.booking_assessments', 'select'), 'anon cannot read answers');
 select is(pg_temp.q(null, format('select public.save_assessment(%L, %L, %L::jsonb)', lpad('1', 32, 'f'), 'tourism', '{"age_bracket":"age_opt_2","travel":"trav_opt_1,trav_opt_2"}')), 'OK', 'customer saves answers on a held booking');
-select is(pg_temp.q(null, format('select public.save_assessment(%L, %L, %L::jsonb)', lpad('1', 32, 'f'), 'tourism', '{"age_bracket":"age_opt_1"}')), 'OK', 'customer can correct answers while held');
+select is(pg_temp.q(null, format('select public.save_assessment(%L, %L, %L::jsonb)', lpad('1', 32, 'f'), 'tourism', '{"age_bracket":"age_opt_1"}')), 'ERR:P0001:ALREADY_EXISTS', 'a second save is refused (0048)');
 select is((select answers->>'age_bracket' from booking_assessments b join bookings k on k.id = b.booking_id where k.reference = 'BA-1'), 'age_opt_1', 'latest answers kept');
 select is(pg_temp.q(null, format('select public.save_assessment(%L, %L, %L::jsonb)', lpad('2', 32, 'f'), 'tourism', '{}')), 'ERR:P0001:INVALID_TRANSITION', 'confirmed booking is locked');
 select is(pg_temp.q(null, format('select public.save_assessment(%L, %L, %L::jsonb)', lpad('1', 32, 'f'), 'education', '{}')), 'ERR:P0001:INVALID_INPUT', 'unassessed program refused');
