@@ -51,6 +51,9 @@ test('a booking made through a sales link carries the sales name; that sales per
   wizard.unmount()
   const b = Object.values(useAppStore.getState().bookings)[0]
   act(() => useAppStore.setState(s => ({ bookings: { [b.id]: { ...s.bookings[b.id], status: 'confirmed' } } })))
+  // A sales-link client skips the assessment when booking; the consultant fills it in later.
+  expect(useAppStore.getState().assessments[b.id]).toBeUndefined()
+  act(() => useAppStore.setState(s => ({ assessments: { ...s.assessments, [b.id]: { program: 'tourism', answers: { age_bracket: 'age_opt_2' } } } })))
 
   loginSales('mona.sales')
   const sales = at('/staff/my-clients')

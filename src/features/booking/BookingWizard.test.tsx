@@ -9,6 +9,7 @@ import { repo } from '../../data'
 import { slotsFor } from '../shared/availability'
 import { addDays } from '../../domain/time'
 import { todayIn } from '../../store/useAppStore'
+import { captureReferral, clearReferral } from '../../data/referral'
 
 const ID = 'mohamed-gamal'
 const renderWizard = () =>
@@ -34,6 +35,7 @@ const firstSlot = (format: 'online' | 'in-person', dur: number) => {
 const goodDetails = { name: 'Sara Ali', phone: '+201001234567', email: 'sara@example.com', program: 'immigration' as const }
 
 beforeEach(() => {
+  clearReferral()
   useAppStore.getState().setLang('en')
   useAppStore.setState({ bookings: {}, audit: [], seeded: true, timeOffsetMs: 0, draft: { ...emptyDraft(), consultantId: ID } })
 })
@@ -177,4 +179,37 @@ test('a client who is ready goes on to payment as before', async () => {
   fireEvent.click(screen.getByRole('button', { name: /continue to payment/i }))
   expect(await screen.findByTestId('booking-ref')).toBeInTheDocument()
   expect(Object.keys(useAppStore.getState().readinessRequests)).toHaveLength(0)
+})
+
+const viaSalesLink = () => captureReferral({ search: '?ref=abcd1234', hash: '', pathname: '/' })
+
+test('sales link: the details step asks no assessment questions and goes on to review', async () => {
+  viaSalesLink()
+  useAppStore.getState().updateDraft({ step: 2, format: 'online', durationMin: 45, slotStartIso: firstSlot('online', 45) })
+  useAppStore.getState().updateDetails({ ...goodDetails, program: 'tourism' })
+  renderWizard()
+  expect(screen.queryByText(/bank/i)).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: /review my booking/i }))
+  expect(await screen.findByRole('button', { name: /continue to payment/i })).toBeInTheDocument()
+})
+
+test('sales link: a weak file still goes on to payment, with no request and no answers saved', async () => {
+  viaSalesLink()
+  useAppStore.setState({ readinessRequests: {}, assessments: {} })
+  useAppStore.getState().updateDraft({ step: 3, format: 'online', durationMin: 45, slotStartIso: firstSlot('online', 45), assessment: tourism({ bank: 'bank_opt_5' }) })
+  useAppStore.getState().updateDetails({ ...goodDetails, program: 'tourism' })
+  renderWizard()
+  fireEvent.click(screen.getByRole('button', { name: /continue to payment/i }))
+  expect(await screen.findByTestId('booking-ref')).toBeInTheDocument()
+  expect(Object.keys(useAppStore.getState().readinessRequests)).toHaveLength(0)
+  expect(Object.keys(useAppStore.getState().assessments)).toHaveLength(0)
+})
+
+test('sales link: the program is still required', () => {
+  viaSalesLink()
+  useAppStore.getState().updateDraft({ step: 2, format: 'online', durationMin: 45, slotStartIso: firstSlot('online', 45) })
+  useAppStore.getState().updateDetails({ ...goodDetails, program: '' as never })
+  renderWizard()
+  fireEvent.click(screen.getByRole('button', { name: /review my booking/i }))
+  expect(useAppStore.getState().draft.step).toBe(2)
 })

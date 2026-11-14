@@ -62,6 +62,8 @@ function Wizard({ id }: { id: string }) {
   const fx = useEgpRates(draft.details.program === 'job-seeking').rates
   const [notReady, setNotReady] = useState<'idle' | 'sending' | 'sent'>('idle')
   const [notReadyError, setNotReadyError] = useState<unknown>(null)
+  // Clients a salesperson sent (they opened a sales link) skip the assessment and the readiness check entirely.
+  const [viaSales] = useState(() => currentReferral() !== null)
   if (fatal && !isLive) throw fatal
 
   // Start a fresh draft when arriving for a different consultant.
@@ -95,7 +97,7 @@ function Wizard({ id }: { id: string }) {
         // Situation answers travel separately from the booking details so they never reach the ticket.
         // A failed save must not block payment; the consultant can still ask in person.
         const a = d.assessment
-        if (a && a.program === d.details.program) await repo.saveAssessment(r.manageToken, a).catch(() => undefined)
+        if (!viaSales && a && a.program === d.details.program) await repo.saveAssessment(r.manageToken, a).catch(() => undefined)
         // Sales link the customer arrived with; never blocks the booking.
         const ref = currentReferral()
         if (ref) await repo.setReferral(r.manageToken, ref).catch(() => false)
@@ -117,7 +119,7 @@ function Wizard({ id }: { id: string }) {
           setFatal(e) // rethrown during render so the error boundary sees it, as the old sync call did
         }
       }).finally(() => { pendingReservations.current.delete(key) })
-  }, [step, draft.consultantId, draft.slotStartIso, draft.format, id, lang, t, updateDraft, reserveAttempt])
+  }, [step, draft.consultantId, draft.slotStartIso, draft.format, id, lang, t, updateDraft, reserveAttempt, viaSales])
 
   const booking = isLive
     ? remoteBooking?.consultantId === id && remoteBooking.format === draft.format && Date.parse(remoteBooking.startIso) === Date.parse(draft.slotStartIso ?? '') ? remoteBooking : undefined
@@ -126,7 +128,8 @@ function Wizard({ id }: { id: string }) {
 
 
   const program = draft.details.program
-  const assessmentIncomplete = isAssessed(program) && unanswered(program, draft.assessment?.program === program ? draft.assessment.answers : {}).length > 0
+  const assessed = !viaSales && isAssessed(program)
+  const assessmentIncomplete = assessed && unanswered(program, draft.assessment?.program === program ? draft.assessment.answers : {}).length > 0
   const fileNotReady = async () => {
     const d = useAppStore.getState().draft
     const a = d.assessment
@@ -146,7 +149,7 @@ function Wizard({ id }: { id: string }) {
     return true
   }
   const next = () => {
-    if (step === 3 && isAssessed(program) && draft.assessment?.program === program) {
+    if (step === 3 && assessed && draft.assessment?.program === program) {
       if (notReady === 'sending') return
       void fileNotReady().then(stopped => { if (!stopped) go(4) })
       return
@@ -225,7 +228,7 @@ function Wizard({ id }: { id: string }) {
               updateDetails(p)
               if (tried) setErrors(validateDetails({ ...draft.details, ...p }))
             }} errors={errors} showSummary={tried} onSubmit={next}
-              assessment={draft.assessment} onAssessment={assessment => updateDraft({ assessment })} assessmentIncomplete={assessmentIncomplete} />}
+              assessment={draft.assessment} onAssessment={viaSales ? undefined : assessment => updateDraft({ assessment })} assessmentIncomplete={assessmentIncomplete} />}
             {step === 3 && draft.format && draft.durationMin && draft.slotStartIso && (
               <ReviewStep consultant={consultant} branch={branch} format={draft.format} durationMin={draft.durationMin} slotStartIso={draft.slotStartIso} details={draft.details} onEdit={go} onContinue={next} />
             )}
