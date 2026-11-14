@@ -145,6 +145,15 @@ export function createLocalRepo(): BookingRepo {
       if (!['reserved', 'on-hold'].includes(b.status)) throw new RepoError('INVALID_TRANSITION')
       useAppStore.setState(s => ({ assessments: { ...s.assessments, [b.id]: a } }))
     },
+    async staffSaveAssessment(bookingId, a) {
+      const session = get().staffSession
+      const b = get().bookings[bookingId]
+      const isAdmin = session?.role === 'admin'
+      if (!isAdmin && (session?.role !== 'consultant' || !b || b.consultantId !== session.consultantId)) throw new RepoError('FORBIDDEN')
+      if (!b) throw new RepoError('NOT_FOUND')
+      useAppStore.setState(s => ({ assessments: { ...s.assessments, [bookingId]: a } }))
+      get().addAudit({ actor: isAdmin ? 'admin' : 'consultant', action: 'assessment-saved', bookingRef: b.reference, to: a.program })
+    },
     async staffAssessments() {
       const session = get().staffSession
       if (!session || !['admin', 'consultant', 'sales'].includes(session.role)) return {}

@@ -83,6 +83,8 @@ export interface BookingRepo {
   saveAssessment(manageToken: string, assessment: StoredAssessment): Promise<void>
   /** Admin and the booking's consultant: answers keyed by booking id. */
   staffAssessments(): Promise<Record<string, StoredAssessment>>
+  /** The booking's own consultant (or an admin) fills in or updates the client's assessment. */
+  staffSaveAssessment(bookingId: string, assessment: StoredAssessment): Promise<void>
   /** Sales: the caller's personal referral code (created on first use). */
   myReferralCode(): Promise<string>
   /** Customer: attach the sales person whose link they arrived with. Unknown or late codes are ignored (false). */

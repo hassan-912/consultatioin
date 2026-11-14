@@ -398,6 +398,7 @@ export const en = {
     sourceNote: 'Team members and photos as published on mg-visa.com.',
   },
   staff: {
+    assessment: { fill: 'Fill assessment', edit: 'Edit assessment', save: 'Save assessment' },
     login: {
       or: 'or',
       google: 'Continue with Google',

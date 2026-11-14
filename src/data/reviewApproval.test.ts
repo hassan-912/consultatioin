@@ -49,3 +49,21 @@ describe('review approval (local repo)', () => {
     expect((await repo.staffReviews()).find(r => r.id === 'b2')?.status).toBe('approved')
   })
 })
+
+describe('staff assessment (local repo)', () => {
+  beforeEach(() => {
+    resetLocalRepo()
+    useAppStore.setState({ assessments: {}, bookings: { bk1: { id: 'bk1', consultantId: 'mohamed-gamal', reference: 'R1' } as never } })
+  })
+
+  test('the booking consultant saves; another consultant and finance are refused', async () => {
+    const repo = createLocalRepo()
+    asStaff('consultant', 'mohamed-gamal')
+    await repo.staffSaveAssessment('bk1', { program: 'tourism', answers: { age_bracket: 'age_opt_2' } })
+    expect(useAppStore.getState().assessments.bk1.program).toBe('tourism')
+    asStaff('consultant', 'ahmed-salama')
+    await expect(repo.staffSaveAssessment('bk1', { program: 'tourism', answers: {} })).rejects.toEqual(new RepoError('FORBIDDEN'))
+    asStaff('finance', null)
+    await expect(repo.staffSaveAssessment('bk1', { program: 'tourism', answers: {} })).rejects.toEqual(new RepoError('FORBIDDEN'))
+  })
+})

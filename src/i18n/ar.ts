@@ -400,6 +400,7 @@ export const ar: Dict = {
     sourceNote: 'أسماء الفريق وصورهم كما هي منشورة على mg-visa.com.',
   },
   staff: {
+    assessment: { fill: 'املأ التقييم', edit: 'عدّل التقييم', save: 'احفظ التقييم' },
     login: {
       or: 'أو',
       google: 'المتابعة باستخدام Google',

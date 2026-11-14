@@ -15,6 +15,7 @@ import { AssessmentReport, AssessmentRing, useAssessmentResult } from '../../../
 import { Empty, SwapNote } from '../common'
 import { RecordFields } from './ConsultantDesk'
 import { NextStepPanel } from './NextStepPanel'
+import { AssessmentEditor } from './AssessmentEditor'
 import { useRecordDraft } from './recordDraft'
 
 /** One client's full file for the consultant: details, appointment, assessment, notes, and the PDF. Staff only. */
@@ -98,6 +99,7 @@ function ClientFileBody({ b, record }: { b: Booking; record?: Parameters<typeof 
       </div>
 
       <Section title={t('assessment.staffTitle')} className="mt-4">
+        <div className="mb-3"><AssessmentEditor bookingId={b.id} /></div>
         {result ? <AssessmentReport r={result} /> : <p className="text-sm text-muted">{t('staff.client.noAssessment')}</p>}
       </Section>
 

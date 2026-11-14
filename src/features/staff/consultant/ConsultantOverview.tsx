@@ -10,6 +10,7 @@ import type { Booking } from '../../../domain/types'
 import { StatusChip } from '../../../components/ui'
 import { Icon } from '../../../components/Icon'
 import { AssessmentRing } from '../../../assessment/StaffAssessment'
+import { AssessmentEditor } from './AssessmentEditor'
 import { ScreenTitle } from '../StaffApp'
 import { FollowUps, pendingFollowUps } from './FollowUps'
 
@@ -122,6 +123,7 @@ function AppointmentCard({ b, next }: { b: Booking; next: boolean }) {
       </div>
       <div className="relative z-10 flex flex-col items-center justify-between gap-2">
         <AssessmentRing bookingId={b.id} size={68} />
+        <AssessmentEditor bookingId={b.id} />
         <span aria-hidden className="inline-flex items-center gap-1 text-xs font-semibold text-navy">{t('staff.client.open')}<Icon name="arrow" size={12} className="rtl:rotate-180" /></span>
       </div>
     </li>
