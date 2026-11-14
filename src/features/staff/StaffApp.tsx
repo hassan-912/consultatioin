@@ -26,6 +26,7 @@ import { ConsultantsAdmin } from './admin/ConsultantsAdmin'
 import { AvailableTimesAdmin } from './admin/FreeSlotsAdmin'
 import { MessagesAdmin } from './admin/MessagesAdmin'
 import { NextStepsFinance } from './finance/NextStepsFinance'
+import { NotReady } from './sales/NotReady'
 import { History } from './consultant/History'
 import { BookingsAdmin } from './admin/BookingsAdmin'
 import { PaymentsAdmin, KpiAdmin } from './admin/SettingsAdmin'
@@ -45,6 +46,7 @@ const views: Record<StaffScreen, () => ReactNode> = {
   myClients: () => <MyClients />,
   payments: () => <PaymentQueue />,
   nextSteps: () => <NextStepsFinance />,
+  notReady: () => <NotReady />,
   checkin: () => <CheckIn />,
   arrivals: () => <Arrivals />,
   customers: () => <CustomerSheet />,
@@ -88,9 +90,10 @@ function SessionCard({ dark = true }: { dark?: boolean }) {
 function Nav({ onNavigate }: { onNavigate?: () => void }) {
   const { t } = useT()
   const role = useAppStore(s => s.role)
+  const manager = useAppStore(s => !!s.staffSession?.salesManager)
   return (
     <nav aria-label={t('staff.title')} className="grid gap-0.5">
-      {screens.filter(s => can(role, s.id)).map(s => (
+      {screens.filter(s => can(role, s.id, manager)).map(s => (
         <NavLink
           key={s.id}
           to={`/staff/${s.path}`}
@@ -113,6 +116,7 @@ function Nav({ onNavigate }: { onNavigate?: () => void }) {
 export function StaffApp() {
   const { t } = useT()
   const role = useAppStore(s => s.role)
+  const manager = useAppStore(s => !!s.staffSession?.salesManager)
   const session = useAppStore(s => s.staffSession)
   const pending = useAppStore(s => s.staffPending)
   const [open, setOpen] = useState(false)
@@ -166,9 +170,9 @@ export function StaffApp() {
           <Routes>
             {screens.map(s => {
               // A role without the overview (sales) lands on its first screen instead of looping back to /staff.
-              const home = screens.find(x => can(role, x.id))!
+              const home = screens.find(x => can(role, x.id, manager))!
               const fallback = home.path ? `/staff/${home.path}` : '/staff'
-              const element = can(role, s.id) ? <>{views[s.id]()}</> : <Navigate to={fallback} replace />
+              const element = can(role, s.id, manager) ? <>{views[s.id]()}</> : <Navigate to={fallback} replace />
               return s.path ? <Route key={s.id} path={s.path} element={element} /> : <Route key={s.id} index element={element} />
             })}
             {/* A client's full file, opened from the consultant's overview cards. */}

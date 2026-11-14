@@ -44,14 +44,13 @@ test('a ?ref= link is remembered and cleaned from the address; junk codes are ig
 test('a booking made through a sales link carries the sales name; that sales person sees it with the assessment, reception sees no assessment', async () => {
   const code = localReferralCode('mona.sales')
   captureReferral({ search: `?ref=${code}`, hash: '#/', pathname: '/' })
-  useAppStore.getState().updateDraft({ step: 4, format: 'in-person', durationMin: 45, slotStartIso: slot() })
+  useAppStore.getState().updateDraft({ step: 4, format: 'in-person', durationMin: 45, slotStartIso: slot(), assessment: { program: 'tourism', answers: { age_bracket: 'age_opt_2' } } })
   useAppStore.getState().updateDetails({ name: 'Sara Ali', phone: '+201001234567', email: 'sara@example.com', program: 'tourism' })
   const wizard = at(`/book/${ID}`)
   await waitFor(() => expect(Object.values(useAppStore.getState().bookings)[0]?.salesCode).toBe(code), { timeout: 5000 })
   wizard.unmount()
   const b = Object.values(useAppStore.getState().bookings)[0]
-  // The consultant fills in the assessment after booking (customers no longer do).
-  act(() => useAppStore.setState(s => ({ bookings: { [b.id]: { ...s.bookings[b.id], status: 'confirmed' } }, assessments: { [b.id]: { program: 'tourism', answers: { age_bracket: 'age_opt_2' } } } })))
+  act(() => useAppStore.setState(s => ({ bookings: { [b.id]: { ...s.bookings[b.id], status: 'confirmed' } } })))
 
   loginSales('mona.sales')
   const sales = at('/staff/my-clients')
