@@ -74,3 +74,14 @@ test('admin sees status chip', async () => {
   expect(screen.getAllByText('Pending').length).toBeGreaterThan(0)
   expect(screen.getAllByText('On the site').length).toBeGreaterThan(0)
 })
+
+test('switching to another consultant does not announce their old pending reviews', async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true })
+  loginAs('consultant', 'ahmed-khalil')
+  openStaff('/staff')
+  await screen.findByLabelText('Reviews waiting for you: 1')
+  act(() => loginAs('consultant', 'mohamed-gamal'))
+  await act(async () => { await vi.advanceTimersByTimeAsync(60_000) })
+  expect(screen.queryByText('not mine')).toBeNull()
+  expect(screen.queryByText('A customer left feedback about you')).toBeNull()
+})

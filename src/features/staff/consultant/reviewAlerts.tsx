@@ -20,24 +20,30 @@ interface ReviewWatch {
 const useReviewWatch = create<ReviewWatch>(() => ({ reviews: null, error: null, seen: null, notice: false }))
 
 /** Test helper: forget everything the watcher knew. */
-export const resetReviewWatch = () => useReviewWatch.setState({ reviews: null, error: null, seen: null, notice: false })
+export const resetReviewWatch = () => { generation++; useReviewWatch.setState({ reviews: null, error: null, seen: null, notice: false }) }
 
 /** Fetch the signed-in consultant's reviews; a new pending id (after the first snapshot) raises the notice. */
+let generation = 0
+
 export async function reloadMyReviews(): Promise<boolean> {
+  const mine = generation
   try {
     const reviews = await repo.myReviews()
+    // Signed out or switched accounts while this was in flight: drop it.
+    if (mine !== generation) return false
     const { seen } = useReviewWatch.getState()
     const pending = reviews.filter(r => r.status === 'pending')
     const fresh = seen ? pending.filter(r => !seen.has(r.id)) : []
     useReviewWatch.setState({ reviews, error: null, seen: new Set([...(seen ?? []), ...reviews.map(r => r.id)]), ...(fresh.length ? { notice: true } : {}) })
     return fresh.length > 0
   } catch (error) {
-    useReviewWatch.setState({ error })
+    if (mine === generation) useReviewWatch.setState({ error })
     return false
   }
 }
 
-const isConsultant = () => useAppStore(s => s.role === 'consultant' && !!s.staffSession?.consultantId)
+/** The signed-in consultant's id, or null for any other role. */
+const useConsultantId = () => useAppStore(s => (s.role === 'consultant' ? s.staffSession?.consultantId ?? null : null))
 
 export function useMyReviews() {
   const reviews = useReviewWatch(s => s.reviews)
@@ -64,13 +70,15 @@ export function ReviewBadge() {
 export function NewReviewNotice() {
   const { t } = useT()
   const navigate = useNavigate()
-  const enabled = isConsultant()
+  const consultantId = useConsultantId()
+  const enabled = consultantId !== null
   const notice = useReviewWatch(s => s.notice)
   const tRef = useRef(t)
   tRef.current = t
 
   useEffect(() => {
-    if (!enabled) { resetReviewWatch(); return }
+    resetReviewWatch()
+    if (!consultantId) return
     let live = true
     const tick = async () => {
       if (await reloadMyReviews() && live) {
@@ -82,8 +90,8 @@ export function NewReviewNotice() {
     }
     void tick()
     const id = window.setInterval(() => void tick(), POLL_MS)
-    return () => { live = false; window.clearInterval(id) }
-  }, [enabled, navigate])
+    return () => { live = false; window.clearInterval(id); resetReviewWatch() }
+  }, [consultantId, navigate])
 
   if (!enabled) return null
   const close = () => useReviewWatch.setState({ notice: false })
