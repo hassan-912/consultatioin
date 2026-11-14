@@ -49,6 +49,9 @@ export function ReviewsAdmin() {
                         <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${r.hidden ? 'bg-warn-soft text-warn' : 'bg-ok-soft text-ok'}`}>
                           {r.hidden ? t('review.hidden') : t('review.visible')}
                         </span>
+                        <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${r.status === 'approved' ? 'bg-ok-soft text-ok' : r.status === 'rejected' ? 'bg-paper text-muted' : 'bg-warn-soft text-warn'}`}>
+                          {t(`review.my.${r.status}`)}
+                        </span>
                       </div>
                       <p className="mt-1 text-xs text-muted">
                         {l(getConsultant(r.consultantId).name)} · <bdi dir="ltr">{r.bookingRef ?? '—'}</bdi> · {formatInZone(r.at, 'Africa/Cairo', lang, 'full')}

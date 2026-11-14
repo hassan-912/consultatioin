@@ -66,3 +66,11 @@ test('non-consultant roles do not see the Reviews nav entry or the notice', asyn
   expect(screen.queryByRole('link', { name: /My reviews/ })).toBeNull()
   expect(screen.queryByText('A customer left feedback about you')).toBeNull()
 })
+
+test('admin sees status chip', async () => {
+  loginAs('admin')
+  openStaff('/staff/reviews')
+  expect((await screen.findAllByText('waiting one')).length).toBe(1)
+  expect(screen.getAllByText('Pending').length).toBeGreaterThan(0)
+  expect(screen.getAllByText('On the site').length).toBeGreaterThan(0)
+})
