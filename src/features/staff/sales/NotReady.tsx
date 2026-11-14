@@ -27,7 +27,9 @@ function RulesEditor() {
   const [rules, setRules] = useState<ReadinessRules | null>(null)
   const [busy, setBusy] = useState(false)
   const [note, setNote] = useState<{ tone: 'ok' | 'bad'; text: string } | null>(null)
-  useEffect(() => { void repo.readinessRules().then(setRules) }, [])
+  const [loadError, setLoadError] = useState<unknown>(null)
+  useEffect(() => { void repo.readinessRules({ strict: true }).then(setRules).catch(setLoadError) }, [])
+  if (loadError) return <DataStatus error={loadError} />
   if (!rules) return null
   const set = (p: Partial<ReadinessRules>) => { setRules({ ...rules, ...p }); setNote(null) }
   const bad = (Object.keys(ruleLimits) as (keyof typeof ruleLimits)[]).some(k => !Number.isInteger(rules[k]) || rules[k] < ruleLimits[k][0] || rules[k] > ruleLimits[k][1])

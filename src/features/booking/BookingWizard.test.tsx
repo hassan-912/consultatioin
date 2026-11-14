@@ -213,3 +213,24 @@ test('sales link: the program is still required', () => {
   fireEvent.click(screen.getByRole('button', { name: /review my booking/i }))
   expect(useAppStore.getState().draft.step).toBe(2)
 })
+
+test('a double tap on Continue to payment files one Not ready request', async () => {
+  useAppStore.setState({ readinessRequests: {} })
+  useAppStore.getState().updateDraft({ step: 3, format: 'online', durationMin: 45, slotStartIso: firstSlot('online', 45), assessment: tourism({ bank: 'bank_opt_5' }) })
+  useAppStore.getState().updateDetails({ ...goodDetails, program: 'tourism' })
+  renderWizard()
+  const btn = screen.getByRole('button', { name: /continue to payment/i })
+  fireEvent.click(btn); fireEvent.click(btn)
+  expect(await screen.findByText(/no payment was taken/i)).toBeInTheDocument()
+  expect(Object.keys(useAppStore.getState().readinessRequests)).toHaveLength(1)
+})
+
+test('a saved draft that reached review without answers goes back to the questions instead of payment', () => {
+  useAppStore.setState({ readinessRequests: {} })
+  useAppStore.getState().updateDraft({ step: 3, format: 'online', durationMin: 45, slotStartIso: firstSlot('online', 45), assessment: null })
+  useAppStore.getState().updateDetails({ ...goodDetails, program: 'tourism' })
+  renderWizard()
+  fireEvent.click(screen.getByRole('button', { name: /continue to payment/i }))
+  expect(useAppStore.getState().draft.step).toBe(2)
+  expect(Object.keys(useAppStore.getState().bookings)).toHaveLength(0)
+})

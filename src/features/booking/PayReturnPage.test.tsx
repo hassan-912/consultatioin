@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { PayReturnPage } from './PayReturnPage'
+import { repo } from '../../data'
 import { useAppStore } from '../../store/useAppStore'
 import { forgetPayment, rememberPayment } from '../../data/pendingPayment'
 import type { Booking, BookingStatus } from '../../domain/types'
@@ -68,3 +69,12 @@ test('while waiting, only "checking" is in progress; nothing claims a confirmati
   await screen.findByText(/confirming your payment/i)
   expect(screen.getAllByRole('listitem').filter(li => li.querySelector('svg'))).toHaveLength(0)
 })
+
+test('one failed status check does not stop the wait: the next check finds the payment', async () => {
+  const real = repo.getByManageToken.bind(repo)
+  const spy = vi.spyOn(repo, 'getByManageToken').mockRejectedValueOnce(new Error('offline')).mockImplementation(t => real(t))
+  open('confirmed', '?status=success')
+  expect(await screen.findByText('TICKET PAGE', undefined, { timeout: 8000 })).toBeInTheDocument()
+  expect(spy.mock.calls.length).toBeGreaterThan(1)
+  spy.mockRestore()
+}, 15000)

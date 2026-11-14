@@ -255,9 +255,10 @@ export function createSupabaseRepo(clients: BackendClients): BookingRepo {
       return staffRow(id)
     },
     async adminTestKey() { await requireStaff(); return result<string>(staff.rpc('admin_test_key')) },
-    async readinessRules() {
+    async readinessRules(opts) {
       // The booking form must never get stuck on this: no rules from the server means the defaults.
-      return mergeRules(await result<unknown>(customer.rpc('public_readiness_rules')).catch(() => null))
+      const saved = result<unknown>(customer.rpc('public_readiness_rules'))
+      return mergeRules(opts?.strict ? await saved : await saved.catch(() => null))
     },
     async saveReadinessRules(rules) {
       await requireStaff()

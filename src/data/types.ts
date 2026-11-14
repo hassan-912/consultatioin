@@ -116,7 +116,8 @@ export interface BookingRepo {
   /** Admin: the key that lets this device book admin-only (payment test) consultants. */
   adminTestKey(): Promise<string>
   /** Public: the admin's readiness rules (defaults filled in). */
-  readinessRules(): Promise<ReadinessRules>
+  /** strict: fail instead of falling back to the defaults (the admin editor must never save defaults over real rules). */
+  readinessRules(opts?: { strict?: boolean }): Promise<ReadinessRules>
   /** Admin: save the readiness rules. */
   saveReadinessRules(rules: ReadinessRules): Promise<void>
   /** Customer: not ready for the program, so no payment; file it for the sales manager. */

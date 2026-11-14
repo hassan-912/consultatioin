@@ -13,8 +13,10 @@ export function captureReferral(loc: Pick<Location, 'search' | 'hash' | 'pathnam
   try { localStorage.setItem(KEY, JSON.stringify({ code, at: Date.now() })) } catch { /* private mode: link still works this visit */ }
   memory = code
   try {
-    const hash = hashQuery ? loc.hash.slice(0, loc.hash.indexOf('?')) : loc.hash
-    history.replaceState(history.state, '', `${loc.pathname}${hash || '#/'}`)
+    // Remove only ref; any other values on the link (campaign tags, the hash route's own) stay.
+    const without = (q: string) => { const p = new URLSearchParams(q); p.delete('ref'); const s = p.toString(); return s ? `?${s}` : '' }
+    const hash = hashQuery ? loc.hash.slice(0, loc.hash.indexOf('?')) + without(hashQuery) : loc.hash
+    history.replaceState(history.state, '', `${loc.pathname}${without(loc.search)}${hash || '#/'}`)
   } catch { /* cosmetic only */ }
 }
 

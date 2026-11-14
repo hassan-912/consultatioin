@@ -3,7 +3,8 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { StaffApp } from '../StaffApp'
 import { useAppStore } from '../../../store/useAppStore'
 import { loginAs } from '../../../test/loginAs'
-import type { ReadinessRequest } from '../../../data/types'
+import { RepoError, type ReadinessRequest } from '../../../data/types'
+import { repo } from '../../../data'
 
 const open = (path = '/staff/not-ready') =>
   render(<MemoryRouter initialEntries={[path]}><Routes><Route path="/staff/*" element={<StaffApp />} /></Routes></MemoryRouter>)
@@ -70,4 +71,15 @@ test('the admin sees the list and edits the rules', async () => {
   fireEvent.click(screen.getByRole('button', { name: /save rules/i }))
   expect(await screen.findByText(/new bookings use these rules/i)).toBeInTheDocument()
   expect(useAppStore.getState().readinessRules).toMatchObject({ tourismMinScore: 55, tourismLowBank: false })
+})
+
+test('the rules editor shows an error instead of the defaults when the saved rules cannot be loaded', async () => {
+  const spy = vi.spyOn(repo, 'readinessRules').mockRejectedValue(new RepoError('NETWORK'))
+  loginAs('admin')
+  open()
+  await screen.findByRole('listitem', { name: 'Karim Adel' })
+  await waitFor(() => expect(spy).toHaveBeenCalledWith({ strict: true }))
+  expect(screen.queryByText(/rules: who is not ready/i)).toBeNull()
+  expect(screen.queryByRole('button', { name: /save rules/i })).toBeNull()
+  spy.mockRestore()
 })

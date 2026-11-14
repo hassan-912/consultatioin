@@ -149,7 +149,9 @@ function Wizard({ id }: { id: string }) {
     return true
   }
   const next = () => {
-    if (step === 3 && assessed && draft.assessment?.program === program) {
+    if (step === 3 && assessed) {
+      // A draft that reached review without complete answers (e.g. saved before the questions existed) goes back to them.
+      if (assessmentIncomplete) { setTried(true); go(2); return }
       if (notReady === 'sending') return
       void fileNotReady().then(stopped => { if (!stopped) go(4) })
       return

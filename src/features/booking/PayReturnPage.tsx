@@ -55,10 +55,11 @@ export function PayReturnPage() {
     const tick = async () => {
       polls++
       if (round > 0 && polls === 1 || ASK_EASYKASH_AT.includes(polls)) await repo.checkOnlinePayment(pending.token).catch(() => undefined)
-      const b = await repo.getByManageToken(pending.token).catch(() => null)
+      // A failed request is not an answer: keep what we had and ask again, so one network blip can't stop the wait.
+      const b = await repo.getByManageToken(pending.token).then(r => r, () => undefined)
       if (!alive) return
-      setBooking(b)
-      if (!b || b.status !== 'reserved' || saysFailed) return
+      if (b !== undefined) setBooking(b)
+      if (b === null || (b && (b.status !== 'reserved' || saysFailed))) return
       if (polls >= POLLS) { setSlow(true); return }
       timer = setTimeout(tick, POLL_MS)
     }
