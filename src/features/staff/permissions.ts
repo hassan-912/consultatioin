@@ -3,7 +3,7 @@ import type { IconName } from '../../components/Icon'
 
 export type StaffScreen =
   | 'overview' | 'salesLink' | 'myClients' | 'payments' | 'nextSteps' | 'checkin' | 'arrivals' | 'customers' | 'myCalendar' | 'myBookings' | 'history' | 'records'
-  | 'consultants' | 'freeSlots' | 'messages' | 'bookings' | 'paymentSettings' | 'kpi' | 'reviews' | 'audit' | 'decisions' | 'staffAccounts' | 'notReady'
+  | 'consultants' | 'freeSlots' | 'messages' | 'bookings' | 'paymentSettings' | 'kpi' | 'reviews' | 'myReviews' | 'audit' | 'decisions' | 'staffAccounts' | 'notReady'
 
 export const screens: { id: StaffScreen; path: string; icon: IconName }[] = [
   { id: 'overview', path: '', icon: 'layers' },
@@ -19,6 +19,7 @@ export const screens: { id: StaffScreen; path: string; icon: IconName }[] = [
   { id: 'myBookings', path: 'my-bookings', icon: 'list' },
   { id: 'history', path: 'history', icon: 'table' },
   { id: 'records', path: 'records', icon: 'history' },
+  { id: 'myReviews', path: 'my-reviews', icon: 'star' },
   { id: 'bookings', path: 'bookings', icon: 'list' },
   { id: 'consultants', path: 'consultants', icon: 'user' },
   { id: 'freeSlots', path: 'available-times', icon: 'clock' },
@@ -32,10 +33,10 @@ export const screens: { id: StaffScreen; path: string; icon: IconName }[] = [
 ]
 
 export const permissions: Record<StaffRole, StaffScreen[]> = {
-  admin: screens.map(s => s.id).filter(id => id !== 'salesLink' && id !== 'myClients'),
+  admin: screens.map(s => s.id).filter(id => id !== 'salesLink' && id !== 'myClients' && id !== 'myReviews'),
   finance: ['overview', 'payments', 'nextSteps', 'customers', 'bookings', 'paymentSettings', 'audit'],
   reception: ['overview', 'checkin', 'arrivals', 'customers', 'bookings'],
-  consultant: ['overview', 'myCalendar', 'myBookings', 'history', 'records'],
+  consultant: ['overview', 'myCalendar', 'myBookings', 'history', 'records', 'myReviews'],
   sales: ['salesLink', 'myClients'],
 }
 

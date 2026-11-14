@@ -15,6 +15,8 @@ import { signOut } from '../../store/auth'
 import { restoreStaffSession, watchStaffAuth } from '../../store/liveAuth'
 import { PaymentQueue } from './finance/PaymentQueue'
 import { ConnectionIndicator, NewPaymentNotice, PaymentBadge } from './finance/paymentAlerts'
+import { MyReviews } from './consultant/MyReviews'
+import { NewReviewNotice, ReviewBadge } from './consultant/reviewAlerts'
 import { CheckIn } from './reception/CheckIn'
 import { Arrivals } from './reception/Arrivals'
 import { CustomerSheet } from './reception/CustomerSheet'
@@ -59,6 +61,7 @@ const views: Record<StaffScreen, () => ReactNode> = {
   messages: () => <MessagesAdmin />,
   kpi: () => <KpiAdmin />,
   reviews: () => <ReviewsAdmin />,
+  myReviews: () => <MyReviews />,
   audit: () => <AuditLog />,
   decisions: () => <PendingDecisions />,
   staffAccounts: () => <StaffAccounts />,
@@ -103,6 +106,7 @@ function Nav({ onNavigate }: { onNavigate?: () => void }) {
           <Icon name={s.icon} size={17} />
           {t(`staff.screens.${s.id}`)}
           {s.id === 'payments' && <PaymentBadge />}
+          {s.id === 'myReviews' && <ReviewBadge />}
         </NavLink>
       ))}
     </nav>
@@ -160,6 +164,7 @@ export function StaffApp() {
         <main id="main" className="mx-auto max-w-5xl px-4 py-6 sm:px-6">
           <ConnectionIndicator />
           <NewPaymentNotice />
+          <NewReviewNotice />
           {isLive && <DataStatus loading={loading || staleSnapshot} error={error} />}
           {(!isLive || (!loading && !error && !staleSnapshot)) &&
           <Routes>

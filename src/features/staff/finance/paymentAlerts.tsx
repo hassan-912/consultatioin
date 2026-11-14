@@ -35,7 +35,7 @@ const SOUND_KEY = 'mg-payment-sound'
 const readSound = () => { try { return localStorage.getItem(SOUND_KEY) !== '0' } catch { return true } }
 let audio: AudioContext | null = null
 /** Two rounds of a bright rising chime, loud enough to hear across an office. */
-function chime() {
+export function chime() {
   try {
     const Ctx = window.AudioContext
     if (!Ctx) return
@@ -61,19 +61,19 @@ function chime() {
 }
 
 type Permission = 'default' | 'granted' | 'denied' | 'unsupported'
-const readPermission = (): Permission => (typeof Notification === 'undefined' ? 'unsupported' : Notification.permission)
+export const readPermission = (): Permission => (typeof Notification === 'undefined' ? 'unsupported' : Notification.permission)
 
 /** OS-level pop-up so a new payment is seen even when the tab is in the background. Only after finance opted in. */
-function desktopNotify(title: string, body: string, onOpen: () => void) {
+export function desktopNotify(title: string, body: string, onOpen: () => void, tag = 'mg-payment') {
   try {
     if (readPermission() !== 'granted') return
-    const n = new Notification(title, { body, tag: 'mg-payment', requireInteraction: true })
+    const n = new Notification(title, { body, tag, requireInteraction: true })
     n.onclick = () => { window.focus(); onOpen(); n.close() }
   } catch { /* pop-ups are optional */ }
 }
 
 /** Prefixes the tab title while the tab is hidden, until finance comes back to it. */
-function flashTitle(text: string) {
+export function flashTitle(text: string) {
   if (!document.hidden) return
   const original = document.title.replace(/^🔔 .*? · /, '')
   document.title = `🔔 ${text} · ${original}`
