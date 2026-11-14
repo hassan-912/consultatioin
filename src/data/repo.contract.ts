@@ -86,6 +86,15 @@ export function runContract(name: string, make: () => Harness) {
       expect((await h.repo.cancel(r.manageToken)).status).toBe('cancelled')
     })
 
+    test('once confirmed (ticket issued) the customer cannot cancel; staff still can', async () => {
+      const r = await reserve(await firstSlot(h.repo))
+      await h.repo.submitPayment(r.manageToken, { method: 'instapay', txnRef: 'T1234' })
+      await h.repo.staffTransition(r.bookingId, { type: 'verify' })
+      await expect(h.repo.cancel(r.manageToken)).rejects.toMatchObject({ code: 'INVALID_TRANSITION' })
+      expect((await h.repo.getByManageToken(r.manageToken))?.status).toBe('confirmed')
+      expect((await h.repo.staffTransition(r.bookingId, { type: 'cancel' })).status).toBe('cancelled')
+    })
+
     test('subscribe notifies on change until unsubscribed', async () => {
       let calls = 0
       const off = h.repo.subscribe(() => { calls++ })

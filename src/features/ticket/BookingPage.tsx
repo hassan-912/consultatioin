@@ -48,7 +48,8 @@ export function BookingPage() {
 }
 
 const RESCHEDULABLE = ['on-hold', 'confirmed']
-const CANCELLABLE = ['reserved', 'on-hold', 'confirmed']
+// Once the booking is confirmed the ticket is issued: the customer can no longer cancel it themselves.
+const CANCELLABLE = ['reserved', 'on-hold']
 
 function Manage({ b }: { b: Booking }) {
   const { t, l } = useT()

@@ -84,7 +84,10 @@ export function createLocalRepo(): BookingRepo {
     },
 
     async cancel(token) {
-      return applyEvent(mustFind(token).id, { type: 'cancel' }, 'customer')
+      const b = mustFind(token)
+      // Ticket issued: only staff may cancel a confirmed booking (as in the database, 0047).
+      if (b.status === 'confirmed') throw new RepoError('INVALID_TRANSITION')
+      return applyEvent(b.id, { type: 'cancel' }, 'customer')
     },
 
     async reschedule(token, startIso) {
