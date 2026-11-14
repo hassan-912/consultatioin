@@ -21,6 +21,10 @@ import { DetailsStep } from './steps/DetailsStep'
 import { ReviewStep } from './steps/ReviewStep'
 import { PaymentStep } from './steps/PaymentStep'
 import { SummaryCard, validateDetails, type DetailErrors } from './shared'
+import { isAssessed, unanswered } from '../../assessment/questions'
+import { defaultReadinessRules, readinessOf, type ReadinessRules } from '../../assessment/readiness'
+import { useEgpRates } from '../../assessment/useEgpRates'
+import { NotReadyNotice } from './NotReadyNotice'
 import { currentReferral } from '../../data/referral'
 import { rememberPayment } from '../../data/pendingPayment'
 
@@ -52,6 +56,12 @@ function Wizard({ id }: { id: string }) {
   const [remoteBooking, setRemoteBooking] = useState<Booking>()
   const pendingReservations = useRef(new Map<string, ReturnType<typeof repo.reserve>>())
   const [reserveAttempt, setReserveAttempt] = useState(0)
+  // Readiness: a client who isn't ready for the program doesn't pay; the sales manager calls them instead.
+  const [rules, setRules] = useState<ReadinessRules>(defaultReadinessRules)
+  useEffect(() => { void repo.readinessRules().then(setRules).catch(() => undefined) }, [])
+  const fx = useEgpRates(draft.details.program === 'job-seeking').rates
+  const [notReady, setNotReady] = useState<'idle' | 'sending' | 'sent'>('idle')
+  const [notReadyError, setNotReadyError] = useState<unknown>(null)
   if (fatal && !isLive) throw fatal
 
   // Start a fresh draft when arriving for a different consultant.
@@ -84,6 +94,8 @@ function Wizard({ id }: { id: string }) {
       .then(async r => {
         // Situation answers travel separately from the booking details so they never reach the ticket.
         // A failed save must not block payment; the consultant can still ask in person.
+        const a = d.assessment
+        if (a && a.program === d.details.program) await repo.saveAssessment(r.manageToken, a).catch(() => undefined)
         // Sales link the customer arrived with; never blocks the booking.
         const ref = currentReferral()
         if (ref) await repo.setReferral(r.manageToken, ref).catch(() => false)
@@ -113,12 +125,37 @@ function Wizard({ id }: { id: string }) {
   const go = (s: 0 | 1 | 2 | 3 | 4) => updateDraft({ step: s })
 
 
+  const program = draft.details.program
+  const assessmentIncomplete = isAssessed(program) && unanswered(program, draft.assessment?.program === program ? draft.assessment.answers : {}).length > 0
+  const fileNotReady = async () => {
+    const d = useAppStore.getState().draft
+    const a = d.assessment
+    if (!a || !d.format || !d.slotStartIso) return false
+    const r = readinessOf(a, rules, fx)
+    if (r.ready) return false
+    setNotReady('sending'); setNotReadyError(null)
+    try {
+      await repo.submitReadinessRequest({
+        name: d.details.name, phone: d.details.phone, email: d.details.email, lang: d.details.consultationLang,
+        program: a.program, destination: a.answers.destination, consultantId: id, format: d.format, wantedIso: d.slotStartIso,
+        score: r.score, scoreMax: r.max, reasons: r.reasons, answers: a.answers,
+      })
+      setNotReady('sent')
+      resetDraft(id)
+    } catch (e) { setNotReady('idle'); setNotReadyError(e) }
+    return true
+  }
   const next = () => {
+    if (step === 3 && isAssessed(program) && draft.assessment?.program === program) {
+      if (notReady === 'sending') return
+      void fileNotReady().then(stopped => { if (!stopped) go(4) })
+      return
+    }
     if (step === 2) {
       const e = validateDetails(draft.details)
       setErrors(e)
       setTried(true)
-      if (Object.keys(e).length) return
+      if (Object.keys(e).length || assessmentIncomplete) return
     }
     if (step === 0 && draft.format) updateDraft({ durationMin: draft.durationMin ?? null })
     if (step < 4) go((step + 1) as 0 | 1 | 2 | 3 | 4)
@@ -155,6 +192,7 @@ function Wizard({ id }: { id: string }) {
         </div>
       </section>
 
+      {notReady === 'sent' ? <NotReadyNotice /> : (
       <main id="main" className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)] gap-8 px-4 py-6 pb-16 sm:px-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         <AnimatePresence mode="wait">
           <motion.div
@@ -165,7 +203,7 @@ function Wizard({ id }: { id: string }) {
             transition={{ duration: 0.22 }}
             className="min-w-0"
           >
-            <DataStatus error={fatal} loading={step === 4 && !booking && !fatal} />
+            <DataStatus error={fatal ?? notReadyError} loading={(step === 4 && !booking && !fatal) || notReady === 'sending'} />
             {isLive && fatal != null && <Button className="mt-3" onClick={() => setReserveAttempt(n => n + 1)}>{t('data.retry')}</Button>}
             {step === 0 && <FormatStep value={draft.format} offered={offered} branch={branch} onChange={f => updateDraft({ format: f, durationMin: bookingConfig.durations[f][0], slotStartIso: null, step: 1 })} />}
             {step === 1 && draft.format && (
@@ -186,7 +224,8 @@ function Wizard({ id }: { id: string }) {
             {step === 2 && <DetailsStep value={draft.details} onChange={p => {
               updateDetails(p)
               if (tried) setErrors(validateDetails({ ...draft.details, ...p }))
-            }} errors={errors} showSummary={tried} onSubmit={next} />}
+            }} errors={errors} showSummary={tried} onSubmit={next}
+              assessment={draft.assessment} onAssessment={assessment => updateDraft({ assessment })} assessmentIncomplete={assessmentIncomplete} />}
             {step === 3 && draft.format && draft.durationMin && draft.slotStartIso && (
               <ReviewStep consultant={consultant} branch={branch} format={draft.format} durationMin={draft.durationMin} slotStartIso={draft.slotStartIso} details={draft.details} onEdit={go} onContinue={next} />
             )}
@@ -211,6 +250,7 @@ function Wizard({ id }: { id: string }) {
           </div>
         </aside>
       </main>
+      )}
     </>
   )
 }

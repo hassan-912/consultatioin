@@ -43,7 +43,10 @@ export function ReviewStep({ consultant, branch, format, durationMin, slotStartI
         <dl className="grid gap-1 text-sm">
           <div className="font-semibold text-ink">{details.name}</div>
           <div><Ltr>{cleanPhone(details.phone)}</Ltr></div>
-          {details.email && <div><Ltr>{details.email}</Ltr></div>}
+          <div><Ltr>{details.email}</Ltr></div>
+          <div className="text-muted">
+            {t('booking.channel')}: {t(details.channel === 'email' ? 'booking.channelEmail' : 'booking.channelWhatsapp')}
+          </div>
           {details.program && <div className="text-muted">{t('booking.program')}: {l(programName(details.program))}</div>}
           {details.note && <div className="text-muted">“{details.note}”</div>}
         </dl>

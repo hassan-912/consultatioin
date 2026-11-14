@@ -144,6 +144,12 @@ export function createLocalRepo(): BookingRepo {
       get().addAudit({ actor: 'customer', action: 'reviewed', bookingRef: b.reference, to: String(rating) })
       return review
     },
+    async saveAssessment(token, a) {
+      const b = mustFind(token)
+      if (!['reserved', 'on-hold'].includes(b.status)) throw new RepoError('INVALID_TRANSITION')
+      if (get().assessments[b.id]) throw new RepoError('ALREADY_EXISTS')
+      useAppStore.setState(s => ({ assessments: { ...s.assessments, [b.id]: a } }))
+    },
     async myAssessment(token) { return get().assessments[mustFind(token).id] ?? null },
     async markAssessmentSent(bookingId) {
       const session = get().staffSession

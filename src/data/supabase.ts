@@ -223,6 +223,9 @@ export function createSupabaseRepo(clients: BackendClients): BookingRepo {
       await result(staff.rpc('consultant_set_review_status', { p_review_id: id, p_status: status }))
       changed()
     },
+    async saveAssessment(token, a) {
+      await result(customer.rpc('save_assessment', { p_manage_token: token, p_program: a.program, p_answers: a.answers }))
+    },
     async staffAssessments() {
       await requireStaff()
       const rows = await allRows(staff.from('booking_assessments').select('booking_id,program,answers').order('booking_id'))

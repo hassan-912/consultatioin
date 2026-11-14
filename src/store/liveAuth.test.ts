@@ -30,7 +30,7 @@ test('active profile signs in with the profile role, not anything the browser su
   expect(auth.signInWithPassword).toHaveBeenCalledWith({ email: 'staff@example.com', password: 'pw' })
   expect(select).toHaveBeenCalledWith('role,consultant_id,display_name,active')
   expect(eq).toHaveBeenCalledWith('user_id', 'u1')
-  expect(useAppStore.getState().staffSession).toEqual({ username: 'Fin', role: 'finance', consultantId: null })
+  expect(useAppStore.getState().staffSession).toEqual({ username: 'Fin', role: 'finance', consultantId: null, salesManager: false })
   expect(useAppStore.getState().role).toBe('finance')
 })
 
