@@ -43,6 +43,7 @@ export function AssessmentPage() {
         </Link>
         <h1 className="mt-2 text-2xl font-semibold text-ink">{t('clientAssessment.title')}</h1>
         {(!booking && (loading || error)) || stored === undefined ? <DataStatus loading={loading || stored === undefined} error={error ?? aError} />
+          : aError != null ? <DataStatus error={aError} />
           : !report ? <Notice tone="info" className="mt-4">{t('clientAssessment.none')}</Notice>
           : (
             <>

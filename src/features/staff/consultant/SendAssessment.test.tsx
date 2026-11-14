@@ -51,3 +51,14 @@ test('no button for refund', async () => {
   await screen.findByRole('region', { name: 'Next step' })
   expect(screen.queryByRole('button', { name: 'Send assessment on WhatsApp' })).toBeNull()
 })
+
+test('a stale tab whose send was already stamped elsewhere does not open WhatsApp again', async () => {
+  const { repo } = await import('../../../data')
+  vi.spyOn(repo, 'markAssessmentSent').mockResolvedValue(Date.now() - 3_600_000)
+  useAppStore.setState({ records: { sa: { notes: '', outcome: 'none', nextStep: 'thinking' } } })
+  open()
+  fireEvent.click(await screen.findByRole('button', { name: 'Send assessment on WhatsApp' }))
+  await waitFor(() => expect(repo.markAssessmentSent).toHaveBeenCalled())
+  await new Promise(r => setTimeout(r, 50))
+  expect(opened.some(u => u.startsWith('https://wa.me/'))).toBe(false)
+})

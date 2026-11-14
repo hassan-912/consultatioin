@@ -79,8 +79,6 @@ export interface BookingRepo {
   myReviews(): Promise<ConsultantReview[]>
   /** The review's own consultant (or an admin) approves, rejects, or returns a review to pending. */
   setReviewStatus(reviewId: string, status: ReviewStatus): Promise<void>
-  /** Customer: the booking form's situation answers, saved with the hold. Never readable by the customer. */
-  saveAssessment(manageToken: string, assessment: StoredAssessment): Promise<void>
   /** Admin and the booking's consultant: answers keyed by booking id. */
   staffAssessments(): Promise<Record<string, StoredAssessment>>
   /** Customer: their own assessment (filled in by the consultant), or null. */

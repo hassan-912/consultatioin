@@ -67,3 +67,5 @@ grant execute on function public.staff_mark_assessment_sent(uuid) to authenticat
 
 -- The readiness flow is gone from the app; nobody may file new requests. Existing rows stay.
 revoke execute on function public.submit_readiness_request(jsonb) from public, anon, authenticated;
+-- Customers no longer fill in the assessment: only staff_save_assessment writes it now.
+revoke execute on function public.save_assessment(text, text, jsonb) from public, anon, authenticated;

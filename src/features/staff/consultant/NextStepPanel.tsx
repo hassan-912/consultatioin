@@ -21,6 +21,9 @@ export function assessmentUrl(manageToken: string) {
   return url.toString()
 }
 
+/** A stamp older than this (allowing for clock skew) was made by an earlier send. */
+const FRESH_MS = 2 * 60_000
+
 /** Contract or thinking: send the client their assessment link on WhatsApp, once. Later contact is the follow-up. */
 function SendAssessment({ b }: { b: Booking }) {
   const { t, lang } = useT()
@@ -32,12 +35,15 @@ function SendAssessment({ b }: { b: Booking }) {
     setBusy(true)
     // Open the tab now (inside the click) so pop-up blockers allow it; point it at WhatsApp once the link is known.
     const tab = window.open('', '_blank')
+    const clickedAt = Date.now()
     try {
+      // Stamp first: if another tab or person already sent it, the server keeps the earlier time and nothing goes out.
+      const stamped = await repo.markAssessmentSent(b.id)
+      if (stamped < clickedAt - FRESH_MS) { tab?.close(); return }
       const token = b.manageToken || await repo.staffManageToken(b.id)
       const text = translate(b.customer.consultationLang, 'staff.nextStep.assessmentMessage', { name: b.customer.name.trim().split(/\s+/)[0], link: assessmentUrl(token) })
       const url = whatsappLink(b.customer.phone, text)
       if (tab) tab.location.href = url; else window.open(url, '_blank')
-      await repo.markAssessmentSent(b.id)
     } catch (e) { tab?.close(); reportActionError(e) } finally { setBusy(false) }
   }
   return (

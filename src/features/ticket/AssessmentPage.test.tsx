@@ -53,3 +53,13 @@ test('booking page shows Your assessment once it exists', async () => {
   open(`/booking/${b.manageToken}`)
   expect(await screen.findByRole('link', { name: 'Open your assessment' })).toHaveAttribute('href', `/booking/${b.manageToken}/assessment`)
 })
+
+test('a failure to load the assessment is shown as an error, not as "not filled in yet"', async () => {
+  const { repo } = await import('../../data')
+  vi.spyOn(repo, 'myAssessment').mockRejectedValue(new Error('network down'))
+  open(`/booking/${b.manageToken}/assessment`)
+  await screen.findByText('Your assessment')
+  await new Promise(r => setTimeout(r, 50))
+  expect(screen.queryByText('Your consultant has not filled in your assessment yet.')).toBeNull()
+  vi.restoreAllMocks()
+})
