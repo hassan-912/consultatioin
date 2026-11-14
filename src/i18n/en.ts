@@ -377,6 +377,7 @@ export const en = {
     commentHint: 'Up to 500 characters.',
     submit: 'Send rating',
     thanks: 'Thank you for your feedback',
+    thanksEnhance: 'Thank you for your feedback, we work our best to enhance our service',
     count: '{n} verified reviews',
     countOne: '1 verified review',
     adminIntro: 'Reviews appear on consultant profiles straight away. Hide any that are abusive, fake or share private details. Hidden reviews are kept and can be shown again.',

@@ -51,9 +51,7 @@ export function ReviewCard({ b }: { b: Booking }) {
   if (existing) {
     return (
       <section aria-labelledby="review-done" className="rounded-2xl bg-white p-4 ring-1 ring-line">
-        <h2 id="review-done" className="font-semibold text-ink">{t('review.thanks')}</h2>
-        <div className="mt-2"><Stars value={existing.rating} size={20} label={t('review.starsLabel', { n: existing.rating })} /></div>
-        {existing.comment && <p className="mt-2 text-sm text-slate">{existing.comment}</p>}
+        <h2 id="review-done" className="font-semibold text-ink">{t('review.thanksEnhance')}</h2>
       </section>
     )
   }
