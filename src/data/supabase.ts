@@ -230,6 +230,10 @@ export function createSupabaseRepo(clients: BackendClients): BookingRepo {
       const rows = await allRows(staff.from('booking_assessments').select('booking_id,program,answers').order('booking_id'))
       return Object.fromEntries(rows.map(r => [r.booking_id, { program: r.program, answers: r.answers ?? {} }])) as Record<string, StoredAssessment>
     },
+    async myAssessment(token) {
+      const r = await result<Row | null>(customer.rpc('get_my_assessment', { p_manage_token: token }))
+      return r ? { program: r.program, answers: r.answers ?? {} } as StoredAssessment : null
+    },
     async staffSaveAssessment(bookingId, a) {
       await requireStaff()
       await result(staff.rpc('staff_save_assessment', { p_booking_id: bookingId, p_program: a.program, p_answers: a.answers }))

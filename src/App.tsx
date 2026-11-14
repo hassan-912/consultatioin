@@ -15,6 +15,7 @@ const ProfilePage = lazy(() => import('./features/profile/ProfilePage').then(m =
 const BookingWizard = lazy(() => import('./features/booking/BookingWizard').then(m => ({ default: m.BookingWizard })))
 const TicketPage = lazy(() => import('./features/ticket/TicketPage').then(m => ({ default: m.TicketPage })))
 const BookingPage = lazy(() => import('./features/ticket/BookingPage').then(m => ({ default: m.BookingPage })))
+const AssessmentPage = lazy(() => import('./features/ticket/AssessmentPage').then(m => ({ default: m.AssessmentPage })))
 const FindBookingPage = lazy(() => import('./features/ticket/FindBookingPage').then(m => ({ default: m.FindBookingPage })))
 const MeetPage = lazy(() => import('./features/ticket/MeetPage').then(m => ({ default: m.MeetPage })))
 const StaffApp = lazy(() => import('./features/staff/StaffApp').then(m => ({ default: m.StaffApp })))
@@ -61,6 +62,7 @@ export default function App() {
         <Route path="/book/:id" element={<BookingWizard />} />
         <Route path="/ticket/:token" element={<TicketPage />} />
         <Route path="/booking/:token" element={<BookingPage />} />
+        <Route path="/booking/:token/assessment" element={<AssessmentPage />} />
         <Route path="/find" element={<FindBookingPage />} />
         <Route path="/pay/return" element={<PayReturnPage />} />
         {!isLive && <Route path="/pay/demo" element={<DemoPayPage />} />}

@@ -145,6 +145,7 @@ export function createLocalRepo(): BookingRepo {
       if (!['reserved', 'on-hold'].includes(b.status)) throw new RepoError('INVALID_TRANSITION')
       useAppStore.setState(s => ({ assessments: { ...s.assessments, [b.id]: a } }))
     },
+    async myAssessment(token) { return get().assessments[mustFind(token).id] ?? null },
     async staffSaveAssessment(bookingId, a) {
       const session = get().staffSession
       const b = get().bookings[bookingId]

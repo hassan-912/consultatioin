@@ -83,6 +83,8 @@ export interface BookingRepo {
   saveAssessment(manageToken: string, assessment: StoredAssessment): Promise<void>
   /** Admin and the booking's consultant: answers keyed by booking id. */
   staffAssessments(): Promise<Record<string, StoredAssessment>>
+  /** Customer: their own assessment (filled in by the consultant), or null. */
+  myAssessment(manageToken: string): Promise<StoredAssessment | null>
   /** The booking's own consultant (or an admin) fills in or updates the client's assessment. */
   staffSaveAssessment(bookingId: string, assessment: StoredAssessment): Promise<void>
   /** Sales: the caller's personal referral code (created on first use). */

@@ -144,6 +144,10 @@ export const en = {
     languages: 'Languages pending',
     qualifications: 'Qualifications pending',
   },
+  clientAssessment: {
+    title: 'Your assessment', back: 'Back to your booking', none: 'Your consultant has not filled in your assessment yet.',
+    ready: 'Your consultant has prepared your file assessment.', open: 'Open your assessment', pdf: 'Save as PDF',
+  },
   booking: {
     title: 'Book a consultation',
     with: 'with {name}',

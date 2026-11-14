@@ -146,6 +146,10 @@ export const ar: Dict = {
     languages: 'اللغات قيد الإعداد',
     qualifications: 'المؤهلات قيد الإعداد',
   },
+  clientAssessment: {
+    title: 'تقييمك', back: 'العودة إلى حجزك', none: 'لم يملأ مستشارك تقييمك بعد.',
+    ready: 'جهّز مستشارك تقييم ملفك.', open: 'افتح تقييمك', pdf: 'احفظه PDF',
+  },
   booking: {
     title: 'احجز استشارة',
     with: 'مع {name}',
