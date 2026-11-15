@@ -28,7 +28,7 @@ export interface ReadinessRules {
 }
 
 export const defaultReadinessRules: ReadinessRules = {
-  tourismMinScore: 60, tourismNoBank: true, tourismLowBank: true, tourismOverstay: true,
+  tourismMinScore: 40, tourismNoBank: true, tourismLowBank: true, tourismOverstay: true,
   australiaMinPoints: 65, canadaMinCrs: 380, jobSeekerFunds: true, jobSeekerMaxIssues: 2,
 }
 

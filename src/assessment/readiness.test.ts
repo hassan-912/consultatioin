@@ -14,7 +14,7 @@ test('a strong tourism file is ready', () => {
 test('tourism: a weak file, a small Egyptian account or no account is not ready, with the reason in both languages', () => {
   const weak = readinessOf({ program: 'tourism', answers: { ...strongTourism, hrLetter: 'no', travel: 'trav_opt_5', asset: 'asset_opt_5' } }, rules, null)
   expect(weak.ready).toBe(false)
-  expect(weak.reasons[0].en).toMatch(/^File strength \d+\/100, below 60$/)
+  expect(weak.reasons[0].en).toMatch(/^File strength \d+\/100, below 40$/)
   expect(weak.reasons[0].ar).toMatch(/قوة الملف/)
 
   const low = readinessOf({ program: 'tourism', answers: { ...strongTourism, bank: 'bank_opt_5' } }, rules, null)
@@ -49,4 +49,14 @@ test('saved rules fall back to the recommended ones when missing or out of range
   expect(mergeRules(null)).toEqual(rules)
   expect(mergeRules({ tourismMinScore: 55, canadaMinCrs: -3, tourismNoBank: 'no', jobSeekerFunds: false, extra: 1 }))
     .toEqual({ ...rules, tourismMinScore: 55, jobSeekerFunds: false })
+})
+
+test('tourism: a file strength of 40 or more is enough to book; 39 is not', () => {
+  const at40 = readinessOf({ program: 'tourism', answers: { ...strongTourism, hrLetter: 'no', asset: 'asset_opt_5', age_bracket: 'age_opt_1' } }, rules, null)
+  expect(at40.score).toBe(40)
+  expect(at40.ready).toBe(true)
+  const at39 = readinessOf({ program: 'tourism', answers: { ...strongTourism, hrLetter: 'no', asset: 'asset_opt_5', marital: 'mar_opt_2' } }, rules, null)
+  expect(at39.score).toBe(39)
+  expect(at39.ready).toBe(false)
+  expect(at39.reasons.map(r => r.en)).toContain('File strength 39/100, below 40')
 })

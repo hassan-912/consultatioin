@@ -65,7 +65,7 @@ test('the admin sees the list and edits the rules', async () => {
   await screen.findByRole('listitem', { name: 'Karim Adel' })
   fireEvent.click(screen.getByText(/rules: who is not ready/i))
   const min = await screen.findByLabelText(/minimum file strength/i)
-  expect(min).toHaveValue(60)
+  expect(min).toHaveValue(40)
   fireEvent.change(min, { target: { value: '55' } })
   fireEvent.click(screen.getByLabelText(/egyptian account under 250,000/i))
   fireEvent.click(screen.getByRole('button', { name: /save rules/i }))
