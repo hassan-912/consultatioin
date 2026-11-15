@@ -81,3 +81,13 @@ describe('introduction videos', () => {
     }
   })
 })
+test('Mohamed Esmail is a board member, worded like Ahmed Salama', async () => {
+  const { bios } = await import('./bios')
+  expect(bios['mohamed-esmail'].ar).toMatch(/^أنا محمد إسماعيل، استشاري في شركة MG Immigration – فرع مدينة نصر، وعضو مجلس إدارة بالشركة\.\n\nبقالي 3 سنين/)
+  expect(bios['mohamed-esmail'].en).toMatch(/^I'm Mohamed Esmail, a consultant at MG Immigration – Nasr City branch, and a member of the company's board of directors\.\n\nI've been at MG/)
+})
+test('Mohamed Gamal has been at MG for 5 years', async () => {
+  const { bios } = await import('./bios')
+  expect(bios['mohamed-gamal'].ar).toContain('بقالي 5 سنوات في MG، وقدرت خلال مسيرتي أقدم أكتر من 2,395 استشارة')
+  expect(bios['mohamed-gamal'].en).toContain("I've been at MG for 5 years, and over that time I've given more than 2,395 consultations on immigration and travel.")
+})

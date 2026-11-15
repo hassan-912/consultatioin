@@ -19,7 +19,7 @@ I've given more than 1,825 consultations and helped many clients reach their goa
 
 أنا محمد جمال، استشاري هجرة في شركة MG Immigration – فرع مدينة نصر، ومدير التعاقدات.
 
-بقالي 4 سنوات في MG، وقدرت خلال مسيرتي أقدم أكتر من 2,395 استشارة في مجال الهجرة والسفر.
+بقالي 5 سنوات في MG، وقدرت خلال مسيرتي أقدم أكتر من 2,395 استشارة في مجال الهجرة والسفر.
 
 نفسك تبدأ حياة جديدة وتسافر وتحقق حلمك؟ احجز استشارتك معايا، وخلينا ناخد أول خطوة سوا ونحدد الطريق المناسب ليك!
 
@@ -28,7 +28,7 @@ I've given more than 1,825 consultations and helped many clients reach their goa
 
 I'm Mohamed Gamal, an immigration consultant at MG Immigration – Nasr City branch, and Contracts Manager.
 
-I've been at MG for 4 years, and over that time I've given more than 2,395 consultations on immigration and travel.
+I've been at MG for 5 years, and over that time I've given more than 2,395 consultations on immigration and travel.
 
 Want to start a new life, travel and achieve your dream? Book a consultation with me and let's take the first step together and find the right path for you!
 
@@ -63,14 +63,14 @@ I've been at MG for two years, building experience in immigration and travel con
 If you're planning to travel and want to start the right way, book a consultation with me and together we'll set out the right steps to reach your goal.`,
   },
   'mohamed-esmail': {
-    ar: `أنا محمد إسماعيل، استشاري في شركة MG Immigration – فرع مدينة نصر.
+    ar: `أنا محمد إسماعيل، استشاري في شركة MG Immigration – فرع مدينة نصر، وعضو مجلس إدارة بالشركة.
 
 بقالي 3 سنين في MG، بدأت رحلتي من قسم الإجراءات، وبعدها انتقلت لقسم الاستشارات، وده خلاني أكتسب خبرة في مراحل مختلفة من رحلة العميل.
 
 وخلال مسيرتي، قدرت أقدم أكتر من 1,211 استشارة، وأساعد العملاء في التعرف على الفرص المتاحة واختيار المسارات الأقرب لأهدافهم.
 
 احجز استشارتك معايا، وخلينا نرسم مع بعض أول خطوة في طريق تحقيق حلمك!`,
-    en: `I'm Mohamed Esmail, a consultant at MG Immigration – Nasr City branch.
+    en: `I'm Mohamed Esmail, a consultant at MG Immigration – Nasr City branch, and a member of the company's board of directors.
 
 I've been at MG for 3 years. I started in the processing department and then moved to consultations, which gave me experience across the different stages of the client journey.
 
