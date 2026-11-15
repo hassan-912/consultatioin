@@ -71,3 +71,13 @@ test('pending decisions cover spec §9', () => {
   for (const id of ['payment-details', 'dubai-currency', 'policies', 'meeting-platform', 'integrations', 'esmail-spelling'])
     expect(ids).toContain(id)
 })
+describe('introduction videos', () => {
+  test('every consultant but Mohamed Abdelaziz has a video and preview named after them, and the files exist', async () => {
+    const { existsSync } = await import('node:fs')
+    for (const c of consultants) {
+      if (c.id === 'mohamed-abdelaziz') { expect(c.videoUrl).toBeNull(); continue }
+      expect([c.id, c.videoUrl, c.videoPoster]).toEqual([c.id, `/videos/consultants/${c.id}.mp4`, `/videos/consultants/${c.id}.webp`])
+      expect(existsSync(`public${c.videoUrl}`) && existsSync(`public${c.videoPoster}`)).toBe(true)
+    }
+  })
+})

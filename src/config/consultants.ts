@@ -41,6 +41,8 @@ export const consultants: Consultant[] = [
   }),
   make({
     id: 'ahmed-khalil',
+    videoUrl: '/videos/consultants/ahmed-khalil.mp4',
+    videoPoster: '/videos/consultants/ahmed-khalil.webp',
     name: { en: 'Ahmed Khalil', ar: 'أحمد خليل' },
     title: { en: 'Immigration Specialist', ar: 'أخصائي هجرة' },
     branchId: 'nasr-city',
@@ -48,6 +50,8 @@ export const consultants: Consultant[] = [
   }),
   make({
     id: 'mohamed-esmail',
+    videoUrl: '/videos/consultants/mohamed-esmail.mp4',
+    videoPoster: '/videos/consultants/mohamed-esmail.webp',
     name: { en: 'Mohamed Esmail', ar: 'محمد إسماعيل' },
     title: { en: 'Immigration Specialist', ar: 'أخصائي هجرة' },
     branchId: 'nasr-city',
@@ -56,6 +60,8 @@ export const consultants: Consultant[] = [
   }),
   make({
     id: 'ahmed-tarek',
+    videoUrl: '/videos/consultants/ahmed-tarek.mp4',
+    videoPoster: '/videos/consultants/ahmed-tarek.webp',
     name: { en: 'Ahmed Tarek', ar: 'أحمد طارق' },
     title: { en: 'Immigration Specialist', ar: 'أخصائي هجرة' },
     branchId: 'sheikh-zayed',
@@ -63,6 +69,8 @@ export const consultants: Consultant[] = [
   }),
   make({
     id: 'mohamed-salah',
+    videoUrl: '/videos/consultants/mohamed-salah.mp4',
+    videoPoster: '/videos/consultants/mohamed-salah.webp',
     name: { en: 'Mohamed Salah', ar: 'محمد صلاح' },
     title: { en: 'Immigration Specialist', ar: 'أخصائي هجرة' },
     branchId: 'sheikh-zayed',

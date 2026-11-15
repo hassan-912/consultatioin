@@ -58,15 +58,62 @@ test('an already-selected format (single-format consultant) still moves on when 
   expect(await screen.findByText(/choose a time/i)).toBeInTheDocument()
 })
 
-test('details step blocks invalid phone and empty email with messages', () => {
+test('details step blocks a too-short phone number with a message', () => {
   useAppStore.getState().updateDraft({ step: 2, format: 'online', durationMin: 45, slotStartIso: firstSlot('online', 45) })
   renderWizard()
   fireEvent.change(screen.getByLabelText(/full name/i), { target: { value: 'Sara Ali' } })
-  fireEvent.change(screen.getByLabelText(/phone number/i), { target: { value: '01001234567' } })
+  fireEvent.change(screen.getByLabelText(/^phone number/i), { target: { value: '0100' } })
   fireEvent.click(screen.getByRole('button', { name: /review my booking/i }))
-  expect(screen.getByText(/starting with \+ and the country code/i)).toBeInTheDocument()
+  expect(screen.getByText(/enter a valid phone number/i)).toBeInTheDocument()
+  expect(useAppStore.getState().draft.step).toBe(2)
+})
+
+test('email is optional: a booking without one goes on to review', () => {
+  captureReferral({ search: '?ref=ab12cd34', hash: '#/', pathname: '/' }) // sales link: no assessment questions in the way
+  useAppStore.getState().updateDraft({ step: 2, format: 'online', durationMin: 45, slotStartIso: firstSlot('online', 45) })
+  useAppStore.getState().updateDetails({ ...goodDetails, email: '' })
+  renderWizard()
+  expect(screen.getByLabelText(/email/i)).not.toBeRequired()
+  fireEvent.click(screen.getByRole('button', { name: /review my booking/i }))
+  expect(screen.queryByText(/valid email address/i)).toBeNull()
+  expect(useAppStore.getState().draft.step).toBe(3)
+})
+
+test('a typed email must still be valid', () => {
+  useAppStore.getState().updateDraft({ step: 2, format: 'online', durationMin: 45, slotStartIso: firstSlot('online', 45) })
+  useAppStore.getState().updateDetails({ ...goodDetails, email: 'sara@' })
+  renderWizard()
+  fireEvent.click(screen.getByRole('button', { name: /review my booking/i }))
   expect(screen.getByText(/valid email address/i)).toBeInTheDocument()
   expect(useAppStore.getState().draft.step).toBe(2)
+})
+
+test('the phone has a country code list: Egypt is the default and the local leading 0 is dropped', () => {
+  useAppStore.getState().updateDraft({ step: 2, format: 'online', durationMin: 45, slotStartIso: firstSlot('online', 45) })
+  renderWizard()
+  const country = screen.getByLabelText(/country code/i) as HTMLSelectElement
+  expect(country.value).toBe('EG')
+  expect(country.selectedOptions[0].textContent).toMatch(/\+20/)
+  fireEvent.change(screen.getByLabelText(/^phone number/i), { target: { value: '0100 123 4567' } })
+  expect(useAppStore.getState().draft.details.phone).toBe('+201001234567')
+  fireEvent.change(country, { target: { value: 'SA' } })
+  fireEvent.change(screen.getByLabelText(/^phone number/i), { target: { value: '501234567' } })
+  expect(useAppStore.getState().draft.details.phone).toBe('+966501234567')
+})
+
+test('a saved phone number opens with its country selected', () => {
+  useAppStore.getState().updateDraft({ step: 2, format: 'online', durationMin: 45, slotStartIso: firstSlot('online', 45) })
+  useAppStore.getState().updateDetails({ phone: '+971501234567' })
+  renderWizard()
+  expect((screen.getByLabelText(/country code/i) as HTMLSelectElement).value).toBe('AE')
+  expect(screen.getByLabelText(/^phone number/i)).toHaveValue('501234567')
+})
+
+test('there is no "send my confirmation by" choice; confirmations go by WhatsApp', () => {
+  useAppStore.getState().updateDraft({ step: 2, format: 'online', durationMin: 45, slotStartIso: firstSlot('online', 45) })
+  renderWizard()
+  expect(screen.queryByText(/send my confirmation by/i)).toBeNull()
+  expect(useAppStore.getState().draft.details.channel).toBe('whatsapp')
 })
 
 test('review shows price and duration before payment', () => {

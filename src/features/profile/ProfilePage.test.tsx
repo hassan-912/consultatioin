@@ -16,8 +16,8 @@ beforeEach(() => {
 })
 
 test('bio from the brief; placeholders for missing video and feedback', async () => {
-  open('ahmed-khalil')
-  expect(screen.getByText(/I'm Ahmed Khalil, a consultant at MG Immigration/)).toBeInTheDocument()
+  open('mohamed-abdelaziz') // the one consultant still without a video
+  expect(screen.getByText(/I'm Mohamed Abdelaziz, a consultant at MG Immigration/)).toBeInTheDocument()
   expect(screen.queryByText('Biography under processing')).toBeNull()
   expect(screen.getAllByText('Video pending').length).toBeGreaterThan(0)
   expect(await screen.findByText('No verified feedback yet')).toBeInTheDocument()

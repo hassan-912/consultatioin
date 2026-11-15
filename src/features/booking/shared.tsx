@@ -15,7 +15,7 @@ export function validateDetails(d: CustomerDetails): DetailErrors {
   const e: DetailErrors = {}
   if (d.name.trim().length < 3) e.name = 'validation.name'
   if (!validatePhone(d.phone)) e.phone = 'validation.phone'
-  if (!validateEmail(d.email)) e.email = 'validation.email'
+  if (d.email.trim() && !validateEmail(d.email)) e.email = 'validation.email'
   if (!d.program) e.program = 'validation.program'
   if (d.note.length > 300) e.note = 'validation.note'
   return e
