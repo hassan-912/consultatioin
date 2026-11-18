@@ -17,6 +17,8 @@ const dubaiWeek: ScheduleRules['weekly'] = {
   0: [], 1: hours(), 2: hours(), 3: hours(), 4: hours(), 5: hours(), 6: [],
 }
 
+const allDay = Object.fromEntries([0, 1, 2, 3, 4, 5, 6].map(d => [d, day(0, h(24))])) as ScheduleRules['weekly']
+
 const BOTH: Format[] = ['online', 'in-person']
 const lunch = [{ start: h(13), end: h(13, 30) }]
 
@@ -34,6 +36,7 @@ export function buildScheduleRules(): ScheduleRules[] {
     rule('ahmed-tarek', egyptWeek(), { holidays: [companyHoliday], leave: [{ from: rel(2), to: rel(4) }] }),
     rule('mohamed-salah', egyptWeek(true), { holidays: [companyHoliday], formats: ['in-person'] }),
     rule('mohamed-abdelaziz', dubaiWeek),
-    rule('test-ek-q7m4x9', egyptWeek(), { holidays: [companyHoliday], formats: ['online'] }),
+    // The payment test is open around the clock, every day (migration 0052).
+    rule('test-ek-q7m4x9', allDay, { breaks: [], formats: ['online'], maxPerDay: undefined }),
   ]
 }

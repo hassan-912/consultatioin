@@ -128,11 +128,11 @@ function Manage({ b }: { b: Booking }) {
           )}
 
           <div className="grid gap-2 sm:grid-cols-2">
-            {b.status === 'confirmed' && b.format === 'online' && b.meetingUrl && (
-              <a href={b.meetingUrl} className="col-span-full inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-ok px-6 text-base font-semibold text-white hover:brightness-110">
+            {(b.status === 'confirmed' || b.status === 'checked-in') && b.format === 'online' && (
+              <Link to={`/booking/${b.manageToken}/room`} className="col-span-full inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-ok px-6 text-base font-semibold text-white hover:brightness-110">
                 <Icon name="video" size={20} />
                 {t('ticket.join')}
-              </a>
+              </Link>
             )}
             {saver && (
               <Button variant="primary" size="lg" onClick={download} disabled={downloading}>

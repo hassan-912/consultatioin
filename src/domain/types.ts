@@ -196,4 +196,22 @@ export interface AuditEntry {
   to?: string
   /** Free-text reason, e.g. why reception changed the consultant. */
   note?: string
+  /** The staff member's name, when a signed-in person did it. */
+  actorName?: string
+}
+
+/** The online consultation room, as the client or consultant sees it right now. */
+export type VideoRoom =
+  | { state: 'ready'; url: string; token: string }
+  | { state: 'early'; opensAt: number }
+  | { state: 'ended' | 'unavailable' | 'not-online' }
+  /** Prototype: everything checks out, but there is no video service behind it. */
+  | { state: 'demo' }
+
+/** What the admin changed over a consultant's built-in profile. */
+export interface ConsultantProfile {
+  bio: L10n | null
+  photo: string | null
+  videoUrl: string | null
+  videoPoster: string | null
 }

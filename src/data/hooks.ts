@@ -110,3 +110,16 @@ export function useSlots(id: string, date: string, format: Format, duration: num
   void bookings; void overrides
   return isLive ? state : { slots: slotsFor(id, date, format, duration, excludeId), loading: false, error: null }
 }
+
+/** Live: the admin's profile edits (bio, photo, video) laid over the built-in consultants. Demo keeps them in the store already. */
+export async function loadConsultantProfiles() {
+  if (!isLive) return
+  const profiles = await repo.consultantProfiles()
+  // Live overrides come only from here, so replace them: a profile set back to the original drops out.
+  useAppStore.setState({ consultantOverrides: Object.fromEntries(Object.entries(profiles).map(([id, p]) => {
+    // A bio saved in one language only: the empty language falls back to the built-in text.
+    const base = consultants.find(c => c.id === id)?.bio
+    const bio = p.bio ? { en: p.bio.en || base?.en || '', ar: p.bio.ar || base?.ar || '' } : p.bio
+    return [id, { ...p, ...(p.bio ? { bio } : {}), videoPoster: p.videoPoster ?? undefined }]
+  })) })
+}

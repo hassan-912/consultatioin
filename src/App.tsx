@@ -9,6 +9,7 @@ import { isLive, uiStorageKey } from './data/mode'
 import { configurationError } from './data'
 import { ActionFeedback, DataStatus } from './data/feedback'
 import { RepoError } from './data/types'
+import { loadConsultantProfiles } from './data/hooks'
 
 // Only the directory loads up front; every other screen (the whole staff app above all) downloads when opened.
 const ProfilePage = lazy(() => import('./features/profile/ProfilePage').then(m => ({ default: m.ProfilePage })))
@@ -22,6 +23,7 @@ const StaffApp = lazy(() => import('./features/staff/StaffApp').then(m => ({ def
 const DemoPanel = lazy(() => import('./features/demo/DemoPanel').then(m => ({ default: m.DemoPanel })))
 const PayReturnPage = lazy(() => import('./features/booking/PayReturnPage').then(m => ({ default: m.PayReturnPage })))
 const DemoPayPage = lazy(() => import('./features/booking/DemoPayPage').then(m => ({ default: m.DemoPayPage })))
+const ClientRoomPage = lazy(() => import('./features/room/ClientRoomPage').then(m => ({ default: m.ClientRoomPage })))
 const TeamPage = lazy(() => import('./features/team/TeamPage').then(m => ({ default: m.TeamPage })))
 
 export default function App() {
@@ -47,6 +49,8 @@ export default function App() {
     const id = setInterval(expireDue, 5000)
     return () => clearInterval(id)
   }, [])
+  // Profiles the admin edited; on failure the built-in ones still show.
+  useEffect(() => { void loadConsultantProfiles().catch(() => undefined) }, [])
   useEffect(() => {
     window.scrollTo({ top: 0 })
   }, [pathname])
@@ -63,6 +67,7 @@ export default function App() {
         <Route path="/ticket/:token" element={<TicketPage />} />
         <Route path="/booking/:token" element={<BookingPage />} />
         <Route path="/booking/:token/assessment" element={<AssessmentPage />} />
+        <Route path="/booking/:token/room" element={<ClientRoomPage />} />
         <Route path="/find" element={<FindBookingPage />} />
         <Route path="/pay/return" element={<PayReturnPage />} />
         {!isLive && <Route path="/pay/demo" element={<DemoPayPage />} />}

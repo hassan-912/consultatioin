@@ -63,7 +63,7 @@ test('a booking made through a sales link carries the sales name; that sales per
 
   loginSales('karim.sales')
   const other = at('/staff/my-clients')
-  expect(screen.getByText(/no bookings through your link/i)).toBeInTheDocument()
+  expect(screen.getByText(/no paid clients through your link/i)).toBeInTheDocument()
   other.unmount()
 
   loginAs('reception')
@@ -117,4 +117,56 @@ test('reception can change the consultant after a scan (first option) or keep th
   expect([moved.consultantId, moved.swappedFrom, moved.swapReason]).toEqual(['ahmed-khalil', 'mohamed-gamal', 'The consultant isn’t free at this time'])
   expect(useAppStore.getState().audit[0]).toMatchObject({ action: 'consultant-changed', note: 'The consultant isn’t free at this time' })
   expect(screen.getByText(/moved from mohamed gamal:/i)).toBeInTheDocument()
+}, 20000)
+
+const paidTest = (id: string, status: Booking['status'], salesCode?: string): Booking => ({
+  id, reference: `MG-PAID-${id.toUpperCase()}`, qrToken: id.padEnd(32, '0'), manageToken: `m${id}`.padEnd(32, '0'),
+  consultantId: ID, branchId: 'nasr-city', format: 'in-person', durationMin: 45,
+  startIso: '2026-12-01T10:00:00.000Z', endIso: '2026-12-01T10:45:00.000Z', tz: 'Africa/Cairo', price: { amount: 1000, currency: 'EGP' },
+  customer: { name: `Client ${id}`, phone: '+201001234567', email: '', channel: 'whatsapp', consultationLang: 'en', program: 'tourism', note: '' },
+  status, holdExpiresAt: 0, createdAt: Date.now(), salesCode, salesName: salesCode ? 'Someone' : undefined,
+})
+
+test('a sales person sees only their own clients who have paid', async () => {
+  const mona = localReferralCode('mona.sales')
+  useAppStore.setState({ bookings: {
+    a: paidTest('a', 'confirmed', mona), b: paidTest('b', 'on-hold', mona), c: paidTest('c', 'confirmed', localReferralCode('karim.sales')), d: paidTest('d', 'completed'),
+  } })
+  loginSales('mona.sales')
+  at('/staff/my-clients')
+  expect(await screen.findByText('MG-PAID-A')).toBeInTheDocument()
+  for (const ref of ['MG-PAID-B', 'MG-PAID-C', 'MG-PAID-D']) expect(screen.queryByText(ref)).toBeNull()
+}, 20000)
+
+test('the sales manager sees every paid client, from any sales person or none, and no unpaid ones', async () => {
+  useAppStore.setState({ bookings: {
+    a: paidTest('a', 'confirmed', localReferralCode('mona.sales')), b: paidTest('b', 'on-hold'), c: paidTest('c', 'checked-in'), d: paidTest('d', 'cancelled'),
+  } })
+  useAppStore.setState({ role: 'sales', staffSession: { username: 'shady', role: 'sales', consultantId: null, salesManager: true } })
+  at('/staff/my-clients')
+  expect(await screen.findByText('MG-PAID-A')).toBeInTheDocument()
+  expect(screen.getByText('MG-PAID-C')).toBeInTheDocument()
+  expect(screen.queryByText('MG-PAID-B')).toBeNull()
+  expect(screen.queryByText('MG-PAID-D')).toBeNull()
+}, 20000)
+
+test('the sales manager gets a pop-up when a client pays, but not for clients already paid at sign-in', async () => {
+  useAppStore.setState({ bookings: { old: paidTest('old', 'confirmed'), wait: paidTest('wait', 'on-hold') } })
+  useAppStore.setState({ role: 'sales', staffSession: { username: 'shady', role: 'sales', consultantId: null, salesManager: true } })
+  at('/staff/my-clients')
+  await screen.findByText('MG-PAID-OLD')
+  expect(screen.queryByText('New paid client')).toBeNull()
+  act(() => useAppStore.setState(s => ({ bookings: { ...s.bookings, wait: { ...s.bookings.wait, status: 'confirmed' } } })))
+  expect(await screen.findByText('Client wait paid (MG-PAID-WAIT)')).toBeInTheDocument()
+}, 20000)
+
+test('an ordinary sales person gets no paid-client pop-up', async () => {
+  const mona = localReferralCode('mona.sales')
+  useAppStore.setState({ bookings: { wait: paidTest('wait', 'on-hold', mona) } })
+  loginSales('mona.sales')
+  at('/staff/my-clients')
+  await screen.findByText(/no paid clients through your link/i)
+  act(() => useAppStore.setState(s => ({ bookings: { ...s.bookings, wait: { ...s.bookings.wait, status: 'confirmed' } } })))
+  await screen.findByText('MG-PAID-WAIT')
+  expect(screen.queryByText('New paid client')).toBeNull()
 }, 20000)

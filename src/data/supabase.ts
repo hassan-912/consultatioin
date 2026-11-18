@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { BackendClients } from '../lib/supabase'
-import type { Booking, CustomerDetails, Format, AuditEntry, PendingDecision, Review, StaffReview, ConsultantReview } from '../domain/types'
+import type { Booking, CustomerDetails, Format, AuditEntry, ConsultantProfile, VideoRoom, PendingDecision, Review, StaffReview, ConsultantReview } from '../domain/types'
 import type { ScheduleRules } from '../domain/availability'
 import { dateInZone, addDays } from '../domain/time'
 import { consultationMinutes } from '../config/booking'
@@ -385,11 +385,75 @@ export function createSupabaseRepo(clients: BackendClients): BookingRepo {
     },
     async staffAudit() {
       await requireStaff()
-      const rows = await result<Row[]>(staff.from('audit_log').select('at,actor_kind,booking_id,action,from_value,to_value,note').order('at', { ascending: false }).limit(500))
+      const rows = await result<Row[]>(staff.from('audit_log').select('at,actor_user,actor_kind,booking_id,action,from_value,to_value,note').order('at', { ascending: false }).limit(500))
       const ids = [...new Set(rows.map(r => r.booking_id).filter(Boolean))]
       const refs = ids.length ? await result<Row[]>(staff.from('bookings').select('id,reference').in('id', ids)) : []
       const byId = new Map(refs.map(r => [r.id, r.reference]))
-      return rows.map(r => ({ at: ms(r.at)!, actor: r.actor_kind, bookingRef: byId.get(r.booking_id), action: r.action, from: r.from_value ?? undefined, to: r.to_value ?? undefined, note: r.note ?? undefined })) as AuditEntry[]
+      // Who did it: the staff member's display name (admins may read every profile).
+      const users = [...new Set(rows.map(r => r.actor_user).filter(Boolean))]
+      const people = users.length ? await result<Row[]>(staff.from('staff_profiles').select('user_id,display_name').in('user_id', users)) : []
+      const names = new Map(people.map(p => [p.user_id, String(p.display_name ?? '').trim()]))
+      return rows.map(r => ({
+        at: ms(r.at)!, actor: r.actor_kind, actorName: names.get(r.actor_user) || undefined, bookingRef: byId.get(r.booking_id),
+        action: r.action, from: r.from_value ?? undefined, to: r.to_value ?? undefined, note: r.note ?? undefined,
+      })) as AuditEntry[]
+    },
+    async videoRoom(who) {
+      const headers: Record<string, string> = { apikey: clients.key, 'Content-Type': 'application/json' }
+      if ('bookingId' in who) {
+        const session = await result(staff.auth.getSession())
+        if (!session.session) throw new RepoError('FORBIDDEN')
+        headers.authorization = `Bearer ${session.session.access_token}`
+      }
+      let response: Response
+      try {
+        const send = clients.fetch // detached on purpose: a native fetch throws if called as a method
+        response = await send(`${clients.url}/functions/v1/video-room`, {
+          method: 'POST', headers, body: JSON.stringify('bookingId' in who ? { booking_id: who.bookingId } : { manage_token: who.manageToken }),
+        })
+      } catch (e) { throw new RepoError('NETWORK', { cause: e }) }
+      const data = await response.json().catch(() => ({}))
+      if (response.status === 404) throw new RepoError('NOT_FOUND')
+      if (response.status === 401) throw new RepoError('FORBIDDEN')
+      if (response.status === 400) throw new RepoError('INVALID_INPUT')
+      if (!response.ok) throw new RepoError('VIDEO_UNAVAILABLE')
+      if (data.state === 'early') return { state: 'early', opensAt: Date.parse(data.opens_at) }
+      if (data.state === 'ready') return { state: 'ready', url: data.url, token: data.token }
+      return { state: data.state } as VideoRoom
+    },
+    async adminDeleteBooking(id) {
+      await requireStaff()
+      await result(staff.rpc('admin_delete_booking', { p_booking_id: id }))
+      changed()
+    },
+    async consultantProfiles() {
+      const rows = await result<Row[]>(customer.rpc('public_consultant_profiles'))
+      return Object.fromEntries(rows.map(r => {
+        const p: Partial<ConsultantProfile> = {}
+        // A bio edited in one language only keeps the other language's built-in text (filled in by the caller)
+        if (r.bio_en || r.bio_ar) p.bio = { en: r.bio_en ?? '', ar: r.bio_ar ?? '' }
+        if (r.photo_url) p.photo = r.photo_url
+        // A new video replaces the built-in poster too, or the old still would show before it plays.
+        if (r.video_url) { p.videoUrl = r.video_url; p.videoPoster = r.video_poster ?? null }
+        return [r.consultant_id, p]
+      }))
+    },
+    async saveConsultantProfile(id, p) {
+      await requireStaff()
+      await result(staff.rpc('admin_save_consultant_profile', {
+        p_consultant_id: id, p_bio_en: p.bio?.en ?? null, p_bio_ar: p.bio?.ar ?? null,
+        p_photo_url: p.photo, p_video_url: p.videoUrl, p_video_poster: p.videoPoster,
+      }))
+    },
+    async uploadConsultantMedia(id, file) {
+      await requireStaff()
+      const ext = (file.name.split('.').pop() ?? '').toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 5) || 'bin'
+      // A fresh name per upload: no overwrite, and browsers never show a cached old file.
+      const path = `${id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
+      // Some systems report no type for .mov or .webm; the bucket only accepts known types, so name it from the extension.
+      const types: Record<string, string> = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', mp4: 'video/mp4', webm: 'video/webm', mov: 'video/quicktime' }
+      await result(staff.storage.from('consultant-media').upload(path, file, { upsert: false, contentType: file.type || types[ext] || 'application/octet-stream' }))
+      return staff.storage.from('consultant-media').getPublicUrl(path).data.publicUrl
     },
     async staffSchedules() {
       await requireStaff()

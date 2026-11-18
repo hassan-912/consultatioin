@@ -3,7 +3,7 @@ import type { IconName } from '../../components/Icon'
 
 export type StaffScreen =
   | 'overview' | 'salesLink' | 'myClients' | 'payments' | 'nextSteps' | 'checkin' | 'arrivals' | 'customers' | 'myCalendar' | 'myBookings' | 'history' | 'records'
-  | 'consultants' | 'freeSlots' | 'messages' | 'bookings' | 'paymentSettings' | 'kpi' | 'reviews' | 'myReviews' | 'audit' | 'decisions' | 'staffAccounts' | 'notReady'
+  | 'consultants' | 'freeSlots' | 'messages' | 'bookings' | 'paymentSettings' | 'reviews' | 'myReviews' | 'audit' | 'decisions' | 'staffAccounts' | 'notReady'
 
 export const screens: { id: StaffScreen; path: string; icon: IconName }[] = [
   { id: 'overview', path: '', icon: 'layers' },
@@ -25,7 +25,6 @@ export const screens: { id: StaffScreen; path: string; icon: IconName }[] = [
   { id: 'freeSlots', path: 'available-times', icon: 'clock' },
   { id: 'paymentSettings', path: 'payment-settings', icon: 'settings' },
   { id: 'messages', path: 'messages', icon: 'chat' },
-  { id: 'kpi', path: 'kpi', icon: 'sparkle' },
   { id: 'reviews', path: 'reviews', icon: 'star' },
   { id: 'audit', path: 'audit', icon: 'history' },
   { id: 'decisions', path: 'decisions', icon: 'alert' },

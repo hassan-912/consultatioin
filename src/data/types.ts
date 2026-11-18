@@ -7,7 +7,7 @@ import type { MessageTemplateKey, MessageTemplates } from '../config/messageTemp
 import type { AssessedProgram, Answers, StoredAssessment } from '../assessment/questions'
 import type { ReadinessRules } from '../assessment/readiness'
 import type { L10n } from '../domain/types'
-import type { AuditEntry } from '../domain/types'
+import type { AuditEntry, ConsultantProfile, VideoRoom } from '../domain/types'
 
 // Same class the store actions throw, so existing `instanceof` checks keep working.
 export { SlotTaken } from '../store/actions'
@@ -165,6 +165,16 @@ export interface BookingRepo {
   freeSlots(fromDate: string, days: number): Promise<FreeSlot[]>
   saveRecord(bookingId: string, record: ConsultationRecord): Promise<void>
   staffAudit(): Promise<AuditEntry[]>
+  /** The video room for an online booking: the client by their manage link, the consultant or admin by booking id. */
+  videoRoom(who: { manageToken: string } | { bookingId: string }): Promise<VideoRoom>
+  /** Admin: delete a booking and everything attached to it. Cannot be undone. */
+  adminDeleteBooking(bookingId: string): Promise<void>
+  /** Everyone: the admin's edits to consultant profiles, by consultant id. */
+  consultantProfiles(): Promise<Record<string, Partial<ConsultantProfile>>>
+  /** Admin: save a consultant's bio, photo and video. */
+  saveConsultantProfile(consultantId: string, profile: ConsultantProfile): Promise<void>
+  /** Admin: upload a photo or video for a consultant; returns its public address. */
+  uploadConsultantMedia(consultantId: string, file: File): Promise<string>
   staffSchedules(): Promise<Record<string, ScheduleRules>>
   saveSchedule(consultantId: string, patch: Partial<ScheduleRules>): Promise<void>
   subscribe(onChange: () => void): () => void

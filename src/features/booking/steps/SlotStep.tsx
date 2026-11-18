@@ -46,7 +46,8 @@ export function SlotStep({ consultantId, branch, format, durationMin, slotStartI
           {t('booking.timesShownIn', { zone: zoneLabel(branch.timeZone, lang) })}
         </p>
         {loading || loadError ? <DataStatus loading={loading} error={loadError} /> : slots.length ? (
-          <div role="radiogroup" aria-label={t('common.availableAppointments')} className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-5">
+          <div role="radiogroup" aria-label={t('common.availableAppointments')} className={`grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-5 ${slots.length > 30 ? 'max-h-[26rem] overflow-y-auto p-1' : ''}`}>
+            {/* The payment test offers a time every 5 minutes: a long list scrolls inside its own box. */}
             {slots.map(s => {
               const active = s.startIso === slotStartIso
               return (

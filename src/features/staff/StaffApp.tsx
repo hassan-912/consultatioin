@@ -1,8 +1,9 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { Link, NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { useT } from '../../i18n'
 import { useAppStore } from '../../store/useAppStore'
 import { Logo } from '../../components/Logo'
+import { HomeLink } from '../../components/HomeLink'
 import { LangSwitch } from '../../components/LangSwitch'
 import { BottomSheet } from '../../components/widgets'
 import { Icon } from '../../components/Icon'
@@ -22,6 +23,7 @@ import { Arrivals } from './reception/Arrivals'
 import { CustomerSheet } from './reception/CustomerSheet'
 import { MyCalendar, MyBookings, Records } from './consultant/ConsultantDesk'
 import { ClientFile } from './consultant/ClientFile'
+import { StaffRoom } from '../room/StaffRoom'
 import { ConsultantsAdmin } from './admin/ConsultantsAdmin'
 import { AvailableTimesAdmin } from './admin/FreeSlotsAdmin'
 import { MessagesAdmin } from './admin/MessagesAdmin'
@@ -29,12 +31,13 @@ import { NextStepsFinance } from './finance/NextStepsFinance'
 import { NotReady } from './sales/NotReady'
 import { History } from './consultant/History'
 import { BookingsAdmin } from './admin/BookingsAdmin'
-import { PaymentsAdmin, KpiAdmin } from './admin/SettingsAdmin'
+import { PaymentsAdmin } from './admin/SettingsAdmin'
 import { AuditLog } from './admin/AuditLog'
 import { ReviewsAdmin } from './admin/ReviewsAdmin'
 import { PendingDecisions } from './admin/PendingDecisions'
 import { StaffAccounts } from './admin/StaffAccounts'
 import { SalesLink, MyClients } from './sales/Sales'
+import { SalesPaidNotice } from './sales/salesAlerts'
 import { useStaffHydration, staffSessionKey } from '../../data/hooks'
 import { useLiveData } from '../../data/liveState'
 import { isLive } from '../../data/mode'
@@ -59,7 +62,6 @@ const views: Record<StaffScreen, () => ReactNode> = {
   freeSlots: () => <AvailableTimesAdmin />,
   paymentSettings: () => <PaymentsAdmin />,
   messages: () => <MessagesAdmin />,
-  kpi: () => <KpiAdmin />,
   reviews: () => <ReviewsAdmin />,
   myReviews: () => <MyReviews />,
   audit: () => <AuditLog />,
@@ -142,7 +144,7 @@ export function StaffApp() {
   return (
     <div className="min-h-dvh bg-paper lg:grid lg:grid-cols-[260px_minmax(0,1fr)]">
       <aside className="sticky top-0 hidden h-dvh flex-col gap-6 overflow-y-auto bg-slate-deep p-5 lg:flex">
-        <Link to="/" aria-label={t('nav.home')}><Logo className="h-9" /></Link>
+        <HomeLink><Logo className="h-9" /></HomeLink>
         <SessionCard />
         <Nav />
       </aside>
@@ -165,6 +167,7 @@ export function StaffApp() {
           <ConnectionIndicator />
           <NewPaymentNotice />
           <NewReviewNotice />
+          <SalesPaidNotice />
           {isLive && <DataStatus loading={loading || staleSnapshot} error={error} />}
           {(!isLive || (!loading && !error && !staleSnapshot)) &&
           <Routes>
@@ -177,6 +180,8 @@ export function StaffApp() {
             })}
             {/* A client's full file, opened from the consultant's overview cards. */}
             <Route path="client/:id" element={can(role, 'records') ? <ClientFile /> : <Navigate to="/staff" replace />} />
+            {/* The video room for an online booking: its consultant, or an admin. */}
+            <Route path="room/:id" element={role === 'consultant' || role === 'admin' ? <StaffRoom /> : <Navigate to="/staff" replace />} />
             <Route path="*" element={<Navigate to="/staff" replace />} />
           </Routes>
           }

@@ -17,6 +17,7 @@ import { RecordFields } from './ConsultantDesk'
 import { NextStepPanel } from './NextStepPanel'
 import { AssessmentEditor } from './AssessmentEditor'
 import { useRecordDraft } from './recordDraft'
+import { StartCallLink } from '../../room/StaffRoom'
 
 /** One client's full file for the consultant: details, appointment, assessment, notes, and the PDF. Staff only. */
 export function ClientFile() {
@@ -64,6 +65,7 @@ function ClientFileBody({ b, record }: { b: Booking; record?: Parameters<typeof 
           </p>
         </div>
         <AssessmentRing bookingId={b.id} size={84} />
+        <StartCallLink b={b} className="w-full min-h-11 sm:w-auto" />
         <Button disabled={draft.busy} onClick={() => void draft.pdf()} className="w-full sm:w-auto">
           <Icon name="download" size={16} />{t('staff.client.download')}
         </Button>

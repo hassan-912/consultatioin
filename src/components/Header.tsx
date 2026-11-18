@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { Link, NavLink } from 'react-router-dom'
+import { NavLink } from 'react-router-dom'
 import { useT } from '../i18n'
 import { contact } from '../config/contact'
 import { Logo } from './Logo'
+import { HomeLink } from './HomeLink'
 import { LangSwitch } from './LangSwitch'
 import { Icon } from './Icon'
 import { Ltr } from './ui'
@@ -22,9 +23,9 @@ export function Header({ variant = 'solid' }: { variant?: 'solid' | 'overlay' })
         {t('nav.skip')}
       </a>
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-4 sm:h-[72px] sm:px-6">
-        <Link to="/" aria-label={t('nav.home')} className="shrink-0">
+        <HomeLink className="shrink-0">
           <Logo className="h-8 sm:h-10" />
-        </Link>
+        </HomeLink>
         <nav className="hidden items-center gap-1 md:flex" aria-label="Primary">
           {links.map(l => (
             <NavLink

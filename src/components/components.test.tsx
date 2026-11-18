@@ -45,3 +45,22 @@ test('Footer lists the four branches and social links', () => {
     'mailto:Info@mg-visa.com',
   ]))
 })
+
+test('the MG logo goes back to the start and asks for the location again', async () => {
+  const { MemoryRouter, Route, Routes } = await import('react-router-dom')
+  const { HomeLink } = await import('./HomeLink')
+  const { useAppStore } = await import('../store/useAppStore')
+  const { fireEvent, render, screen } = await import('@testing-library/react')
+  useAppStore.getState().setLocation('dubai')
+  render(
+    <MemoryRouter initialEntries={['/team']}>
+      <Routes>
+        <Route path="/team" element={<HomeLink>logo</HomeLink>} />
+        <Route path="/" element={<p>home</p>} />
+      </Routes>
+    </MemoryRouter>,
+  )
+  fireEvent.click(screen.getByRole('link'))
+  expect(screen.getByText('home')).toBeInTheDocument()
+  expect(useAppStore.getState().location).toBeNull()
+})

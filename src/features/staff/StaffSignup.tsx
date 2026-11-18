@@ -4,6 +4,7 @@ import { useT } from '../../i18n'
 import { useAppStore } from '../../store/useAppStore'
 import { chooseStaffUsername, finishOAuthReturn, restoreStaffSession, signInWithGoogle, signOutStaff, signUpWithEmail } from '../../store/liveAuth'
 import { Logo } from '../../components/Logo'
+import { HomeLink } from '../../components/HomeLink'
 import { LangSwitch } from '../../components/LangSwitch'
 import { TextField } from '../../components/fields'
 import { Button, Notice } from '../../components/ui'
@@ -11,12 +12,11 @@ import { Icon } from '../../components/Icon'
 
 /** Dark full-page frame shared by the sign-in, sign-up, pending and return screens. */
 export function AuthFrame({ children }: { children: ReactNode }) {
-  const { t } = useT()
   return (
     <div className="relative flex min-h-dvh flex-col bg-slate-deep px-4 py-6 text-white">
       <div className="grain absolute inset-0" aria-hidden />
       <div className="relative mx-auto flex w-full max-w-md items-center justify-between">
-        <Link to="/" aria-label={t('nav.home')}><Logo className="h-9" /></Link>
+        <HomeLink><Logo className="h-9" /></HomeLink>
         <LangSwitch />
       </div>
       <main id="main" className="relative mx-auto my-auto w-full max-w-md py-10">{children}</main>

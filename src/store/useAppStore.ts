@@ -178,7 +178,8 @@ export const useAppStore = create<AppState>()(
 
       timeOffsetMs: 0,
       now: () => Date.now() + get().timeOffsetMs,
-      addAudit: e => set(s => ({ audit: [{ ...e, at: s.now() }, ...s.audit].slice(0, 500) })),
+      // Only staff actions carry the signed-in person's name; client and automatic ones never do.
+      addAudit: e => set(s => ({ audit: [{ ...(e.actor !== 'customer' && e.actor !== 'system' ? { actorName: s.staffSession?.username } : {}), ...e, at: s.now() }, ...s.audit].slice(0, 500) })),
     }),
     {
       name: uiStorageKey,

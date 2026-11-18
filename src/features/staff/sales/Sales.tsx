@@ -6,6 +6,7 @@ import { useStaffBookings } from '../../../data/hooks'
 import { useAppStore } from '../../../store/useAppStore'
 import { isLive } from '../../../data/mode'
 import { localReferralCode, referralLink } from '../../../data/referral'
+import { isPaid } from '../../../domain/bookingStatus'
 import { CopyField } from '../../../components/CopyField'
 import { Notice } from '../../../components/ui'
 import { Icon } from '../../../components/Icon'
@@ -41,24 +42,30 @@ export function SalesLink() {
   )
 }
 
-/** Sales: bookings made through this person's link, with each client's file assessment. */
+/**
+ * Sales: paid clients (finance verified). A sales person sees the ones who used their link; the sales manager
+ * sees every paid client in the company, with who sold each one.
+ */
 export function MyClients() {
   const { t } = useT()
   const bookings = useStaffBookings()
   const session = useAppStore(s => s.staffSession)
-  // Live: the database only returns this sales person's bookings. Prototype: filter by the local code.
+  const manager = !!session?.salesManager
+  // Live: the database returns only what this account may read. Prototype: filter by the local code.
   const code = !isLive && session ? localReferralCode(session.username) : null
   const mine = Object.values(bookings)
-    .filter(b => isLive ? !!b.salesName : b.salesCode === code)
+    .filter(b => isPaid(b.status))
+    .filter(b => manager || (isLive ? !!b.salesName : b.salesCode === code))
     .sort((a, b) => b.createdAt - a.createdAt)
   return (
     <>
       <ScreenTitle title={t('staff.screens.myClients')} />
+      {manager && <p className="mb-4 text-sm text-slate">{t('sales.allPaidIntro')}</p>}
       {mine.length ? (
         <ul className="grid gap-3">
           {mine.map(b => <li key={b.id} className="rounded-2xl bg-white p-4 ring-1 ring-line"><BookingMeta b={b} /></li>)}
         </ul>
-      ) : <Empty>{t('sales.noClients')}</Empty>}
+      ) : <Empty>{t(manager ? 'sales.noPaidClients' : 'sales.noClients')}</Empty>}
     </>
   )
 }

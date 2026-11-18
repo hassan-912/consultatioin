@@ -18,15 +18,54 @@ beforeEach(() => {
   })
 })
 
-test('admin edits Mohamed Esmail spelling; directory data updates and edit is audited', () => {
+test('admin edits a consultant bio and picks a new photo; the profile changes and the edit is audited with what changed', async () => {
+  const createUrl = vi.fn(() => 'blob:new-photo')
+  Object.assign(URL, { createObjectURL: createUrl })
   loginAs('admin')
   openStaff('/staff/consultants')
-  expect(screen.getByText('Spelling to confirm')).toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: /edit profile.*mohamed esmail/i }))
-  fireEvent.change(screen.getByLabelText('Name (English)'), { target: { value: 'Mohamed Ismail' } })
+  fireEvent.change(screen.getByLabelText('Biography (English)'), { target: { value: 'New English bio' } })
+  const photo = new File(['x'], 'me.webp', { type: 'image/webp' })
+  fireEvent.change(screen.getByLabelText(/choose a new photo/i), { target: { files: [photo] } })
+  await waitFor(() => expect(createUrl).toHaveBeenCalled())
   fireEvent.click(screen.getByRole('button', { name: /^save$/i }))
-  expect(getConsultant('mohamed-esmail').name.en).toBe('Mohamed Ismail')
-  expect(useAppStore.getState().audit[0]).toMatchObject({ actor: 'admin', action: 'edited' })
+  await waitFor(() => expect(getConsultant('mohamed-esmail').bio?.en).toBe('New English bio'))
+  expect(getConsultant('mohamed-esmail').photo).toBe('blob:new-photo')
+  expect(useAppStore.getState().audit[0]).toMatchObject({ actor: 'admin', action: 'consultant-edited', to: 'mohamed-esmail', note: 'bio, photo' })
+})
+
+test('the editor refuses a video over 50 MB', () => {
+  loginAs('admin')
+  openStaff('/staff/consultants')
+  fireEvent.click(screen.getByRole('button', { name: /edit profile.*mohamed esmail/i }))
+  const big = new File(['x'], 'big.mp4', { type: 'video/mp4' })
+  Object.defineProperty(big, 'size', { value: 60 * 1024 * 1024 })
+  fireEvent.change(screen.getByLabelText(/choose a new video/i), { target: { files: [big] } })
+  expect(screen.getByRole('alert')).toHaveTextContent(/larger than 50 mb/i)
+})
+
+test('admin deletes a booking after confirming; it disappears and the audit keeps its reference', async () => {
+  loginAs('admin')
+  openStaff('/staff/bookings')
+  const b = Object.values(useAppStore.getState().bookings)[0]
+  const card = screen.getByRole('article', { name: b.reference })
+  fireEvent.click(within(card).getByRole('button', { name: /^delete$/i }))
+  fireEvent.click(within(card).getByRole('button', { name: /^confirm$/i }))
+  await waitFor(() => expect(useAppStore.getState().bookings[b.id]).toBeUndefined())
+  expect(screen.queryByRole('article', { name: b.reference })).toBeNull()
+  expect(useAppStore.getState().audit[0]).toMatchObject({ action: 'booking-deleted', from: b.status, note: `${b.reference} · ${b.customer.name}` })
+})
+
+test('only the admin gets the delete button', () => {
+  loginAs('reception')
+  openStaff('/staff/bookings')
+  expect(screen.queryByRole('button', { name: /^delete$/i })).toBeNull()
+})
+
+test('KPI settings are gone', () => {
+  loginAs('admin')
+  openStaff('/staff/kpi')
+  expect(screen.queryByRole('link', { name: /kpi settings/i })).toBeNull()
 })
 
 test('consultant marks completed (counts) vs no-show (does not count)', () => {
@@ -81,11 +120,25 @@ test('pending decisions: admin edits, adds and resolves (resolve deletes and aud
   expect(useAppStore.getState().audit[0]).toMatchObject({ actor: 'admin', action: 'decision-resolved', to: 'Google Meet or Zoom?' })
 }, 20000)
 
-test('audit log shows actions', () => {
-  useAppStore.getState().addAudit({ actor: 'finance', action: 'transition', bookingRef: 'MG-AAAA-BBBB', from: 'on-hold', to: 'confirmed' })
+test('audit history: one card per person with what was affected and how it changed', () => {
+  const add = useAppStore.getState().addAudit
+  add({ actor: 'finance', actorName: 'Mona', action: 'transition', bookingRef: 'MG-AAAA-BBBB', from: 'on-hold', to: 'confirmed' })
+  add({ actor: 'finance', actorName: 'Mona', action: 'transition', bookingRef: 'MG-CCCC-DDDD', from: 'on-hold', to: 'rejected' })
+  add({ actor: 'admin', actorName: 'Hassan', action: 'consultant-edited', to: 'ahmed-tarek', note: 'bio, video' })
+  add({ actor: 'customer', action: 'created', bookingRef: 'MG-EEEE-FFFF', to: 'reserved' })
   loginAs('admin')
   openStaff('/staff/audit')
-  expect(screen.getByText('MG-AAAA-BBBB')).toBeInTheDocument()
+  const mona = screen.getByRole('heading', { name: 'Mona' }).closest('article') as HTMLElement
+  expect(within(mona).getByText('2 actions', { exact: false })).toBeInTheDocument()
+  expect(within(mona).getByText('MG-AAAA-BBBB')).toBeInTheDocument()
+  expect(within(mona).getByText(/→ Booking confirmed$/)).toBeInTheDocument()
+  const hassan = screen.getByRole('heading', { name: 'Hassan' }).closest('article') as HTMLElement
+  expect(within(hassan).getByText('Consultant profile edited')).toBeInTheDocument()
+  expect(within(hassan).getByText('Ahmed Tarek')).toBeInTheDocument()
+  expect(within(hassan).getByText('bio, video')).toBeInTheDocument()
+  const client = screen.getByRole('heading', { name: 'Client' }).closest('article') as HTMLElement
+  expect(within(client).getAllByText('MG-EEEE-FFFF').length).toBeGreaterThan(0)
+  expect(screen.getAllByRole('article')).toHaveLength(3)
 })
 
 test('the 5 EGP payment-test consultant is listed for the admin, with a button that opens its booking page', async () => {

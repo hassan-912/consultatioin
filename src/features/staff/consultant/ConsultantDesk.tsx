@@ -18,6 +18,7 @@ import { ScreenTitle } from '../StaffApp'
 import { BookingMeta, Empty, Tabs } from '../common'
 import { AvailabilityBoard } from './AvailabilityBoard'
 import { NextStepPanel } from './NextStepPanel'
+import { StartCallLink } from '../../room/StaffRoom'
 
 function ConsultantPicker() {
   const { t, l } = useT()
@@ -71,7 +72,8 @@ export function MyBookings() {
         {list.length ? list.map(b => (
           <article key={b.id} aria-label={b.reference} className="flex flex-col gap-3 rounded-2xl bg-white p-4 ring-1 ring-line sm:flex-row sm:items-center sm:justify-between">
             <BookingMeta b={b} />
-            <div className="flex shrink-0 gap-2">
+            <div className="flex shrink-0 flex-wrap gap-2">
+              <StartCallLink b={b} />
               {canApply(b, 'complete') && <Button size="sm" onClick={() => repo.staffTransition(b.id, { type: 'complete' }, 'consultant')}>{t('staff.consultant.markCompleted')}</Button>}
               {canApply(b, 'no-show') && (
                 <Button size="sm" variant="ghost" onClick={() => repo.staffTransition(b.id, { type: 'no-show' }, 'consultant')}>{t('staff.consultant.markNoShow')}</Button>

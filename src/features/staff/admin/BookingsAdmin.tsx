@@ -12,6 +12,7 @@ import { SelectField, TextField } from '../../../components/fields'
 import { ScreenTitle } from '../StaffApp'
 import { BookingMeta, Empty } from '../common'
 import { isLive } from '../../../data/mode'
+import { reportActionError } from '../../../data/feedback'
 
 const STATUSES: BookingStatus[] = ['reserved', 'on-hold', 'confirmed', 'checked-in', 'completed', 'no-show', 'expired', 'rejected', 'wrong-amount', 'duplicate', 'late-transfer', 'cancelled']
 
@@ -44,6 +45,9 @@ export function BookingsAdmin() {
               {!isLive && <Link to={`/booking/${b.manageToken}`} className="inline-flex min-h-10 items-center rounded-xl px-3 text-sm font-semibold text-navy hover:bg-paper">{t('ticket.manage')}</Link>}
               {role === 'admin' && canApply(b, 'cancel') && (
                 <ConfirmButton size="sm" label={t('ticket.cancelBooking')} confirmText={t('ticket.cancelConfirm')} onConfirm={() => repo.staffTransition(b.id, { type: 'cancel' }, role)} />
+              )}
+              {role === 'admin' && (
+                <ConfirmButton size="sm" label={t('staff.admin.deleteBooking')} confirmText={t('staff.admin.deleteConfirm')} onConfirm={() => repo.adminDeleteBooking(b.id).catch(reportActionError)} />
               )}
             </div>
           </article>

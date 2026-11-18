@@ -50,7 +50,8 @@ test('a company holiday shows no slots on that date and still gives the next ava
   useAppStore.setState({ location: 'nasr-city' })
   useAppStore.getState().setFilters({ date: holiday })
   renderPage()
-  for (const c of cards()) {
+  // The payment test is open every day, holidays included (0052).
+  for (const c of cards().filter(c => !within(c).queryByText('Payment test'))) {
     expect(within(c).getByText(/no appointments on this date/i)).toBeInTheDocument()
     expect(within(c).getByText(/next available appointment/i)).toBeInTheDocument()
   }

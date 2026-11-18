@@ -1,6 +1,7 @@
 import { useAppStore, emptyDraft, todayIn } from '../store/useAppStore'
-import { applyEvent, createReservation, rescheduleBooking, submitPayment, getRules, editSchedule, editConsultant, getConsultants } from '../store/actions'
+import { applyEvent, createReservation, rescheduleBooking, submitPayment, getRules, editSchedule, editConsultant, getConsultant, getConsultants } from '../store/actions'
 import { consultants } from '../config/consultants'
+import { CLOSES_AFTER_MS, OPENS_BEFORE_MS } from '../../supabase/functions/video-room/handler'
 import { demoStats } from '../demo/seed'
 import { publicTotals } from '../domain/stats'
 import { slotsFor } from '../features/shared/availability'
@@ -297,6 +298,60 @@ export function createLocalRepo(): BookingRepo {
     },
     async staffRecords() { return get().records },
     async staffAudit() { return get().audit },
+    async videoRoom(who) {
+      // Same rules as the video-room edge function, without a video service behind it.
+      let b: Booking | undefined
+      if ('manageToken' in who) b = byToken(who.manageToken)
+      else {
+        const s = get().staffSession
+        b = get().bookings[who.bookingId]
+        if (!s) throw new RepoError('FORBIDDEN')
+        if (b && s.role !== 'admin' && !(s.role === 'consultant' && s.consultantId === b.consultantId)) b = undefined
+      }
+      if (!b) throw new RepoError('NOT_FOUND')
+      if (b.format !== 'online') return { state: 'not-online' }
+      if (!['confirmed', 'checked-in'].includes(b.status)) return { state: 'unavailable' }
+      const now = get().now()
+      const opensAt = Date.parse(b.startIso) - OPENS_BEFORE_MS
+      if (now < opensAt) return { state: 'early', opensAt }
+      if (now > Date.parse(b.endIso) + CLOSES_AFTER_MS) return { state: 'ended' }
+      if ('manageToken' in who && b.status === 'confirmed') applyEvent(b.id, { type: 'check-in' }, 'customer')
+      return { state: 'demo' }
+    },
+    async adminDeleteBooking(id) {
+      if (get().staffSession?.role !== 'admin') throw new RepoError('FORBIDDEN')
+      const b = get().bookings[id]
+      if (!b) throw new RepoError('NOT_FOUND')
+      useAppStore.setState(s => {
+        const drop = <T,>(m: Record<string, T>) => Object.fromEntries(Object.entries(m).filter(([k]) => k !== id))
+        return { bookings: drop(s.bookings), records: drop(s.records), assessments: drop(s.assessments) }
+      })
+      get().addAudit({ actor: 'admin', action: 'booking-deleted', from: b.status, note: `${b.reference} · ${b.customer.name}` })
+    },
+    async consultantProfiles() {
+      const o = get().consultantOverrides
+      return Object.fromEntries(Object.entries(o).map(([id, c]) => [id, { bio: c.bio, photo: c.photo, videoUrl: c.videoUrl, videoPoster: c.videoPoster }]))
+    },
+    async saveConsultantProfile(id, p) {
+      if (get().staffSession?.role !== 'admin') throw new RepoError('FORBIDDEN')
+      if (!consultants.some(c => c.id === id)) throw new RepoError('INVALID_INPUT')
+      // Same contract as the database: null means "the built-in value".
+      const base = getConsultant(id, {})
+      const before = getConsultant(id)
+      const next = { bio: p.bio ?? base.bio, photo: p.photo ?? base.photo, videoUrl: p.videoUrl ?? base.videoUrl, videoPoster: p.videoUrl ? (p.videoPoster ?? undefined) : base.videoPoster }
+      const changed = [
+        JSON.stringify(before.bio ?? null) !== JSON.stringify(next.bio ?? null) && 'bio',
+        (before.photo ?? null) !== (next.photo ?? null) && 'photo',
+        (before.videoUrl ?? null) !== (next.videoUrl ?? null) && 'video',
+      ].filter(Boolean).join(', ')
+      useAppStore.setState(s => ({ consultantOverrides: { ...s.consultantOverrides, [id]: { ...s.consultantOverrides[id], ...next } } }))
+      get().addAudit({ actor: 'admin', action: 'consultant-edited', to: id, note: changed || undefined })
+    },
+    async uploadConsultantMedia(_id, file) {
+      if (get().staffSession?.role !== 'admin') throw new RepoError('FORBIDDEN')
+      // Prototype: the file stays in this browser tab only.
+      return URL.createObjectURL(file)
+    },
     async staffSchedules() { return Object.fromEntries(consultants.map(c => [c.id, getRules(c.id)])) },
     async saveSchedule(id, patch) {
       editSchedule(id, patch)

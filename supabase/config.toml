@@ -435,3 +435,8 @@ verify_jwt = false
 # Customers start an EasyKash payment here. It accepts only the anon key and checks the manage token itself.
 [functions.easykash-pay]
 verify_jwt = false
+
+# The online consultation room. It checks the manage token or the staff sign-in itself (service-role lookups), so the
+# gateway JWT check is off; clients send only the anon key.
+[functions.video-room]
+verify_jwt = false

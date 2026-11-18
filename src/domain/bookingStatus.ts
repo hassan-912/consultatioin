@@ -129,3 +129,7 @@ export function arrivalTiming(b: Pick<Booking, 'startIso'>, atMs: number): Arriv
 }
 
 export const isActive = (s: BookingStatus) => !['expired', 'cancelled', 'completed', 'no-show'].includes(s)
+
+/** Finance has accepted the money: the client counts as paid from here on. Mirrors 0049_sales_paid_clients.sql. */
+export const PAID_STATUSES: BookingStatus[] = ['confirmed', 'checked-in', 'completed', 'no-show']
+export const isPaid = (s: BookingStatus) => PAID_STATUSES.includes(s)

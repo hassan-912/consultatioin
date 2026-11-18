@@ -5,6 +5,7 @@ const PUBLIC: RegExp[] = [/^\/$/, /^\/consultant\/[a-z0-9-]+$/, /^\/book\/[a-z0-
 const PRIVATE: [RegExp, string][] = [
   [/^\/ticket\/[^/]+$/, '/ticket/[token]'],
   [/^\/booking\/[^/]+\/assessment$/, '/booking/[token]/assessment'],
+  [/^\/booking\/[^/]+\/room$/, '/booking/[token]/room'],
   [/^\/booking\/[^/]+$/, '/booking/[token]'],
   [/^\/meet\/[^/]+$/, '/meet/[token]'],
 ]
