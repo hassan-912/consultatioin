@@ -368,6 +368,15 @@ export function createLocalRepo(): BookingRepo {
       const r = get().meetingSummaries[mustFind(token).id]
       return r?.status === 'published' ? r.summary : null
     },
+    async autoMeetingSummary(who) {
+      // The prototype has no transcript: it publishes the sample (or the consultant's draft) as the real one would.
+      const b = 'manageToken' in who ? mustFind(who.manageToken) : ownBooking(who.bookingId)
+      const before = get().meetingSummaries[b.id]
+      if (before?.status === 'published') return { state: 'published', record: before }
+      const record = { summary: before?.summary ?? demoSummary(b), status: 'published' as const, generatedAt: before?.generatedAt ?? get().now(), publishedAt: get().now() }
+      useAppStore.setState(s => ({ meetingSummaries: { ...s.meetingSummaries, [b.id]: record } }))
+      return { state: 'published', record }
+    },
     async recordingLink(bookingId) { ownBooking(bookingId); return null },
     async adminDeleteBooking(id) {
       if (get().staffSession?.role !== 'admin') throw new RepoError('FORBIDDEN')

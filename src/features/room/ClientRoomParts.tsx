@@ -48,21 +48,38 @@ export function ClientRoomSide({ ctx, consultantName }: { ctx: RoomContext; cons
   )
 }
 
-/** The client's published meeting summary through their manage link; asks again every 20 s until it is there. */
-export function useMySummary(token: string, poll = false) {
+/** How long the after-call page keeps asking (every 20 s) before it says the consultant will send the summary. */
+const AUTO_TRIES = 30
+
+/**
+ * The client's published meeting summary. Once an online call has started, asking also writes and publishes it
+ * when the transcript is ready (see autoMeetingSummary). With `poll` it asks again every 20 s until it is there;
+ * `gaveUp` turns true when the summary cannot be written now (no transcript, AI off), so the page stops spinning.
+ */
+export function useMySummary(booking: Booking, poll = false) {
   const [summary, setSummary] = useState<MeetingSummary | null | undefined>(undefined)
+  const [gaveUp, setGaveUp] = useState(false)
+  const token = booking.manageToken
+  const now = useAppStore(s => s.now)
+  const canWrite = booking.format === 'online' && Date.parse(booking.startIso) <= now()
   useEffect(() => {
     let live = true
+    let tries = 0
     let timer: ReturnType<typeof setTimeout>
-    const ask = () => repo.myMeetingSummary(token).then(s => {
+    const ask = async () => {
+      tries += 1
+      const auto = canWrite ? await repo.autoMeetingSummary({ manageToken: token }) : null
+      const found = auto?.state === 'published' ? auto.record.summary : await repo.myMeetingSummary(token)
       if (!live) return
-      setSummary(s)
-      if (!s && poll) timer = setTimeout(ask, 20_000)
-    }, () => live && setSummary(null))
-    void ask()
+      setSummary(found)
+      if (found || !poll) return
+      if (auto?.state === 'unavailable' || tries >= AUTO_TRIES) setGaveUp(true)
+      else timer = setTimeout(() => void ask().catch(() => live && setGaveUp(true)), 20_000)
+    }
+    void ask().catch(() => { if (live) { setSummary(null); setGaveUp(true) } })
     return () => { live = false; clearTimeout(timer) }
-  }, [token, poll])
-  return summary
+  }, [token, poll, canWrite])
+  return { summary, gaveUp }
 }
 
 function useMyAssessmentOnce(token: string) {
@@ -93,7 +110,7 @@ function DownloadCard({ icon, title, hint, action, busy, disabled, pending }: {
 export function ClientAfterCall({ booking }: { booking: Booking }) {
   const { t, l, lang } = useT()
   const stored = useMyAssessmentOnce(booking.manageToken)
-  const summary = useMySummary(booking.manageToken, true)
+  const { summary, gaveUp } = useMySummary(booking, true)
   const { rates } = useEgpRates(stored?.program === 'job-seeking')
   const result = useMemo(() => (stored ? evaluate(stored, rates) : null), [stored, rates])
   const [busy, setBusy] = useState<'' | 'a' | 's'>('')
@@ -116,8 +133,9 @@ export function ClientAfterCall({ booking }: { booking: Booking }) {
           <DownloadCard icon="card" title={t('room.dlAssessment')} hint={t('room.dlAssessmentHint')} busy={busy === 'a'}
             disabled={!result} pending={stored === null ? t('room.noAssessment') : undefined}
             action={() => result && stored && run('a', () => downloadAssessment(booking, result, stored.program, lang))} />
-          <DownloadCard icon="list" title={t('room.dlSummary')} hint={t('room.dlSummaryHint')} busy={busy === 's'}
-            disabled={!summary} pending={summary === null ? t('room.summaryPending') : undefined}
+          <DownloadCard icon="list" title={t('room.dlSummary')} busy={busy === 's'}
+            disabled={!summary} pending={summary === null && !gaveUp ? t('room.summaryPending') : undefined}
+            hint={!summary && gaveUp ? t('room.summaryLater') : t('room.dlSummaryHint')}
             action={() => summary && run('s', () => downloadSummary(booking, summary))} />
         </div>
 
@@ -129,10 +147,10 @@ export function ClientAfterCall({ booking }: { booking: Booking }) {
   )
 }
 
-/** On the booking page: the meeting summary download, once the consultant has published it. */
+/** On the booking page: the meeting summary download, once it is published. */
 export function SummaryLinkCard({ booking }: { booking: Booking }) {
   const { t } = useT()
-  const summary = useMySummary(booking.manageToken)
+  const { summary } = useMySummary(booking)
   const [busy, setBusy] = useState(false)
   if (!summary) return null
   return (

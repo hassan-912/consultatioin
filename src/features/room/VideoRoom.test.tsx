@@ -72,9 +72,9 @@ test('after the end the client gets their documents; unpaid and in-person bookin
   const ended = at(`/booking/${'m'.repeat(32)}/room`)
   expect(await screen.findByText(/thank you, kamel/i)).toBeInTheDocument()
   expect(await screen.findByRole('button', { name: /download your assessment/i })).toBeEnabled()
-  // The summary is not published yet: its button waits, and says why.
-  expect(screen.getByRole('button', { name: /download the meeting summary/i })).toBeDisabled()
-  expect(screen.getByText(/preparing your summary/i)).toBeInTheDocument()
+  // Nobody has to publish the summary: leaving the call writes and publishes it.
+  await waitFor(() => expect(screen.getByRole('button', { name: /download the meeting summary/i })).toBeEnabled())
+  expect(useAppStore.getState().meetingSummaries['room-1']).toMatchObject({ status: 'published' })
   ended.unmount()
   useAppStore.setState({ timeOffsetMs: 0, bookings: { 'room-1': online({ status: 'on-hold' }) } })
   const unpaid = at(`/booking/${'m'.repeat(32)}/room`)

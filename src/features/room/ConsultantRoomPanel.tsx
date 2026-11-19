@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { DailyCall } from '@daily-co/daily-js'
 import { useT } from '../../i18n'
 import { repo } from '../../data'
@@ -26,7 +26,9 @@ export function ConsultantRoomPanel({ booking, ctx, startOn = 'assessment' }: { 
   const { t } = useT()
   const [tab, setTab] = useState(startOn)
   const now = useAppStore(s => s.now)
-  const recording = useRecording(ctx?.call ?? null, ctx?.channel ?? null)
+  const [summaryVersion, setSummaryVersion] = useState(0)
+  const autoSummary = useAutoSummary(booking.id, () => setSummaryVersion(v => v + 1))
+  const recording = useRecording(ctx?.call ?? null, ctx?.channel ?? null, autoSummary)
   // Lives here, not in the tab, so switching tabs keeps the card shared.
   const assessment = useConsultantAssessment(booking.id, ctx?.channel ?? null, now)
   const tabs = [['assessment', t('room.tabAssessment')], ['summary', t('room.tabSummary')]] as const
@@ -50,7 +52,7 @@ export function ConsultantRoomPanel({ booking, ctx, startOn = 'assessment' }: { 
       <div className="max-h-[calc(78dvh-60px)] overflow-y-auto p-5">
         {tab === 'assessment'
           ? <AssessmentTab a={assessment} canShare={!!ctx} />
-          : <SummaryTab booking={booking} recording={ctx ? recording : null} />}
+          : <SummaryTab key={summaryVersion} booking={booking} recording={ctx ? recording : null} />}
       </div>
     </section>
   )
@@ -114,13 +116,47 @@ function AssessmentTab({ a, canShare }: { a: ReturnType<typeof useConsultantAsse
   )
 }
 
+/**
+ * When the client leaves: ask the server to write and publish the summary, every 20 s until the transcript is ready
+ * (the client's after-call page asks too; whichever comes first publishes, the other gets the same summary).
+ */
+function useAutoSummary(bookingId: string, onPublished: () => void) {
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
+  const done = useRef(onPublished)
+  done.current = onPublished
+  useEffect(() => () => clearTimeout(timer.current), [])
+  return useCallback(() => {
+    clearTimeout(timer.current)
+    let tries = 0
+    const ask = () => {
+      tries += 1
+      repo.autoMeetingSummary({ bookingId }).then(r => {
+        if (r.state === 'published') done.current()
+        else if (r.state === 'pending' && tries < 30) timer.current = setTimeout(ask, 20_000)
+      }, () => { if (tries < 30) timer.current = setTimeout(ask, 20_000) })
+    }
+    // Daily needs a moment to close the transcript once recording stops.
+    timer.current = setTimeout(ask, 30_000)
+  }, [bookingId])
+}
+
 /* ── Recording ─────────────────────────────────────────────────────────── */
 
 type Recording = ReturnType<typeof useRecording>
-function useRecording(call: DailyCall | null, channel: RoomChannel | null) {
+/**
+ * Recording runs on its own: it starts (with the transcript the summary is written from) as soon as the client is in
+ * the call, and stops when the client leaves, which is what sets the automatic summary going (`onClientLeft`).
+ * The consultant can still stop it by hand; it then stays off until the client next joins.
+ */
+function useRecording(call: DailyCall | null, channel: RoomChannel | null, onClientLeft?: () => void) {
   const [state, setState] = useState<'off' | 'starting' | 'on' | 'error'>('off')
   const [since, setSince] = useState(0)
   const now = useAppStore(s => s.now)
+  const stateRef = useRef(state)
+  stateRef.current = state
+  const heldOff = useRef(false)
+  const leftRef = useRef(onClientLeft)
+  leftRef.current = onClientLeft
   const announce = useCallback((on: boolean) => channel?.send({ kind: 'mg-room', type: 'recording', on }), [channel])
   useEffect(() => {
     if (!call) return
@@ -133,7 +169,8 @@ function useRecording(call: DailyCall | null, channel: RoomChannel | null) {
   // A client who joins (or reloads) mid-recording still sees the notice.
   useEffect(() => channel?.listen(m => { if (m.type === 'hello' && state === 'on') announce(true) }), [channel, state, announce])
 
-  const start = () => {
+  const start = useCallback(() => {
+    heldOff.current = false
     if (!call) { setState('on'); setSince(now()); announce(true); return }
     setState('starting')
     try {
@@ -141,11 +178,31 @@ function useRecording(call: DailyCall | null, channel: RoomChannel | null) {
       // The transcript is what the summary is written from.
       call.startTranscription()
     } catch { setState('error') }
-  }
-  const stop = () => {
+  }, [call, now, announce])
+  const halt = useCallback(() => {
     if (!call) { setState('off'); announce(false); return }
     try { call.stopRecording(); call.stopTranscription() } catch { /* already stopped */ }
-  }
+  }, [call, announce])
+  const stop = () => { heldOff.current = true; halt() }
+
+  // The client is anyone else in the call without the host's pass (staff join as owners).
+  useEffect(() => {
+    if (!call) return
+    let present = false
+    const sync = () => {
+      const now = Object.values(call.participants()).some(p => !p.local && !p.owner)
+      if (now && !present) { if (!heldOff.current && stateRef.current !== 'on' && stateRef.current !== 'starting') start() }
+      else if (!now && present) {
+        heldOff.current = false
+        if (stateRef.current === 'on' || stateRef.current === 'starting') halt()
+        leftRef.current?.()
+      }
+      present = now
+    }
+    call.on('joined-meeting', sync).on('participant-joined', sync).on('participant-left', sync)
+    sync()
+    return () => { call.off('joined-meeting', sync).off('participant-joined', sync).off('participant-left', sync) }
+  }, [call, start, halt])
   return { state, since, start, stop }
 }
 

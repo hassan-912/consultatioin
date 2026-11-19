@@ -1,5 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.49.8'
-import { meetingSummaryHandler } from './handler.ts'
+import { meetingSummaryHandler, type StoredSummary } from './handler.ts'
 import { geminiAllowed, geminiSummarizer } from './gemini.ts'
 import type { RoomBooking } from '../video-room/handler.ts'
 
@@ -38,7 +38,10 @@ Deno.serve(meetingSummaryHandler({
   },
   staffBooking: (bookingId, userId) => rpc<RoomBooking | null>('video_room_staff_booking', { p_booking_id: bookingId, p_user_id: userId }),
   summarize,
+  clientBooking: token => rpc<RoomBooking | null>('video_room_booking', { p_manage_token: token }),
   saveDraft: (bookingId, summary) => rpc<Record<string, unknown>>('meeting_summary_save_draft', { p_booking_id: bookingId, p_summary: summary }),
+  currentSummary: bookingId => rpc<StoredSummary | null>('meeting_summary_get', { p_booking_id: bookingId }),
+  publishAuto: (bookingId, summary) => rpc<StoredSummary>('meeting_summary_publish_auto', { p_booking_id: bookingId, p_summary: summary }),
   fetch: (input, init) => fetch(input, init),
   log: (event, fields) => console.log(JSON.stringify({ fn: 'meeting-summary', event, ...fields })),
 }))

@@ -1,25 +1,33 @@
-// After an online consultation: the consultant asks for a written summary of the call, drafted by Gemini from the
-// call's Daily transcript, or for a download link to the recording. Staff only; the client reads the published
-// summary through a database function, never through here.
+// After an online consultation: a written summary of the call, drafted by Gemini from the call's Daily transcript.
+// "generate" and "recording" are staff only (a fresh draft; a download link to the recording). "auto" runs once the
+// client has left the room, from the client's after-call page (by manage link) or the consultant's panel: it writes
+// the summary and publishes it at once. It answers "pending" until Daily has finished the transcript, so callers poll.
 
 import type { RoomBooking } from '../video-room/handler.ts'
 
 const DAILY = 'https://api.daily.co/v1'
 
 export interface Summary { overview: string; keyPoints: string[]; agreements: string[]; nextSteps: string[]; lang: 'en' | 'ar' }
+export type StoredSummary = { summary: Summary; status: 'draft' | 'published' } & Record<string, unknown>
 
 export type Dependencies = {
   siteUrl: string
-  /** Missing: answers SUMMARY_UNAVAILABLE. */
+  /** Missing: answers SUMMARY_UNAVAILABLE ("auto": state unavailable). */
   dailyKey?: string
   verifyUser: (jwt: string) => Promise<string | null>
   /** The booking as this staff member may see it (own consultant or admin), or null. */
   staffBooking: (bookingId: string, userId: string) => Promise<RoomBooking | null>
+  /** The booking behind a client's manage link, or null. */
+  clientBooking: (manageToken: string) => Promise<RoomBooking | null>
   /** Writes the summary from the transcript text, in `lang`. Throws when the model cannot. Missing (no AI key):
    *  "generate" answers SUMMARY_UNAVAILABLE before touching Daily; "recording" still works. */
   summarize?: (transcript: string, lang: 'en' | 'ar') => Promise<Summary>
   /** Stores the draft and returns the stored record. */
   saveDraft: (bookingId: string, summary: Summary) => Promise<Record<string, unknown>>
+  /** The stored record (draft or published), or null. */
+  currentSummary: (bookingId: string) => Promise<StoredSummary | null>
+  /** Publishes unless a summary is already published; returns what is stored. */
+  publishAuto: (bookingId: string, summary: Summary) => Promise<StoredSummary>
   fetch: typeof fetch
   log?: (event: string, fields: Record<string, string | number>) => void
 }
@@ -54,20 +62,40 @@ export function meetingSummaryHandler(deps: Dependencies) {
     const body = await request.json().catch(() => null) as Record<string, unknown> | null
     const action = body?.action
     const bookingId = typeof body?.booking_id === 'string' && /^[0-9a-f-]{36}$/i.test(body.booking_id) ? body.booking_id : null
-    if ((action !== 'generate' && action !== 'recording') || !bookingId) return reply(400, { error: 'INVALID_INPUT' })
+    const manageToken = typeof body?.manage_token === 'string' && /^[A-Za-z0-9_-]{16,128}$/.test(body.manage_token) ? body.manage_token : null
+    // The client (by manage link) may only ask for "auto", which never shows them a draft.
+    const valid = action === 'auto' ? !!(bookingId || manageToken) : (action === 'generate' || action === 'recording') && !!bookingId
+    if (!valid) return reply(400, { error: 'INVALID_INPUT' })
 
-    const jwt = /^Bearer (.+)$/.exec(request.headers.get('authorization') ?? '')?.[1]
     let booking: RoomBooking | null
     try {
-      const userId = jwt ? await deps.verifyUser(jwt) : null
-      if (!userId) return reply(401, { error: 'FORBIDDEN' })
-      booking = await deps.staffBooking(bookingId, userId)
+      if (bookingId) {
+        const jwt = /^Bearer (.+)$/.exec(request.headers.get('authorization') ?? '')?.[1]
+        const userId = jwt ? await deps.verifyUser(jwt) : null
+        if (!userId) return reply(401, { error: 'FORBIDDEN' })
+        booking = await deps.staffBooking(bookingId, userId)
+      } else booking = await deps.clientBooking(manageToken!)
     } catch {
       return reply(503, { error: 'SUMMARY_UNAVAILABLE' })
     }
     if (!booking) return reply(404, { error: 'NOT_FOUND' })
     if (booking.format !== 'online') return reply(400, { error: 'INVALID_INPUT' })
-    if (!deps.dailyKey || (action === 'generate' && !deps.summarize)) return reply(503, { error: 'SUMMARY_UNAVAILABLE' })
+    const failed = (e: unknown) => {
+      deps.log?.('summary_failed', { booking: booking!.reference, action: String(action), reason: e instanceof Error ? e.message.slice(0, 120) : 'unknown' })
+      return reply(503, { error: 'SUMMARY_UNAVAILABLE' })
+    }
+
+    if (action === 'auto') {
+      try {
+        const stored = await deps.currentSummary(booking.id)
+        if (stored?.status === 'published') return reply(200, { state: 'published', record: stored })
+        // The consultant already wrote a draft: that one goes out, no second AI run.
+        if (stored) return reply(200, { state: 'published', record: await deps.publishAuto(booking.id, stored.summary) })
+      } catch (e) { return failed(e) }
+    }
+    if (!deps.dailyKey || (action !== 'recording' && !deps.summarize)) {
+      return action === 'auto' ? reply(200, { state: 'unavailable' }) : reply(503, { error: 'SUMMARY_UNAVAILABLE' })
+    }
 
     const daily = async (path: string) => {
       const res = await deps.fetch(`${DAILY}${path}`, { headers: { Authorization: `Bearer ${deps.dailyKey}` }, signal: AbortSignal.timeout(15000) })
@@ -91,12 +119,13 @@ export function meetingSummaryHandler(deps: Dependencies) {
       // Transcripts are listed by the room's id, not its name.
       const room = await daily(`/rooms/${encodeURIComponent(name)}`)
       const roomId = typeof room.data?.id === 'string' ? room.data.id : null
-      if (!roomId) return reply(409, { error: 'NO_TRANSCRIPT' })
-      const list = await daily(`/transcript?roomId=${encodeURIComponent(roomId)}&limit=20`)
-      const ready = newest(list.data).filter(t => t.status === 't_finished' || t.status === 'finished')
+      const list = roomId ? newest((await daily(`/transcript?roomId=${encodeURIComponent(roomId)}&limit=20`)).data) : []
+      const done = (t: Record<string, unknown>) => t.status === 't_finished' || t.status === 'finished'
+      // "auto" waits for every part: publishing while one is still being written would leave the end of the call out.
+      if (action === 'auto' && list.some(t => !done(t) && !/error|fail/i.test(String(t.status ?? '')))) return reply(200, { state: 'pending' })
       const texts: string[] = []
       // A call that was stopped and restarted has several transcripts: keep them all, oldest first.
-      for (const t of ready.reverse()) {
+      for (const t of list.filter(done).reverse()) {
         const access = await daily(`/transcript/${encodeURIComponent(String(t.transcriptId ?? t.id))}/access-link`)
         const link = typeof access.data?.link === 'string' ? access.data.link : null
         if (!link) continue
@@ -105,15 +134,12 @@ export function meetingSummaryHandler(deps: Dependencies) {
         if (text) texts.push(text)
       }
       const transcript = texts.join('\n\n')
-      if (transcript.length < 40) return reply(409, { error: 'NO_TRANSCRIPT' })
+      if (transcript.length < 40) return action === 'auto' ? reply(200, { state: 'pending' }) : reply(409, { error: 'NO_TRANSCRIPT' })
 
-      const lang = booking.lang === 'ar' ? 'ar' : 'en'
-      const summary = await deps.summarize!(transcript, lang)
-      const stored = await deps.saveDraft(booking.id, { ...summary, lang })
-      return reply(200, stored)
-    } catch (e) {
-      deps.log?.('summary_failed', { booking: booking.reference, reason: e instanceof Error ? e.message.slice(0, 120) : 'unknown' })
-      return reply(503, { error: 'SUMMARY_UNAVAILABLE' })
-    }
+      const lang: Summary['lang'] = booking.lang === 'ar' ? 'ar' : 'en'
+      const summary: Summary = { ...await deps.summarize!(transcript, lang), lang }
+      if (action === 'auto') return reply(200, { state: 'published', record: await deps.publishAuto(booking.id, summary) })
+      return reply(200, await deps.saveDraft(booking.id, summary))
+    } catch (e) { return failed(e) }
   }
 }

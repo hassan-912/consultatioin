@@ -28,7 +28,7 @@ export type Dependencies = {
 const ROOM_STATUSES = ['confirmed', 'checked-in']
 /**
  * The host (consultant) may record the call to the cloud and keep its transcript, which the meeting-summary
- * function turns into the client's written summary. Nothing records unless the host presses Record.
+ * function turns into the client's written summary. The consultant's room starts it when the client joins.
  */
 export const CALL_RECORDS = { enable_recording: 'cloud', enable_transcription_storage: true } as const
 
