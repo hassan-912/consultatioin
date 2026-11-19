@@ -7,7 +7,7 @@ import type { MessageTemplateKey, MessageTemplates } from '../config/messageTemp
 import type { AssessedProgram, Answers, StoredAssessment } from '../assessment/questions'
 import type { ReadinessRules } from '../assessment/readiness'
 import type { L10n } from '../domain/types'
-import type { AuditEntry, ConsultantProfile, VideoRoom } from '../domain/types'
+import type { AuditEntry, ConsultantProfile, MeetingSummary, MeetingSummaryRecord, VideoRoom } from '../domain/types'
 
 // Same class the store actions throw, so existing `instanceof` checks keep working.
 export { SlotTaken } from '../store/actions'
@@ -167,6 +167,16 @@ export interface BookingRepo {
   staffAudit(): Promise<AuditEntry[]>
   /** The video room for an online booking: the client by their manage link, the consultant or admin by booking id. */
   videoRoom(who: { manageToken: string } | { bookingId: string }): Promise<VideoRoom>
+  /** Consultant/admin: the meeting summary for an online booking (draft or published), or null. */
+  meetingSummary(bookingId: string): Promise<MeetingSummaryRecord | null>
+  /** Consultant/admin: write a fresh draft from the call's transcript (replaces an earlier draft). */
+  generateMeetingSummary(bookingId: string): Promise<MeetingSummaryRecord>
+  /** Consultant/admin: save the checked summary and give it to the client. */
+  publishMeetingSummary(bookingId: string, summary: MeetingSummary): Promise<void>
+  /** Client: their published meeting summary, or null while the consultant is still preparing it. */
+  myMeetingSummary(manageToken: string): Promise<MeetingSummary | null>
+  /** Consultant/admin: a short-lived download link for the call recording, or null when there is none. */
+  recordingLink(bookingId: string): Promise<string | null>
   /** Admin: delete a booking and everything attached to it. Cannot be undone. */
   adminDeleteBooking(bookingId: string): Promise<void>
   /** Everyone: the admin's edits to consultant profiles, by consultant id. */

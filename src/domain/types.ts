@@ -208,6 +208,26 @@ export type VideoRoom =
   /** Prototype: everything checks out, but there is no video service behind it. */
   | { state: 'demo' }
 
+/** What was said in an online consultation, written from the call's transcript and checked by the consultant. */
+export interface MeetingSummary {
+  /** Two or three sentences: why the client came and where things stand. */
+  overview: string
+  /** The important points discussed. */
+  keyPoints: string[]
+  /** What the client and MG agreed on. */
+  agreements: string[]
+  /** What happens next; each starts with who does it ("Client: …", "MG: …"). */
+  nextSteps: string[]
+  /** The language it is written in (the consultation's language). */
+  lang: Lang
+}
+export interface MeetingSummaryRecord {
+  summary: MeetingSummary
+  status: 'draft' | 'published'
+  generatedAt: number
+  publishedAt?: number
+}
+
 /** What the admin changed over a consultant's built-in profile. */
 export interface ConsultantProfile {
   bio: L10n | null

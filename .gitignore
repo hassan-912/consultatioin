@@ -11,3 +11,6 @@ docs/demo-staff-logins.md
 # Original video exports; optimized website copies live in public/videos/consultants.
 /consultant videos/
 /loadtest/last-summary.json
+
+# Local Edge Function secrets (supabase functions serve). Never commit.
+supabase/functions/.env

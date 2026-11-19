@@ -56,6 +56,31 @@ test('a paid client inside the time window gets a private room and a pass, and i
   expect(joined).toEqual([booking().id])
 })
 
+test('when Daily refuses the recording settings, the room still opens without them', async () => {
+  const { call, calls } = setup({
+    fetch: (async (input: string, init?: RequestInit) => {
+      const path = String(input).replace('https://api.daily.co/v1', '')
+      const method = init?.method ?? 'GET'
+      const body = init?.body ? JSON.parse(String(init.body)) as { name: string; properties: Record<string, unknown> } : undefined
+      calls.push({ path, method, body })
+      const json = (status: number, data: unknown) => new Response(JSON.stringify(data), { status })
+      if (path === '/rooms' && method === 'POST') {
+        if (body!.properties.enable_recording) return json(400, { error: 'invalid-request-error' })
+        return json(200, { name: body!.name, url: `https://mg.daily.co/${body!.name}` })
+      }
+      if (path.startsWith('/rooms/')) return json(404, { error: 'not-found' })
+      if (path === '/meeting-tokens') return json(200, { token: 'pass-123' })
+      return json(500, {})
+    }) as typeof fetch,
+  })
+  const res = await call({ manage_token: 'a'.repeat(32) })
+  expect(await res.json()).toMatchObject({ state: 'ready', token: 'pass-123' })
+  const creates = calls.filter(c => c.path === '/rooms' && c.method === 'POST').map(c => (c.body as { properties: Record<string, unknown> }).properties)
+  expect(creates).toHaveLength(2)
+  expect(creates[0]).toMatchObject({ enable_recording: 'cloud' })
+  expect(creates[1]).not.toHaveProperty('enable_recording')
+})
+
 test('the room reuses an existing room instead of making a second one', async () => {
   const { call, calls, rooms } = setup()
   rooms.add(`mg-${booking().id}`)

@@ -10,6 +10,7 @@ import { pendingDecisions } from '../config/pendingDecisions'
 import type { ScheduleRules } from '../domain/availability'
 import type { MessageTemplates } from '../config/messageTemplates'
 import type { StoredAssessment } from '../assessment/questions'
+import type { MeetingSummaryRecord } from '../domain/types'
 
 export interface Filters {
   branch: BranchId | 'all'
@@ -115,6 +116,8 @@ export interface AppState {
   reviews: Record<string, Review & { consultantId: string; hidden?: boolean; status?: ReviewStatus }>
   /** Prototype only: booking-form assessment answers keyed by booking id. */
   assessments: Record<string, StoredAssessment>
+  /** Prototype only: online consultation summaries keyed by booking id. */
+  meetingSummaries: Record<string, MeetingSummaryRecord>
   /** Prototype only: the admin's open decisions. */
   decisions: PendingDecision[]
   consultantOverrides: Record<string, Partial<Consultant>>
@@ -167,6 +170,7 @@ export const useAppStore = create<AppState>()(
       records: {},
       reviews: {},
       assessments: {},
+      meetingSummaries: {},
       decisions: pendingDecisions,
       consultantOverrides: {},
       scheduleOverrides: {},

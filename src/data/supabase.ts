@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { BackendClients } from '../lib/supabase'
-import type { Booking, CustomerDetails, Format, AuditEntry, ConsultantProfile, VideoRoom, PendingDecision, Review, StaffReview, ConsultantReview } from '../domain/types'
+import type { Booking, CustomerDetails, Format, AuditEntry, ConsultantProfile, MeetingSummary, MeetingSummaryRecord, VideoRoom, PendingDecision, Review, StaffReview, ConsultantReview } from '../domain/types'
 import type { ScheduleRules } from '../domain/availability'
 import { dateInZone, addDays } from '../domain/time'
 import { consultationMinutes } from '../config/booking'
@@ -15,6 +15,9 @@ type Row = Record<string, any> // JSON returned by RPCs and explicitly selected 
 export const STAFF_BOOKING_COLUMNS = 'id,reference,consultant_id,branch_id,format,starts_at,ends_at,tz,price_amount,price_currency,customer_name,customer_phone,customer_email,channel,lang,program,note,status,hold_expires_at,reject_reason,meeting_url,checked_in_at,ticket_sent_at,ticket_sent_via,assessment_sent_at,sales_name,swap_reason,swapped_from,created_at'
 const mapReview = (r: Row): Review => ({ rating: Number(r.rating), comment: r.comment ?? '', name: r.name, at: Date.parse(r.created_at) })
 const ms = (v: unknown) => v == null ? undefined : Date.parse(String(v))
+const summaryRecord = (r: Row): MeetingSummaryRecord => ({
+  summary: r.summary as MeetingSummary, status: r.status, generatedAt: Date.parse(r.generated_at), publishedAt: ms(r.published_at),
+})
 export function mapBooking(r: Row, audience: 'customer' | 'staff' = 'customer'): Booking {
   const c = r.customer ?? { name: r.customer_name, phone: r.customer_phone, email: r.customer_email, channel: r.channel, lang: r.lang, program: r.program, note: r.note }
   const p = r.payment
@@ -84,6 +87,24 @@ export function createSupabaseRepo(clients: BackendClients): BookingRepo {
     const row = await result<Row>(staff.from('bookings').select(STAFF_BOOKING_COLUMNS).eq('id', id).single())
     const payments = await result<Row[]>(staff.from('payments').select('method,txn_ref,receipt_path,submitted_at').eq('booking_id', id).order('submitted_at', { ascending: false }).order('created_at', { ascending: false }).order('id').limit(1))
     return mapBooking({ ...row, payment: payments[0] }, 'staff')
+  }
+  /** The meeting-summary edge function (staff only): writes summaries from transcripts and links recordings. */
+  const meetingFunction = async (body: Row): Promise<Row> => {
+    const session = await result(staff.auth.getSession())
+    if (!session.session) throw new RepoError('FORBIDDEN')
+    let response: Response
+    try {
+      const send = clients.fetch // detached on purpose: a native fetch throws if called as a method
+      response = await send(`${clients.url}/functions/v1/meeting-summary`, {
+        method: 'POST',
+        headers: { apikey: clients.key, 'Content-Type': 'application/json', authorization: `Bearer ${session.session.access_token}` },
+        body: JSON.stringify(body),
+      })
+    } catch (e) { throw new RepoError('NETWORK', { cause: e }) }
+    const data = await response.json().catch(() => ({})) as Row
+    if (response.ok) return data
+    const known = ['FORBIDDEN', 'NOT_FOUND', 'INVALID_INPUT', 'NO_TRANSCRIPT']
+    throw new RepoError(known.includes(data.error) ? data.error : 'SUMMARY_UNAVAILABLE')
   }
   const easykashPay = async (body: Row): Promise<Row> => {
     let response: Response
@@ -420,6 +441,28 @@ export function createSupabaseRepo(clients: BackendClients): BookingRepo {
       if (data.state === 'early') return { state: 'early', opensAt: Date.parse(data.opens_at) }
       if (data.state === 'ready') return { state: 'ready', url: data.url, token: data.token }
       return { state: data.state } as VideoRoom
+    },
+    async meetingSummary(bookingId) {
+      await requireStaff()
+      const r = await result<Row | null>(staff.rpc('staff_meeting_summary', { p_booking_id: bookingId }))
+      return r ? summaryRecord(r) : null
+    },
+    async generateMeetingSummary(bookingId) {
+      const data = await meetingFunction({ action: 'generate', booking_id: bookingId })
+      changed()
+      return summaryRecord(data)
+    },
+    async publishMeetingSummary(bookingId, summary) {
+      await requireStaff()
+      await result(staff.rpc('staff_publish_meeting_summary', { p_booking_id: bookingId, p_summary: summary }))
+      changed()
+    },
+    async myMeetingSummary(token) {
+      return (await result<MeetingSummary | null>(customer.rpc('get_my_meeting_summary', { p_manage_token: token }))) ?? null
+    },
+    async recordingLink(bookingId) {
+      const data = await meetingFunction({ action: 'recording', booking_id: bookingId })
+      return typeof data.link === 'string' ? data.link : null
     },
     async adminDeleteBooking(id) {
       await requireStaff()

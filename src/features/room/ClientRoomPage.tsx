@@ -9,6 +9,7 @@ import { Header } from '../../components/Header'
 import { Avatar } from '../../components/widgets'
 import { Icon } from '../../components/Icon'
 import { RoomPass, VideoRoomView } from './VideoRoom'
+import { ClientAfterCall, ClientRoomSide } from './ClientRoomParts'
 
 /** The client's online consultation, opened from their booking page (manage link). */
 export function ClientRoomPage() {
@@ -34,6 +35,9 @@ export function ClientRoomPage() {
           key={token}
           load={() => repo.videoRoom({ manageToken: token })}
           tz={b?.tz}
+          roomKey={b?.id}
+          side={ctx => <ClientRoomSide ctx={ctx} consultantName={c ? l(c.name) : ''} />}
+          after={b ? <ClientAfterCall booking={b} /> : undefined}
           pass={b && c && (
             <RoomPass eyebrow={t('room.consultant')} name={l(c.name)} face={<Avatar consultant={c} size="sm" />}
               startIso={b.startIso} tz={b.tz} reference={b.reference} />

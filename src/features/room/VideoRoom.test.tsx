@@ -66,10 +66,15 @@ test('the countdown reaching zero opens the room by itself', async () => {
   } finally { vi.useRealTimers() }
 })
 
-test('after the end the room is closed; unpaid and in-person bookings have no room', async () => {
+test('after the end the client gets their documents; unpaid and in-person bookings have no room', async () => {
   clockAt(80 * 60_000)
+  useAppStore.setState({ assessments: { 'room-1': { program: 'tourism', answers: { age_bracket: 'age_opt_2' } } } })
   const ended = at(`/booking/${'m'.repeat(32)}/room`)
-  expect(await screen.findByText(/consultation has ended/i)).toBeInTheDocument()
+  expect(await screen.findByText(/thank you, kamel/i)).toBeInTheDocument()
+  expect(await screen.findByRole('button', { name: /download your assessment/i })).toBeEnabled()
+  // The summary is not published yet: its button waits, and says why.
+  expect(screen.getByRole('button', { name: /download the meeting summary/i })).toBeDisabled()
+  expect(screen.getByText(/preparing your summary/i)).toBeInTheDocument()
   ended.unmount()
   useAppStore.setState({ timeOffsetMs: 0, bookings: { 'room-1': online({ status: 'on-hold' }) } })
   const unpaid = at(`/booking/${'m'.repeat(32)}/room`)

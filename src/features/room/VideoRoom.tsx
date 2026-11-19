@@ -7,6 +7,7 @@ import { Button, Notice } from '../../components/ui'
 import { Icon, type IconName } from '../../components/Icon'
 import { formatInZone, zoneLabel } from '../../domain/time'
 import { FlightScene } from './FlightScene'
+import { DemoCall, LiveCall, type RoomContext } from './RoomCall'
 
 const pad = (n: number) => String(n).padStart(2, '0')
 
@@ -257,7 +258,7 @@ function DeviceCheck({ onWorking }: { onWorking?: () => void }) {
 function Stage({ children }: { children: ReactNode }) {
   const { t } = useT()
   return (
-    <section className="flex flex-col overflow-hidden rounded-[1.75rem] bg-slate-deep shadow-lift ring-1 ring-ink/20">
+    <section className="flex min-w-0 flex-col overflow-hidden rounded-[1.75rem] bg-slate-deep shadow-lift ring-1 ring-ink/20">
       <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 text-white">
         <p className="inline-flex items-center gap-2.5 text-sm font-semibold"><Beacon tone="live" />{t('room.live')} · {t('room.title')}</p>
         <p className="inline-flex items-center gap-1.5 text-xs text-mist"><Icon name="shield" size={13} />{t('room.private')}</p>
@@ -266,6 +267,7 @@ function Stage({ children }: { children: ReactNode }) {
     </section>
   )
 }
+const inStage = (body: ReactNode) => <Stage>{body}</Stage>
 
 /** A closed or not-applicable room: one calm card with an icon and the reason. */
 function RoomMessage({ icon, tone, text }: { icon: IconName; tone: 'ok' | 'muted'; text: string }) {
@@ -279,9 +281,13 @@ function RoomMessage({ icon, tone, text }: { icon: IconName; tone: 'ok' | 'muted
 
 /**
  * The room for one online booking: a waiting lounge with countdown and device check before it opens,
- * then the call itself. `pass` is the booking card the page wants beside the countdown.
+ * then the call itself. `pass` is the booking card the page wants beside the countdown; `side` sits beside
+ * the call (the assessment card); `after` replaces the call once this person leaves or the room has closed.
  */
-export function VideoRoomView({ load, tz = 'Africa/Cairo', pass }: { load: () => Promise<VideoRoom>; tz?: string; pass?: ReactNode }) {
+export function VideoRoomView({ load, tz = 'Africa/Cairo', pass, roomKey = '', side, after }: {
+  load: () => Promise<VideoRoom>; tz?: string; pass?: ReactNode
+  roomKey?: string; side?: (ctx: RoomContext) => ReactNode; after?: ReactNode
+}) {
   const { t } = useT()
   const [room, setRoom] = useState<VideoRoom | null>(null)
   const [error, setError] = useState<unknown>(null)
@@ -300,19 +306,9 @@ export function VideoRoomView({ load, tz = 'Africa/Cairo', pass }: { load: () =>
 
   if (error) return <div className="grid gap-3"><DataStatus error={error} /><Button variant="ghost" onClick={retry}>{t('data.retry')}</Button></div>
   if (!room) return <DataStatus loading />
-  if (room.state === 'ready') {
-    return (
-      <Stage>
-        <iframe
-          title={t('room.title')}
-          src={`${room.url}?t=${encodeURIComponent(room.token)}`}
-          allow="camera; microphone; fullscreen; display-capture; autoplay; clipboard-write"
-          className="block h-[78dvh] min-h-[480px] w-full bg-ink"
-        />
-      </Stage>
-    )
-  }
-  const side = <div className="grid content-start gap-5">{pass}<DeviceCheck onWorking={markDevices} /></div>
+  if (room.state === 'ready') return <LiveCall url={room.url} token={room.token} frame={inStage} side={side} after={after} />
+  if (room.state === 'demo') return <DemoCall roomKey={roomKey} frame={inStage} side={side} after={after} />
+  if (room.state === 'ended' && after) return <>{after}</>
   if (room.state === 'early') {
     return (
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
@@ -321,22 +317,7 @@ export function VideoRoomView({ load, tz = 'Africa/Cairo', pass }: { load: () =>
           <Prepare />
           <div className="mt-auto border-t border-white/10 pt-6"><Steps devicesOk={devicesOk} /></div>
         </Lounge>
-        {side}
-      </div>
-    )
-  }
-  if (room.state === 'demo') {
-    return (
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
-        <Stage>
-          <div className="grid min-h-[320px] flex-1 place-items-center bg-ink p-6 text-center">
-            <div className="grid max-w-sm justify-items-center gap-4">
-              <span className="flex size-16 items-center justify-center rounded-full bg-ok/20 text-ok-soft"><Icon name="check" size={28} /></span>
-              <p className="text-sm text-mist-soft">{t('room.demo')}</p>
-            </div>
-          </div>
-        </Stage>
-        {side}
+        <div className="grid content-start gap-5">{pass}<DeviceCheck onWorking={markDevices} /></div>
       </div>
     )
   }

@@ -7,6 +7,7 @@ import { formatInZone } from '../../domain/time'
 import { Icon } from '../../components/Icon'
 import { ScreenTitle } from '../staff/StaffApp'
 import { RoomPass, VideoRoomView } from './VideoRoom'
+import { ConsultantRoomPanel } from './ConsultantRoomPanel'
 
 /** Online bookings that are paid and not finished: the consultant can open their room. */
 export const hasRoom = (b: Booking) => b.format === 'online' && (b.status === 'confirmed' || b.status === 'checked-in')
@@ -40,11 +41,29 @@ export function StaffRoom() {
         key={id}
         load={() => repo.videoRoom({ bookingId: id })}
         tz={b?.tz}
+        roomKey={id}
+        side={b ? ctx => <ConsultantRoomPanel booking={b} ctx={ctx} /> : undefined}
+        after={b ? <StaffAfterCall b={b} /> : undefined}
         pass={b && (
           <RoomPass eyebrow={t('room.client')} name={b.customer.name} startIso={b.startIso} tz={b.tz} reference={b.reference}
             face={<span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-slate to-navy text-white"><Icon name="user" size={22} /></span>} />
         )}
       />
     </>
+  )
+}
+
+/** The call is over: the consultant writes and publishes the summary (the recording stays available to download). */
+function StaffAfterCall({ b }: { b: Booking }) {
+  const { t } = useT()
+  return (
+    <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_440px]">
+      <section className="grid justify-items-center gap-4 rounded-[1.75rem] bg-white px-6 py-14 text-center shadow-card ring-1 ring-line">
+        <span className="flex size-16 items-center justify-center rounded-full bg-ok-soft text-ok"><Icon name="check" size={28} /></span>
+        <h2 className="font-display text-2xl font-semibold text-ink">{t('room.staffDoneTitle')}</h2>
+        <p className="max-w-md text-base text-slate">{t('room.staffDoneBody')}</p>
+      </section>
+      <ConsultantRoomPanel booking={b} ctx={null} startOn="summary" />
+    </div>
   )
 }

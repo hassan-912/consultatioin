@@ -9,7 +9,7 @@ import { InvalidTransition, checkInVerdict } from '../domain/bookingStatus'
 import { cleanPhone, normalizeDigits } from '../domain/phone'
 import { addDays, dateInZone } from '../domain/time'
 import { bookingConfig } from '../config/booking'
-import type { Booking, Format } from '../domain/types'
+import type { Booking, Format, MeetingSummary } from '../domain/types'
 import { HoldExpired, RepoError, SlotTaken, type BookingRepo } from './types'
 import { staffAccounts } from '../config/staffAccounts'
 import { consultantBusy } from '../domain/bookingStatus'
@@ -20,6 +20,35 @@ import { mergeRules } from '../assessment/readiness'
 const get = () => useAppStore.getState()
 
 const byToken = (token: string) => Object.values(get().bookings).find(b => b.manageToken === token)
+
+/** A booking the signed-in consultant (their own) or admin may work on, as the database checks it. */
+function ownBooking(bookingId: string): Booking {
+  const s = get().staffSession
+  const b = get().bookings[bookingId]
+  if (!s || (s.role !== 'admin' && !(s.role === 'consultant' && b && s.consultantId === b.consultantId))) throw new RepoError('FORBIDDEN')
+  if (!b) throw new RepoError('NOT_FOUND')
+  return b
+}
+
+/** Prototype stand-in for the AI summary of a call. */
+function demoSummary(b: Booking): MeetingSummary {
+  if (b.customer.consultationLang === 'ar') {
+    return {
+      lang: 'ar',
+      overview: `ناقشنا مع ${b.customer.name} ملفه والخيارات المتاحة له، وراجعنا نقاط القوة وما يحتاج إلى تقوية قبل التقديم.`,
+      keyPoints: ['الملف المالي جيد ويحتاج كشف حساب لآخر 6 أشهر.', 'خطاب جهة العمل يجب أن يذكر الإجازة المعتمدة.', 'سجل السفر السابق يدعم الطلب.'],
+      agreements: ['التقديم على التأشيرة السياحية خلال الشهر القادم.', 'يقوم MG بمراجعة المستندات قبل الحجز.'],
+      nextSteps: ['العميل: إرسال كشف الحساب البنكي خلال 7 أيام.', 'العميل: طلب خطاب جهة العمل.', 'MG: مراجعة المستندات وتأكيد موعد التقديم.'],
+    }
+  }
+  return {
+    lang: 'en',
+    overview: `We reviewed ${b.customer.name}'s file and options together, covering what is already strong and what needs work before applying.`,
+    keyPoints: ['Finances are solid; a 6-month bank statement is still needed.', 'The employer letter must state the approved leave dates.', 'Previous travel history supports the application.'],
+    agreements: ['Apply for the tourist visa within the next month.', 'MG reviews every document before the appointment is booked.'],
+    nextSteps: ['Client: send the bank statement within 7 days.', 'Client: request the employer letter.', 'MG: review the documents and confirm the appointment date.'],
+  }
+}
 
 function mustFind(token: string): Booking {
   const b = byToken(token)
@@ -318,13 +347,35 @@ export function createLocalRepo(): BookingRepo {
       if ('manageToken' in who && b.status === 'confirmed') applyEvent(b.id, { type: 'check-in' }, 'customer')
       return { state: 'demo' }
     },
+    async meetingSummary(bookingId) {
+      return get().meetingSummaries[ownBooking(bookingId).id] ?? null
+    },
+    async generateMeetingSummary(bookingId) {
+      // The prototype has no call to transcribe: it writes a sample in the consultation's language.
+      const b = ownBooking(bookingId)
+      const record = { summary: demoSummary(b), status: 'draft' as const, generatedAt: get().now() }
+      useAppStore.setState(s => ({ meetingSummaries: { ...s.meetingSummaries, [b.id]: record } }))
+      return record
+    },
+    async publishMeetingSummary(bookingId, summary) {
+      const b = ownBooking(bookingId)
+      const before = get().meetingSummaries[b.id]
+      const record = { summary, status: 'published' as const, generatedAt: before?.generatedAt ?? get().now(), publishedAt: get().now() }
+      useAppStore.setState(s => ({ meetingSummaries: { ...s.meetingSummaries, [b.id]: record } }))
+      get().addAudit({ actor: get().staffSession?.role === 'admin' ? 'admin' : 'consultant', action: 'summary-published', bookingRef: b.reference })
+    },
+    async myMeetingSummary(token) {
+      const r = get().meetingSummaries[mustFind(token).id]
+      return r?.status === 'published' ? r.summary : null
+    },
+    async recordingLink(bookingId) { ownBooking(bookingId); return null },
     async adminDeleteBooking(id) {
       if (get().staffSession?.role !== 'admin') throw new RepoError('FORBIDDEN')
       const b = get().bookings[id]
       if (!b) throw new RepoError('NOT_FOUND')
       useAppStore.setState(s => {
         const drop = <T,>(m: Record<string, T>) => Object.fromEntries(Object.entries(m).filter(([k]) => k !== id))
-        return { bookings: drop(s.bookings), records: drop(s.records), assessments: drop(s.assessments) }
+        return { bookings: drop(s.bookings), records: drop(s.records), assessments: drop(s.assessments), meetingSummaries: drop(s.meetingSummaries) }
       })
       get().addAudit({ actor: 'admin', action: 'booking-deleted', from: b.status, note: `${b.reference} · ${b.customer.name}` })
     },

@@ -26,6 +26,11 @@ export type Dependencies = {
 }
 
 const ROOM_STATUSES = ['confirmed', 'checked-in']
+/**
+ * The host (consultant) may record the call to the cloud and keep its transcript, which the meeting-summary
+ * function turns into the client's written summary. Nothing records unless the host presses Record.
+ */
+export const CALL_RECORDS = { enable_recording: 'cloud', enable_transcription_storage: true } as const
 
 export function videoRoomHandler(deps: Dependencies) {
   const allowedOrigin = new URL(deps.siteUrl).origin
@@ -83,17 +88,25 @@ export function videoRoomHandler(deps: Dependencies) {
       const exp = Math.floor(closesAt / 1000)
       let room = await daily(`/rooms/${name}`)
       if (room.status === 404) {
-        room = await daily('/rooms', { method: 'POST', payload: {
+        const create = (extra: Partial<typeof CALL_RECORDS>) => daily('/rooms', { method: 'POST', payload: {
           name, privacy: 'private',
-          properties: { exp, eject_at_room_exp: true, enable_prejoin_ui: true, enable_chat: true, enable_screenshare: true, max_participants: 4 },
+          properties: { exp, eject_at_room_exp: true, enable_prejoin_ui: true, enable_chat: true, enable_screenshare: true, max_participants: 4, ...extra },
         } })
+        room = await create(CALL_RECORDS)
         // Two people opening the room at the same moment: the second create finds it already there.
         if (room.status === 400) room = await daily(`/rooms/${name}`)
+        // Still no room: Daily refused the recording settings (e.g. the plan lacks cloud recording).
+        // The call matters more than its recording, so open the room without them.
+        if (room.status === 404) {
+          deps.log?.('daily_recording_refused', { booking: booking.reference })
+          room = await create({})
+        }
       }
       // A rescheduled booking keeps its room: move the closing time with it, or Daily would refuse entry.
+      // Rooms made before recording existed get it switched on the same way.
       const config = room.data?.config as Record<string, unknown> | undefined
-      if (room.status === 200 && config?.exp !== exp) {
-        const updated = await daily(`/rooms/${name}`, { method: 'POST', payload: { properties: { exp, eject_at_room_exp: true } } })
+      if (room.status === 200 && (config?.exp !== exp || config?.enable_recording !== CALL_RECORDS.enable_recording || config?.enable_transcription_storage !== true)) {
+        const updated = await daily(`/rooms/${name}`, { method: 'POST', payload: { properties: { exp, eject_at_room_exp: true, ...CALL_RECORDS } } })
         if (updated.status === 200) room = updated
       }
       const url = typeof room.data?.url === 'string' ? room.data.url : null

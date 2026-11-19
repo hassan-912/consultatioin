@@ -94,4 +94,11 @@
 .mg-tick { display: inline-block; animation: mg-tick .35s cubic-bezier(.2,.8,.2,1) both; }
 @keyframes mg-breathe { 0% { transform: scale(1); opacity: .7; } 80%, 100% { transform: scale(2.6); opacity: 0; } }
 .mg-breathe { animation: mg-breathe 1.8s ease-out infinite; }
-@media (prefers-reduced-motion: reduce) { .mg-tick, .mg-breathe { animation: none; } }
+/* The shared assessment card sliding in beside the call, and a field the other person just changed. */
+@keyframes mg-slide-in { from { transform: translateX(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+.mg-slide-in { animation: mg-slide-in .45s cubic-bezier(.2,.8,.2,1) both; }
+[dir="rtl"] .mg-slide-in { animation-name: mg-slide-in-rtl; }
+@keyframes mg-slide-in-rtl { from { transform: translateX(-24px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes mg-glow { 0% { box-shadow: 0 0 0 0 rgb(201 168 106 / .55); } 100% { box-shadow: 0 0 0 14px rgb(201 168 106 / 0); } }
+.mg-glow { animation: mg-glow 1.4s ease-out 2; }
+@media (prefers-reduced-motion: reduce) { .mg-tick, .mg-breathe, .mg-slide-in, .mg-glow { animation: none; } }
