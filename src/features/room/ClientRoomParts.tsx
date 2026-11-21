@@ -26,7 +26,7 @@ export function ClientRoomSide({ ctx, consultantName }: { ctx: RoomContext; cons
     <div className="grid gap-4">
       {recording && (
         <p role="status" className="mg-slide-in flex items-start gap-3 rounded-2xl bg-bad-soft px-4 py-3 text-sm text-bad ring-1 ring-bad/20">
-          <span className="mt-1 size-2.5 shrink-0 animate-pulse rounded-full bg-bad" />{t('room.recordingBanner')}
+          <span className="mt-1 size-2.5 shrink-0 animate-pulse rounded-full bg-bad" />{t(recording === 'video' ? 'room.recordingBanner' : 'room.notesBanner')}
         </p>
       )}
       {card && (

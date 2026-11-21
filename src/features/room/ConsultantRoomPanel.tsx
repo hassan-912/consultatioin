@@ -28,7 +28,7 @@ export function ConsultantRoomPanel({ booking, ctx, startOn = 'assessment' }: { 
   const now = useAppStore(s => s.now)
   const [summaryVersion, setSummaryVersion] = useState(0)
   const autoSummary = useAutoSummary(booking.id, () => setSummaryVersion(v => v + 1))
-  const recording = useRecording(ctx?.call ?? null, ctx?.channel ?? null, autoSummary)
+  const recording = useRecording(ctx?.call ?? null, ctx?.channel ?? null, booking.customer.consultationLang === 'ar' ? 'ar' : 'en', autoSummary)
   // Lives here, not in the tab, so switching tabs keeps the card shared.
   const assessment = useConsultantAssessment(booking.id, ctx?.channel ?? null, now)
   const tabs = [['assessment', t('room.tabAssessment')], ['summary', t('room.tabSummary')]] as const
@@ -37,7 +37,7 @@ export function ConsultantRoomPanel({ booking, ctx, startOn = 'assessment' }: { 
       <header className="bg-slate-deep px-5 pb-0 pt-4 text-white">
         <div className="flex items-center justify-between gap-3">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gold">{t('room.panelTitle')}</p>
-          {recording.state === 'on' && <RecPill since={recording.since} />}
+          {recording.state === 'on' ? <RecPill since={recording.since} /> : recording.notes === 'on' && <NotesPill />}
         </div>
         <p className="mt-1 truncate font-display text-lg font-semibold">{booking.customer.name}</p>
         <div role="tablist" className="mt-3 flex gap-1">
@@ -143,67 +143,76 @@ function useAutoSummary(bookingId: string, onPublished: () => void) {
 /* ── Recording ─────────────────────────────────────────────────────────── */
 
 type Recording = ReturnType<typeof useRecording>
+type CaptureState = 'off' | 'starting' | 'on' | 'error'
 /**
- * Recording runs on its own: it starts (with the transcript the summary is written from) as soon as the client is in
- * the call, and stops when the client leaves, which is what sets the automatic summary going (`onClientLeft`).
- * The consultant can still stop it by hand; it then stays off until the client next joins.
+ * Two separate things. The transcript, which the summary is written from, starts by itself as soon as the client is
+ * in the call (in the consultation's language) and stops when they leave, which sets the automatic summary going
+ * (`onClientLeft`). The video recording is the consultant's choice: nothing is recorded unless they press Record.
  */
-function useRecording(call: DailyCall | null, channel: RoomChannel | null, onClientLeft?: () => void) {
-  const [state, setState] = useState<'off' | 'starting' | 'on' | 'error'>('off')
+function useRecording(call: DailyCall | null, channel: RoomChannel | null, lang: 'ar' | 'en', onClientLeft?: () => void) {
+  const [state, setState] = useState<CaptureState>('off')
+  const [notes, setNotes] = useState<CaptureState>('off')
   const [since, setSince] = useState(0)
   const now = useAppStore(s => s.now)
-  const stateRef = useRef(state)
-  stateRef.current = state
-  const heldOff = useRef(false)
+  const notesRef = useRef(notes)
+  notesRef.current = notes
   const leftRef = useRef(onClientLeft)
   leftRef.current = onClientLeft
-  const announce = useCallback((on: boolean) => channel?.send({ kind: 'mg-room', type: 'recording', on }), [channel])
+  const notesOn = notes === 'on'
+  const videoOn = state === 'on'
+  const announce = useCallback(() => channel?.send({ kind: 'mg-room', type: 'recording', on: notesOn || videoOn, video: videoOn }), [channel, notesOn, videoOn])
+  // The client is told whenever either one changes, and again when they join or reload mid-call.
+  useEffect(() => { announce() }, [announce])
+  useEffect(() => channel?.listen(m => { if (m.type === 'hello') announce() }), [channel, announce])
+
   useEffect(() => {
     if (!call) return
-    const started = () => { setState('on'); setSince(now()); announce(true) }
-    const stopped = () => { setState('off'); announce(false) }
-    const failed = () => { setState('error'); announce(false) }
+    const started = () => { setState('on'); setSince(now()) }
+    const stopped = () => setState('off')
+    const failed = () => setState('error')
+    const notesStarted = () => setNotes('on')
+    const notesStopped = () => setNotes('off')
+    const notesFailed = () => setNotes('error')
     call.on('recording-started', started).on('recording-stopped', stopped).on('recording-error', failed)
-    return () => { call.off('recording-started', started).off('recording-stopped', stopped).off('recording-error', failed) }
-  }, [call, announce, now])
-  // A client who joins (or reloads) mid-recording still sees the notice.
-  useEffect(() => channel?.listen(m => { if (m.type === 'hello' && state === 'on') announce(true) }), [channel, state, announce])
-
-  const start = useCallback(() => {
-    heldOff.current = false
-    if (!call) { setState('on'); setSince(now()); announce(true); return }
-    setState('starting')
-    try {
-      call.startRecording()
-      // The transcript is what the summary is written from.
-      call.startTranscription()
-    } catch { setState('error') }
-  }, [call, now, announce])
-  const halt = useCallback(() => {
-    if (!call) { setState('off'); announce(false); return }
-    try { call.stopRecording(); call.stopTranscription() } catch { /* already stopped */ }
-  }, [call, announce])
-  const stop = () => { heldOff.current = true; halt() }
+      .on('transcription-started', notesStarted).on('transcription-stopped', notesStopped).on('transcription-error', notesFailed)
+    return () => {
+      call.off('recording-started', started).off('recording-stopped', stopped).off('recording-error', failed)
+        .off('transcription-started', notesStarted).off('transcription-stopped', notesStopped).off('transcription-error', notesFailed)
+    }
+  }, [call, now])
 
   // The client is anyone else in the call without the host's pass (staff join as owners).
   useEffect(() => {
     if (!call) return
     let present = false
     const sync = () => {
-      const now = Object.values(call.participants()).some(p => !p.local && !p.owner)
-      if (now && !present) { if (!heldOff.current && stateRef.current !== 'on' && stateRef.current !== 'starting') start() }
-      else if (!now && present) {
-        heldOff.current = false
-        if (stateRef.current === 'on' || stateRef.current === 'starting') halt()
+      const here = Object.values(call.participants()).some(p => !p.local && !p.owner)
+      if (here && !present && notesRef.current !== 'on' && notesRef.current !== 'starting') {
+        setNotes('starting')
+        // Without a language Daily transcribes in English, which turns an Arabic call into nonsense that the summary
+        // then "fills in". Deepgram's Nova-3 has an Arabic model that covers Egyptian dialect.
+        try { call.startTranscription({ language: lang, model: 'nova-3', punctuate: true }) } catch { setNotes('error') }
+      } else if (!here && present) {
+        try { call.stopTranscription() } catch { /* already stopped */ }
         leftRef.current?.()
       }
-      present = now
+      present = here
     }
     call.on('joined-meeting', sync).on('participant-joined', sync).on('participant-left', sync)
     sync()
     return () => { call.off('joined-meeting', sync).off('participant-joined', sync).off('participant-left', sync) }
-  }, [call, start, halt])
-  return { state, since, start, stop }
+  }, [call, lang])
+
+  const start = () => {
+    if (!call) { setState('on'); setSince(now()); return }
+    setState('starting')
+    try { call.startRecording() } catch { setState('error') }
+  }
+  const stop = () => {
+    if (!call) { setState('off'); return }
+    try { call.stopRecording() } catch { /* already stopped */ }
+  }
+  return { state, notes, since, start, stop }
 }
 
 function RecPill({ since }: { since: number }) {
@@ -219,6 +228,15 @@ function RecPill({ since }: { since: number }) {
   )
 }
 
+function NotesPill() {
+  const { t } = useT()
+  return (
+    <span className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white">
+      <span className="size-2 animate-pulse rounded-full bg-gold" />{t('room.notesOn')}
+    </span>
+  )
+}
+
 function RecordControl({ recording }: { recording: Recording }) {
   const { t } = useT()
   const on = recording.state === 'on'
@@ -229,6 +247,7 @@ function RecordControl({ recording }: { recording: Recording }) {
       </Button>
       <p className="mt-2 text-xs leading-relaxed text-muted">{t('room.recordHint')}</p>
       {recording.state === 'error' && <Notice tone="bad" className="mt-2">{t('room.recordFailed')}</Notice>}
+      {recording.notes === 'error' && <Notice tone="bad" className="mt-2">{t('room.notesFailed')}</Notice>}
     </div>
   )
 }

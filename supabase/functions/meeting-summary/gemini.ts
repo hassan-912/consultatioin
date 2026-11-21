@@ -33,22 +33,69 @@ When the summary is in Arabic:
   programmes and documents exactly as they were said.`
 
 const SYSTEM = `You write the client-facing summary of a visa consultation between a client and their MG International
-consultant. The client keeps it as their record of the meeting, so it must be accurate and professional.
-Use only what was said in the transcript: never invent figures, dates, documents or promises. If something was left
-open, say so rather than guessing. Never state or imply that a visa will be approved. Do not include any internal
-scores or points. Write as MG speaking to the client ("we", "you"; in Arabic «نحن», «أنت/حضرتك»).
+consultant. The client keeps it as their record of the meeting, so it must be accurate and complete.
+
+Accuracy rules (these come before everything else):
+- Use only what was said in the transcript. Never invent figures, dates, documents, countries, programmes or promises,
+  and never fill a gap with what consultations "usually" cover.
+- Every key point, agreement and next step must come with "quote": the exact words from the transcript that support
+  it, copied character for character (8 to 25 words, from one speaker turn, without the speaker's name). Points
+  whose quote is not in the transcript are thrown away, so if you cannot find the words, leave the point out.
+- The transcript comes from speech recognition and has errors. When a passage makes no sense, skip it; do not guess
+  what was meant.
+- Use «اتفقنا» / "we agreed" only for something both sides committed to. An open question is not an agreement.
+- Never state or imply that a visa will be approved. Do not include any internal scores or points.
+
+Completeness rules:
+- Go through the whole transcript, start to end, before writing. Cover every topic that was discussed in substance
+  (documents, money, dates, eligibility, the client's situation, the consultant's advice), in the order it came up.
+- Keep separate topics as separate points. Do not merge them into one vague point, and do not drop the end of the call.
+- Small talk, greetings and technical problems with the call are not topics.
+- Length follows the call: a short call gets a short summary. An empty list is fine.
+
+Write as MG speaking to the client ("we", "you"; in Arabic «نحن», «أنت/حضرتك»).
 
 ${STYLE}`
 
+const POINT = {
+  type: 'object',
+  required: ['text', 'quote'],
+  properties: {
+    text: { type: 'string', description: 'The point, in one or two sentences, in the summary language.' },
+    quote: { type: 'string', description: 'The exact transcript words that support it, copied as they appear.' },
+  },
+}
 const SCHEMA = {
   type: 'object',
   required: ['overview', 'keyPoints', 'agreements', 'nextSteps'],
   properties: {
-    overview: { type: 'string', description: 'Two or three sentences: why the client came and where things stand now.' },
-    keyPoints: { type: 'array', items: { type: 'string' }, description: 'The important points discussed, 3 to 8 items, one sentence each.' },
-    agreements: { type: 'array', items: { type: 'string' }, description: 'What the client and MG agreed on. Empty if nothing was agreed.' },
-    nextSteps: { type: 'array', items: { type: 'string' }, description: 'Concrete next actions. Each starts with who does it, e.g. "Client: …" or "MG: …" (in Arabic "العميل: …" or "MG: …"), and includes any deadline that was said.' },
+    keyPoints: { type: 'array', maxItems: 15, items: POINT, description: 'Every topic discussed in substance, in the order it came up.' },
+    agreements: { type: 'array', maxItems: 15, items: POINT, description: 'What the client and MG both committed to. Empty if nothing was agreed.' },
+    nextSteps: { type: 'array', maxItems: 15, items: POINT, description: 'Concrete next actions that were said. Each text starts with who does it ("Client: …" or "MG: …"; in Arabic "العميل: …" or "MG: …") and keeps any deadline that was said.' },
+    // Last, so it is written from the points above rather than the other way round.
+    overview: { type: 'string', description: 'Two or three sentences built only from the points above: why the client came and where things stand.' },
   },
+}
+
+/** Letters and digits only, with Arabic spelling variants folded together, so a faithful quote still matches the
+ *  transcript after the model changes punctuation, spacing, hamza or taa marbuta. */
+export function normalizeForMatch(s: string): string {
+  return s.normalize('NFKC').toLowerCase()
+    .replace(/[ً-ٰٟـ]/g, '') // tashkeel and tatweel
+    .replace(/[إأآٱ]/g, 'ا').replace(/ى/g, 'ي').replace(/ة/g, 'ه').replace(/[ؤئ]/g, 'ء')
+    .replace(/[^\p{L}\p{N}]+/gu, ' ').trim()
+}
+
+/** True when the quote really is in the transcript: word for word, or (allowing for a slip or two) when most of its
+ *  three-word runs are. Quotes under four words never count: a few common words prove nothing. */
+export function quoteIsInTranscript(quote: string, normalizedTranscript: string): boolean {
+  const q = normalizeForMatch(quote)
+  const words = q.split(' ').filter(Boolean)
+  if (words.length < 4) return false
+  if (` ${normalizedTranscript} `.includes(` ${q} `)) return true
+  const runs = words.slice(0, -2).map((_, i) => words.slice(i, i + 3).join(' '))
+  const found = runs.filter(r => ` ${normalizedTranscript} `.includes(` ${r} `)).length
+  return found / runs.length >= 0.7
 }
 
 export type GeminiOptions = {
@@ -72,10 +119,15 @@ export function geminiAllowed(supabaseUrl: string, billing: string | undefined):
   return host === 'kong' || host === 'localhost' || host === '127.0.0.1' || host === 'host.docker.internal'
 }
 
-const isStringList = (v: unknown): v is string[] => Array.isArray(v) && v.every(s => typeof s === 'string')
+type Point = { text: string; quote: string }
+const isPointList = (v: unknown): v is Point[] => Array.isArray(v)
+  && v.every(p => typeof p === 'object' && p !== null && typeof (p as Point).text === 'string' && typeof (p as Point).quote === 'string')
+
+/** What the model wrote, minus every point it could not back with the transcript's own words. */
+export type Grounded = Summary & { dropped: number }
 
 export function geminiSummarizer(options: GeminiOptions) {
-  return async (transcript: string, lang: 'en' | 'ar'): Promise<Summary> => {
+  return async (transcript: string, lang: 'en' | 'ar'): Promise<Grounded> => {
     const body = JSON.stringify({
       systemInstruction: { parts: [{ text: SYSTEM }] },
       contents: [{ role: 'user', parts: [{
@@ -112,9 +164,19 @@ export function geminiSummarizer(options: GeminiOptions) {
       const text = candidate?.content?.parts?.map(p => p.text ?? '').join('') ?? ''
       if (!text) throw new Error(`${model}: empty`)
       const parsed = JSON.parse(text) as Record<string, unknown>
-      if (typeof parsed.overview !== 'string' || !isStringList(parsed.keyPoints)
-        || !isStringList(parsed.agreements) || !isStringList(parsed.nextSteps)) throw new Error(`${model}: bad_shape`)
-      return { overview: parsed.overview, keyPoints: parsed.keyPoints, agreements: parsed.agreements, nextSteps: parsed.nextSteps, lang }
+      if (typeof parsed.overview !== 'string' || !isPointList(parsed.keyPoints)
+        || !isPointList(parsed.agreements) || !isPointList(parsed.nextSteps)) throw new Error(`${model}: bad_shape`)
+      const heard = normalizeForMatch(transcript)
+      let dropped = 0
+      const keep = (list: Point[]) => {
+        const backed = list.filter(p => p.text.trim() && quoteIsInTranscript(p.quote, heard))
+        dropped += list.length - backed.length
+        return backed.map(p => p.text.trim())
+      }
+      const result: Grounded = { overview: parsed.overview.trim(), keyPoints: keep(parsed.keyPoints), agreements: keep(parsed.agreements), nextSteps: keep(parsed.nextSteps), lang, dropped }
+      // Nothing it said could be found in the call: the overview would be just as made up.
+      if (!result.keyPoints.length) throw new Error(`${model}: ungrounded`)
+      return result
     }
     throw new Error(lastError)
   }

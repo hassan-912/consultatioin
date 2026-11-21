@@ -1,4 +1,4 @@
-import { meetingSummaryHandler, vttToText, type Dependencies, type StoredSummary, type Summary } from '../../supabase/functions/meeting-summary/handler'
+import { arabicShare, meetingSummaryHandler, vttToText, type Dependencies, type StoredSummary, type Summary } from '../../supabase/functions/meeting-summary/handler'
 import type { RoomBooking } from '../../supabase/functions/video-room/handler'
 
 const ID = '0b6f2f6e-6a51-4b1e-9d1b-1d6c7d0f0a11'
@@ -6,7 +6,7 @@ const booking: RoomBooking = {
   id: ID, reference: 'MG-TEST-ROOM', name: 'Ahmed Tarek', status: 'checked-in', format: 'online',
   starts_at: '2026-11-24T14:00:00Z', ends_at: '2026-11-24T14:45:00Z', lang: 'ar',
 }
-const VTT = `WEBVTT
+const EN_VTT = `WEBVTT
 
 1
 00:00:01.000 --> 00:00:04.000
@@ -24,7 +24,18 @@ const summary: Summary = { overview: 'o', keyPoints: ['k'], agreements: ['a'], n
 
 const TOKEN = 'client-manage-token-123'
 
-function setup(over: Partial<Dependencies> = {}, daily: { transcripts?: unknown[]; recordings?: unknown[] } = {}, stored: StoredSummary | null = null) {
+const VTT = `WEBVTT
+
+1
+00:00:01.000 --> 00:00:04.000
+<v Ahmed Tarek>أهلا بيك، خلينا نبص على كشف الحساب.</v>
+
+2
+00:00:07.000 --> 00:00:09.000
+<v Kamel>هبعته الأسبوع ده.</v>
+`
+
+function setup(over: Partial<Dependencies> = {}, daily: { transcripts?: unknown[]; recordings?: unknown[] } = {}, stored: StoredSummary | null = null, vtt = VTT) {
   const summarized: { transcript: string; lang: string }[] = []
   const saved: unknown[] = []
   const published: Summary[] = []
@@ -44,7 +55,7 @@ function setup(over: Partial<Dependencies> = {}, daily: { transcripts?: unknown[
       if (path === `/rooms/mg-${ID}`) return json({ id: 'room-uuid', name: `mg-${ID}` })
       if (path.startsWith('/transcript?roomId=room-uuid')) return json({ data: daily.transcripts ?? [{ transcriptId: 't1', status: 't_finished', duration: 600 }] })
       if (path === '/transcript/t1/access-link') return json({ link: 'https://files.example/t1.vtt' })
-      if (input === 'https://files.example/t1.vtt') return new Response(VTT)
+      if (input === 'https://files.example/t1.vtt') return new Response(vtt)
       if (path.startsWith('/recordings?room_name=')) return json({ data: daily.recordings ?? [] })
       if (path === '/recordings/r1/access-link') return json({ download_link: 'https://files.example/r1.mp4' })
       return json({ error: 'not-found' }, 404)
@@ -58,7 +69,7 @@ function setup(over: Partial<Dependencies> = {}, daily: { transcripts?: unknown[
 }
 
 test('a WebVTT transcript becomes one line per speaker turn', () => {
-  expect(vttToText(VTT)).toBe("Ahmed Tarek: Welcome, let's look at your bank statement. You need six months.\nKamel: I will send it this week.")
+  expect(vttToText(EN_VTT)).toBe("Ahmed Tarek: Welcome, let's look at your bank statement. You need six months.\nKamel: I will send it this week.")
 })
 
 test('only signed-in staff who may see the booking get a summary', async () => {
@@ -74,7 +85,7 @@ test('generate reads the transcript, writes the summary in the consultation lang
   const res = await call({ action: 'generate', booking_id: ID })
   expect(res.status).toBe(200)
   expect(await res.json()).toMatchObject({ status: 'draft', summary: { overview: 'o' } })
-  expect(summarized).toEqual([{ transcript: expect.stringContaining('Kamel: I will send it this week.'), lang: 'ar' }])
+  expect(summarized).toEqual([{ transcript: expect.stringContaining('Kamel: هبعته الأسبوع ده.'), lang: 'ar' }])
   expect(saved).toEqual([summary])
 })
 
@@ -138,4 +149,22 @@ test('auto never runs the AI twice: a published summary is returned, a draft is 
 test('auto without an AI key answers unavailable instead of failing', async () => {
   const { call } = setup({ summarize: undefined })
   expect(await (await call({ action: 'auto', manage_token: TOKEN }, null)).json()).toEqual({ state: 'unavailable' })
+})
+
+test('an Arabic call whose transcript came out in English is not summarized', async () => {
+  const { call, summarized } = setup({}, {}, null, EN_VTT)
+  // The fixture transcript is English and the booking is Arabic: this is what an English speech model makes of Arabic.
+  expect(await (await call({ action: 'auto', booking_id: ID })).json()).toEqual({ state: 'unavailable' })
+  expect((await call({ action: 'generate', booking_id: ID })).status).toBe(409)
+  expect(summarized).toHaveLength(0)
+  expect(arabicShare('Kamel: محتاجين كشف حساب')).toBe(1)
+  expect(arabicShare('Ahmed: well come to the bank')).toBe(0)
+})
+
+test('points the model could not back are not stored, and the count is logged', async () => {
+  const logs: unknown[] = []
+  const { call, saved } = setup({ summarize: async () => ({ ...summary, dropped: 2 }), log: (e, f) => logs.push({ e, ...f }) })
+  expect((await call({ action: 'generate', booking_id: ID })).status).toBe(200)
+  expect(saved).toEqual([summary])
+  expect(logs).toContainEqual(expect.objectContaining({ e: 'summary_points_dropped', dropped: 2 }))
 })

@@ -21,7 +21,7 @@ export type Dependencies = {
   clientBooking: (manageToken: string) => Promise<RoomBooking | null>
   /** Writes the summary from the transcript text, in `lang`. Throws when the model cannot. Missing (no AI key):
    *  "generate" answers SUMMARY_UNAVAILABLE before touching Daily; "recording" still works. */
-  summarize?: (transcript: string, lang: 'en' | 'ar') => Promise<Summary>
+  summarize?: (transcript: string, lang: 'en' | 'ar') => Promise<Summary & { dropped?: number }>
   /** Stores the draft and returns the stored record. */
   saveDraft: (bookingId: string, summary: Summary) => Promise<Record<string, unknown>>
   /** The stored record (draft or published), or null. */
@@ -30,6 +30,14 @@ export type Dependencies = {
   publishAuto: (bookingId: string, summary: Summary) => Promise<StoredSummary>
   fetch: typeof fetch
   log?: (event: string, fields: Record<string, string | number>) => void
+}
+
+/** Share of letters that are Arabic. An Arabic call transcribed by an English model comes out as English-looking
+ *  nonsense; summarizing that is how a summary ends up with things nobody said. */
+export function arabicShare(text: string): number {
+  // Speaker names ("Kamel:") are not what was said, so they don't count.
+  const letters = text.replace(/^[^:\n]{1,40}:/gm, '').match(/\p{L}/gu) ?? []
+  return letters.length ? letters.filter(c => /[؀-ۿ]/.test(c)).length / letters.length : 0
 }
 
 /** Turns a WebVTT transcript into "Speaker: words" lines, merging consecutive cues from the same speaker. */
@@ -137,7 +145,13 @@ export function meetingSummaryHandler(deps: Dependencies) {
       if (transcript.length < 40) return action === 'auto' ? reply(200, { state: 'pending' }) : reply(409, { error: 'NO_TRANSCRIPT' })
 
       const lang: Summary['lang'] = booking.lang === 'ar' ? 'ar' : 'en'
-      const summary: Summary = { ...await deps.summarize!(transcript, lang), lang }
+      if (lang === 'ar' && arabicShare(transcript) < 0.5) {
+        deps.log?.('transcript_wrong_language', { booking: booking.reference, arabic: Math.round(arabicShare(transcript) * 100) })
+        return action === 'auto' ? reply(200, { state: 'unavailable' }) : reply(409, { error: 'NO_TRANSCRIPT' })
+      }
+      const { dropped = 0, ...written } = await deps.summarize!(transcript, lang)
+      if (dropped) deps.log?.('summary_points_dropped', { booking: booking.reference, dropped })
+      const summary: Summary = { overview: written.overview, keyPoints: written.keyPoints, agreements: written.agreements, nextSteps: written.nextSteps, lang }
       if (action === 'auto') return reply(200, { state: 'published', record: await deps.publishAuto(booking.id, summary) })
       return reply(200, await deps.saveDraft(booking.id, summary))
     } catch (e) { return failed(e) }
