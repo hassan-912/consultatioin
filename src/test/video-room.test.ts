@@ -77,7 +77,7 @@ test('when Daily refuses the recording settings, the room still opens without th
   expect(await res.json()).toMatchObject({ state: 'ready', token: 'pass-123' })
   const creates = calls.filter(c => c.path === '/rooms' && c.method === 'POST').map(c => (c.body as { properties: Record<string, unknown> }).properties)
   expect(creates).toHaveLength(2)
-  expect(creates[0]).toMatchObject({ enable_recording: 'cloud' })
+  expect(creates[0]).toMatchObject({ enable_recording: 'cloud-audio-only' })
   expect(creates[1]).not.toHaveProperty('enable_recording')
 })
 

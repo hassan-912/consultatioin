@@ -1,156 +1,137 @@
-// After an online consultation: a written summary of the call, drafted by Gemini from the call's Daily transcript.
-//   sweep      the database's minute job (x-webhook-secret): for each consultation that has started and has no
-//              published summary, wait for Daily to finish the transcript, then write the summary and publish it.
-//              No browser has to stay open for this.
-//   generate   staff: write a fresh draft now (the consultant's "write it again").
-//   recording  staff: a download link for the video recording, when the consultant recorded one.
+// After an online consultation: a written summary of the call. The call's audio is recorded (from when the client
+// joins until they leave); Gemini listens to it once and writes the transcript and the summary together.
+//   Daily webhook   "recording.ready-to-download": Daily says the audio is ready, so the summary is written and
+//                   published. One trigger per call, nothing polls and no browser has to stay open.
+//   generate        staff: write a fresh draft now (the consultant's "write it again").
+//   recording       staff: a download link for the call's audio.
+//   register-webhook  one-off setup (x-webhook-secret): tells Daily where to send the webhook.
 // The client reads the published summary through a database function, never through here.
 
 import type { RoomBooking } from '../video-room/handler.ts'
+import type { Audio, Heard } from './gemini.ts'
 
 const DAILY = 'https://api.daily.co/v1'
 
 export interface Summary { overview: string; keyPoints: string[]; agreements: string[]; nextSteps: string[]; lang: 'en' | 'ar' }
-export type StoredSummary = { summary: Summary; status: 'draft' | 'published' } & Record<string, unknown>
-export type SweepOutcome = 'pending' | 'failed' | 'unavailable' | 'published'
+/** What is stored. `source`: the recordings it was written from. `by_consultant`: a person published this wording. */
+export type StoredSummary = { summary: Summary; status: 'draft' | 'published'; source?: string | null; by_consultant?: boolean } & Record<string, unknown>
 
 export type Dependencies = {
   siteUrl: string
-  /** Missing: answers SUMMARY_UNAVAILABLE (sweep: unavailable). */
+  /** This function's own address, for the webhook Daily is told to call. */
+  functionUrl: string
+  /** Missing: answers SUMMARY_UNAVAILABLE. */
   dailyKey?: string
-  /** Shared with the database job that calls "sweep" (x-webhook-secret). Missing: sweep is refused. */
-  sweepSecret?: string
+  /** Base64 key Daily signs its webhooks with (X-Webhook-Signature). Missing: webhooks are refused. */
+  webhookHmac?: string
+  /** Shared with the database (Vault) for the one-off "register-webhook" call. */
+  adminSecret?: string
   verifyUser: (jwt: string) => Promise<string | null>
   /** The booking as this staff member may see it (own consultant or admin), or null. */
   staffBooking: (bookingId: string, userId: string) => Promise<RoomBooking | null>
-  /** Writes the summary from the transcript text, in `lang`. Throws when the model cannot. Missing: no AI. */
-  summarize?: (transcript: string, lang: 'en' | 'ar') => Promise<Summary & { dropped?: number }>
-  /** Stores the draft and returns the stored record. */
-  saveDraft: (bookingId: string, summary: Summary) => Promise<Record<string, unknown>>
-  /** The stored record (draft or published), or null. */
+  /** Any booking by id (for the webhook, which has no user). */
+  bookingById: (bookingId: string) => Promise<RoomBooking | null>
+  /** Listens to the call's audio and writes transcript and summary. Throws when the model cannot. Missing: no AI. */
+  summarizeAudio?: (audio: Audio[], lang: 'en' | 'ar') => Promise<Heard>
+  saveDraft: (bookingId: string, summary: Summary, source: string) => Promise<Record<string, unknown>>
   currentSummary: (bookingId: string) => Promise<StoredSummary | null>
-  /** Publishes unless a summary is already published; returns what is stored. */
-  publishAuto: (bookingId: string, summary: Summary) => Promise<StoredSummary>
-  /** Takes the consultations that are due (and leases them so two sweeps never share one). */
-  claimDue: () => Promise<RoomBooking[]>
-  /** Records how a sweep went for one consultation, which decides when it is looked at again. */
-  report: (bookingId: string, outcome: SweepOutcome) => Promise<unknown>
-  /** Keeps work running after the reply (EdgeRuntime.waitUntil). Missing: the sweep finishes before replying. */
+  /** Publishes unless a person already published a summary; returns what is stored. */
+  publishAuto: (bookingId: string, summary: Summary, source: string) => Promise<StoredSummary>
+  /** Keeps work running after the reply (EdgeRuntime.waitUntil). Missing: the work finishes before replying. */
   background?: (work: Promise<unknown>) => void
   fetch: typeof fetch
   log?: (event: string, fields: Record<string, string | number>) => void
 }
 
-/** Share of letters that are Arabic. An Arabic call transcribed by an English model comes out as English-looking
- *  nonsense; summarizing that is how a summary ends up with things nobody said. */
+/** Share of letters that are Arabic. An Arabic call that comes back as English-looking text was not heard properly. */
 export function arabicShare(text: string): number {
-  // Speaker names ("Kamel:") are not what was said, so they don't count.
+  // Speaker labels ("العميل:") are not what was said, so they don't count.
   const letters = text.replace(/^[^:\n]{1,40}:/gm, '').match(/\p{L}/gu) ?? []
   return letters.length ? letters.filter(c => /[؀-ۿ]/.test(c)).length / letters.length : 0
 }
 
-/** Turns a WebVTT transcript into "Speaker: words" lines, merging consecutive cues from the same speaker. */
-export function vttToText(vtt: string): string {
-  const lines: string[] = []
-  let last = ''
-  for (const block of vtt.replace(/\r/g, '').split(/\n\n+/)) {
-    const text = block.split('\n').filter(l => l && !/^WEBVTT/.test(l) && !/-->/.test(l) && !/^\d+$/.test(l.trim())).join(' ').trim()
-    if (!text) continue
-    // Daily writes the speaker as <v Name>words</v> or "Name: words".
-    const voice = /^<v\s+([^>]+)>([\s\S]*?)(?:<\/v>)?$/.exec(text)
-    const [speaker, words] = voice ? [voice[1].trim(), voice[2].trim()] : (/^([^:]{1,40}):\s*([\s\S]+)$/.exec(text)?.slice(1) ?? ['', text])
-    if (speaker && speaker === last) lines[lines.length - 1] += ` ${words}`
-    else { lines.push(speaker ? `${speaker}: ${words}` : words); last = speaker }
-  }
-  return lines.join('\n')
-}
-
 /** Same length, same characters: compared without leaking how much matched through timing. */
-function secretMatches(given: string | null, expected: string): boolean {
+function sameSecret(given: string | null, expected: string): boolean {
   if (!given || given.length !== expected.length) return false
   let diff = 0
   for (let i = 0; i < given.length; i++) diff |= given.charCodeAt(i) ^ expected.charCodeAt(i)
   return diff === 0
 }
 
+const b64 = (bytes: ArrayBuffer) => btoa(String.fromCharCode(...new Uint8Array(bytes)))
+/** Daily's signature: base64 HMAC-SHA256 of "timestamp.body", keyed with the base64-decoded webhook secret. */
+export async function dailySignature(hmacB64: string, timestamp: string, body: string): Promise<string> {
+  const key = await crypto.subtle.importKey('raw', Uint8Array.from(atob(hmacB64), c => c.charCodeAt(0)), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
+  return b64(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`${timestamp}.${body}`)))
+}
+
 export function meetingSummaryHandler(deps: Dependencies) {
   const allowedOrigin = new URL(deps.siteUrl).origin
 
-  const daily = async (path: string) => {
-    const res = await deps.fetch(`${DAILY}${path}`, { headers: { Authorization: `Bearer ${deps.dailyKey}` }, signal: AbortSignal.timeout(15000) })
+  const daily = async (path: string, init?: { method?: string; payload?: unknown }) => {
+    const res = await deps.fetch(`${DAILY}${path}`, {
+      method: init?.method ?? 'GET',
+      headers: { Authorization: `Bearer ${deps.dailyKey}`, 'Content-Type': 'application/json' },
+      body: init?.payload === undefined ? undefined : JSON.stringify(init.payload),
+      signal: AbortSignal.timeout(15000),
+    })
     return { status: res.status, data: await res.json().catch(() => null) as Record<string, unknown> | null }
   }
-  const newest = (data: Record<string, unknown> | null) => {
-    const list = Array.isArray(data?.data) ? data.data as Record<string, unknown>[] : []
-    return list.slice().sort((a, b) => Number(b.start_ts ?? b.duration ?? 0) - Number(a.start_ts ?? a.duration ?? 0))
+
+  /** The call's audio recordings, oldest first. `busy`: one is still recording or being finished by Daily. */
+  async function recordingsOf(booking: RoomBooking) {
+    const list = await daily(`/recordings?room_name=${encodeURIComponent(`mg-${booking.id}`)}&limit=20`)
+    const all = (Array.isArray(list.data?.data) ? list.data!.data as Record<string, unknown>[] : [])
+      .slice().sort((a, b) => Number(a.start_ts ?? 0) - Number(b.start_ts ?? 0))
+    const finished = all.filter(r => r.status === 'finished')
+    return { busy: all.some(r => r.status === 'in-progress'), finished, source: finished.map(r => String(r.id)).join(',') }
   }
 
-  /** Everything Daily has transcribed for the call. `writing`: a part is still being written (the call is going on,
-   *  or Daily is still finishing it, which takes a minute or two after the client leaves). */
-  async function transcriptOf(booking: RoomBooking) {
-    const room = await daily(`/rooms/${encodeURIComponent(`mg-${booking.id}`)}`)
-    const roomId = typeof room.data?.id === 'string' ? room.data.id : null
-    const list = roomId ? newest((await daily(`/transcript?roomId=${encodeURIComponent(roomId)}&limit=20`)).data) : []
-    const done = (t: Record<string, unknown>) => t.status === 't_finished' || t.status === 'finished'
-    const writing = list.some(t => !done(t) && !/error|fail/i.test(String(t.status ?? '')))
-    const texts: string[] = []
-    // A call that was stopped and restarted has several transcripts: keep them all, oldest first.
-    for (const t of writing ? [] : list.filter(done).reverse()) {
-      const access = await daily(`/transcript/${encodeURIComponent(String(t.transcriptId ?? t.id))}/access-link`)
-      const link = typeof access.data?.link === 'string' ? access.data.link : null
+  /** Downloads each finished recording (a short-lived link from Daily). */
+  async function audioOf(recordings: Record<string, unknown>[]): Promise<Audio[]> {
+    const audio: Audio[] = []
+    for (const r of recordings) {
+      const access = await daily(`/recordings/${encodeURIComponent(String(r.id))}/access-link`)
+      const link = typeof access.data?.download_link === 'string' ? access.data.download_link : null
       if (!link) continue
-      const vtt = await deps.fetch(link, { signal: AbortSignal.timeout(15000) }).then(r => (r.ok ? r.text() : ''))
-      const text = vttToText(vtt)
-      if (text) texts.push(text)
+      const res = await deps.fetch(link, { signal: AbortSignal.timeout(60000) })
+      if (!res.ok) throw new Error(`download: ${res.status}`)
+      const type = res.headers.get('content-type') ?? ''
+      audio.push({ bytes: new Uint8Array(await res.arrayBuffer()), mimeType: /^audio\//.test(type) ? type.split(';')[0] : 'audio/mp4' })
     }
-    const text = texts.join('\n\n')
-    if (!writing && text.length < 40) deps.log?.('no_transcript', { booking: booking.reference, room: roomId ? 'found' : 'missing',
-      transcripts: list.length, statuses: list.map(t => String(t.status)).join(',') || 'none' })
-    return { writing, text: text.length < 40 ? '' : text }
+    return audio
   }
 
-  /** The summary from a finished transcript, or why there is none. Throws when Daily or the model fails. */
-  async function write(booking: RoomBooking, text: string): Promise<Summary | 'unavailable'> {
+  /** The summary from the call's audio, or 'unavailable' when what came back was not the call. Throws on failure. */
+  async function write(booking: RoomBooking, recordings: Record<string, unknown>[]): Promise<Summary | 'unavailable'> {
     const lang: Summary['lang'] = booking.lang === 'ar' ? 'ar' : 'en'
-    if (lang === 'ar' && arabicShare(text) < 0.5) {
-      deps.log?.('transcript_wrong_language', { booking: booking.reference, arabic: Math.round(arabicShare(text) * 100) })
+    const audio = await audioOf(recordings)
+    if (!audio.length) return 'unavailable'
+    const heard = await deps.summarizeAudio!(audio, lang)
+    if (lang === 'ar' && arabicShare(heard.transcript) < 0.5) {
+      deps.log?.('transcript_wrong_language', { booking: booking.reference, arabic: Math.round(arabicShare(heard.transcript) * 100) })
       return 'unavailable'
     }
-    const { dropped = 0, ...written } = await deps.summarize!(text, lang)
-    if (dropped) deps.log?.('summary_points_dropped', { booking: booking.reference, dropped })
-    return { overview: written.overview, keyPoints: written.keyPoints, agreements: written.agreements, nextSteps: written.nextSteps, lang }
+    if (heard.dropped) deps.log?.('summary_points_dropped', { booking: booking.reference, dropped: heard.dropped })
+    return { overview: heard.overview, keyPoints: heard.keyPoints, agreements: heard.agreements, nextSteps: heard.nextSteps, lang }
   }
 
-  /** One consultation in the sweep. */
-  async function sweepOne(booking: RoomBooking): Promise<SweepOutcome> {
+  /** Daily says a recording is ready: write and publish, once per set of recordings. */
+  async function onRecordingReady(booking: RoomBooking) {
     const stored = await deps.currentSummary(booking.id)
-    if (stored?.status === 'published') return 'published'
-    // The consultant already wrote a draft: that one goes out, no second AI run.
-    if (stored) { await deps.publishAuto(booking.id, stored.summary); return 'published' }
-    if (!deps.dailyKey || !deps.summarize) return 'unavailable'
-    const t = await transcriptOf(booking)
-    if (t.writing || !t.text) return 'pending'
-    const summary = await write(booking, t.text)
+    // A person published their own wording: never replace it.
+    if (stored?.status === 'published' && stored.by_consultant) return 'kept'
+    const rec = await recordingsOf(booking)
+    // The client left and came back: the last part's webhook will cover all of it.
+    if (rec.busy || !rec.finished.length) return 'waiting'
+    // Daily can send the same webhook twice.
+    if (stored?.source === rec.source && stored.status === 'published') return 'done'
+    // The consultant already wrote a draft from these same recordings: that one goes out, no second AI run.
+    if (stored?.source === rec.source) { await deps.publishAuto(booking.id, stored.summary, rec.source); return 'published' }
+    const summary = await write(booking, rec.finished)
     if (summary === 'unavailable') return 'unavailable'
-    await deps.publishAuto(booking.id, summary)
-    deps.log?.('summary_published', { booking: booking.reference })
+    await deps.publishAuto(booking.id, summary, rec.source)
     return 'published'
-  }
-
-  async function sweep() {
-    const due = await deps.claimDue()
-    const outcomes: Record<string, SweepOutcome> = {}
-    // One at a time: the free Gemini tier allows only a few requests a minute.
-    for (const booking of due) {
-      let outcome: SweepOutcome
-      try { outcome = await sweepOne(booking) } catch (e) {
-        deps.log?.('summary_failed', { booking: booking.reference, reason: e instanceof Error ? e.message.slice(0, 120) : 'unknown' })
-        outcome = 'failed'
-      }
-      outcomes[booking.reference] = outcome
-      await deps.report(booking.id, outcome).catch(() => deps.log?.('report_failed', { booking: booking.reference }))
-    }
-    return outcomes
   }
 
   return async (request: Request): Promise<Response> => {
@@ -162,14 +143,48 @@ export function meetingSummaryHandler(deps: Dependencies) {
       'Access-Control-Allow-Methods': 'POST', 'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-client-info' } })
     if (request.method !== 'POST') return reply(405, { error: 'METHOD_NOT_ALLOWED' })
 
-    const body = await request.json().catch(() => null) as Record<string, unknown> | null
-    const action = body?.action
+    // Raw text first: Daily's signature covers the exact bytes it sent.
+    const raw = await request.text()
+    let body: Record<string, unknown> | null = null
+    try { body = JSON.parse(raw) } catch { /* handled below */ }
 
-    if (action === 'sweep') {
-      if (!deps.sweepSecret || !secretMatches(request.headers.get('x-webhook-secret'), deps.sweepSecret)) return reply(401, { error: 'FORBIDDEN' })
-      const work = sweep()
-      if (deps.background) { deps.background(work.catch(() => deps.log?.('sweep_failed', {}))); return reply(202, { started: true }) }
-      try { return reply(200, { outcomes: await work }) } catch { return reply(503, { error: 'SUMMARY_UNAVAILABLE' }) }
+    // Daily checks a new webhook address with {"test":"test"} and wants a 200 within 8 seconds.
+    if (body?.test === 'test') return reply(200, { ok: true })
+
+    if (typeof body?.type === 'string' && body.type.startsWith('recording.')) {
+      const timestamp = request.headers.get('x-webhook-timestamp') ?? ''
+      if (!deps.webhookHmac || !timestamp || !sameSecret(request.headers.get('x-webhook-signature'), await dailySignature(deps.webhookHmac, timestamp, raw))) {
+        deps.log?.('webhook_refused', { type: String(body.type) })
+        return reply(401, { error: 'FORBIDDEN' })
+      }
+      if (body.type !== 'recording.ready-to-download') return reply(200, { ignored: body.type })
+      const room = String((body.payload as Record<string, unknown> | undefined)?.room_name ?? '')
+      const id = /^mg-([0-9a-f-]{36})$/i.exec(room)?.[1]
+      const booking = id ? await deps.bookingById(id).catch(() => null) : null
+      if (!booking || booking.format !== 'online') return reply(200, { ignored: 'room' })
+      if (!deps.dailyKey || !deps.summarizeAudio) return reply(200, { ignored: 'unavailable' })
+      const work = onRecordingReady(booking).then(
+        outcome => deps.log?.('webhook_done', { booking: booking.reference, outcome }),
+        e => deps.log?.('summary_failed', { booking: booking.reference, reason: e instanceof Error ? e.message.slice(0, 120) : 'unknown' }))
+      // Answer Daily at once; downloading, listening and writing take a minute or more.
+      if (deps.background) { deps.background(work); return reply(200, { started: true }) }
+      await work
+      return reply(200, { done: true })
+    }
+
+    const action = body?.action
+    if (action === 'register-webhook') {
+      if (!deps.adminSecret || !sameSecret(request.headers.get('x-webhook-secret'), deps.adminSecret)) return reply(401, { error: 'FORBIDDEN' })
+      if (!deps.dailyKey || !deps.webhookHmac) return reply(503, { error: 'SUMMARY_UNAVAILABLE' })
+      const existing = await daily('/webhooks')
+      const got = existing.data as unknown
+      const list = (Array.isArray(got) ? got : Array.isArray((got as { data?: unknown })?.data) ? (got as { data: unknown[] }).data : []) as Record<string, unknown>[]
+      const mine = list.find(w => w.url === deps.functionUrl)
+      const payload = { url: deps.functionUrl, eventTypes: ['recording.ready-to-download'], hmac: deps.webhookHmac }
+      const saved = mine ? await daily(`/webhooks/${encodeURIComponent(String(mine.uuid))}`, { method: 'POST', payload })
+        : await daily('/webhooks', { method: 'POST', payload })
+      // Never echo the key back.
+      return reply(saved.status === 200 ? 200 : 502, { status: saved.status, state: saved.data?.state ?? null, updated: !!mine, error: saved.data?.error ?? null })
     }
 
     const bookingId = typeof body?.booking_id === 'string' && /^[0-9a-f-]{36}$/i.test(body.booking_id) ? body.booking_id : null
@@ -186,24 +201,22 @@ export function meetingSummaryHandler(deps: Dependencies) {
     }
     if (!booking) return reply(404, { error: 'NOT_FOUND' })
     if (booking.format !== 'online') return reply(400, { error: 'INVALID_INPUT' })
-    if (!deps.dailyKey || (action === 'generate' && !deps.summarize)) return reply(503, { error: 'SUMMARY_UNAVAILABLE' })
+    if (!deps.dailyKey || (action === 'generate' && !deps.summarizeAudio)) return reply(503, { error: 'SUMMARY_UNAVAILABLE' })
 
     try {
+      const rec = await recordingsOf(booking)
       if (action === 'recording') {
-        const list = await daily(`/recordings?room_name=${encodeURIComponent(`mg-${booking.id}`)}&limit=20`)
-        const finished = newest(list.data).find(r => r.status === 'finished')
-        if (!finished) return reply(200, { link: null })
-        const access = await daily(`/recordings/${encodeURIComponent(String(finished.id))}/access-link`)
+        const newest = rec.finished[rec.finished.length - 1]
+        if (!newest) return reply(200, { link: null })
+        const access = await daily(`/recordings/${encodeURIComponent(String(newest.id))}/access-link`)
         return reply(200, { link: typeof access.data?.download_link === 'string' ? access.data.download_link : null })
       }
-
-      const t = await transcriptOf(booking)
-      // Not "record the call": the transcript exists, Daily is just still finishing it.
-      if (t.writing) return reply(409, { error: 'TRANSCRIPT_PENDING' })
-      if (!t.text) return reply(409, { error: 'NO_TRANSCRIPT' })
-      const summary = await write(booking, t.text)
+      // Not "no recording": the client is still in the call, or Daily is still finishing the file.
+      if (rec.busy) return reply(409, { error: 'TRANSCRIPT_PENDING' })
+      if (!rec.finished.length) return reply(409, { error: 'NO_TRANSCRIPT' })
+      const summary = await write(booking, rec.finished)
       if (summary === 'unavailable') return reply(409, { error: 'NO_TRANSCRIPT' })
-      return reply(200, await deps.saveDraft(booking.id, summary))
+      return reply(200, await deps.saveDraft(booking.id, summary, rec.source))
     } catch (e) {
       deps.log?.('summary_failed', { booking: booking.reference, reason: e instanceof Error ? e.message.slice(0, 120) : 'unknown' })
       return reply(503, { error: 'SUMMARY_UNAVAILABLE' })

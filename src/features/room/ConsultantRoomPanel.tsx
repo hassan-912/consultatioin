@@ -26,7 +26,7 @@ export function ConsultantRoomPanel({ booking, ctx, startOn = 'assessment' }: { 
   const { t } = useT()
   const [tab, setTab] = useState(startOn)
   const now = useAppStore(s => s.now)
-  const recording = useRecording(ctx?.call ?? null, ctx?.channel ?? null, booking.customer.consultationLang === 'ar' ? 'ar' : 'en')
+  const recording = useRecording(ctx?.call ?? null, ctx?.channel ?? null)
   // Lives here, not in the tab, so switching tabs keeps the card shared.
   const assessment = useConsultantAssessment(booking.id, ctx?.channel ?? null, now)
   const tabs = [['assessment', t('room.tabAssessment')], ['summary', t('room.tabSummary')]] as const
@@ -35,7 +35,7 @@ export function ConsultantRoomPanel({ booking, ctx, startOn = 'assessment' }: { 
       <header className="bg-slate-deep px-5 pb-0 pt-4 text-white">
         <div className="flex items-center justify-between gap-3">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gold">{t('room.panelTitle')}</p>
-          {recording.state === 'on' ? <RecPill since={recording.since} /> : recording.notes === 'on' && <NotesPill />}
+          {recording.state === 'on' && <RecPill since={recording.since} />}
         </div>
         <p className="mt-1 truncate font-display text-lg font-semibold">{booking.customer.name}</p>
         <div role="tablist" className="mt-3 flex gap-1">
@@ -119,21 +119,19 @@ function AssessmentTab({ a, canShare }: { a: ReturnType<typeof useConsultantAsse
 type Recording = ReturnType<typeof useRecording>
 type CaptureState = 'off' | 'starting' | 'on' | 'error'
 /**
- * Two separate things. The transcript, which the summary is written from, starts by itself as soon as the client is
- * in the call (in the consultation's language) and stops when they leave, so Daily can finish it; the server then
- * writes and publishes the summary. The video recording is the consultant's choice: nothing is recorded unless they press Record.
+ * The call's audio (no video) is recorded from the moment the client joins until they leave. When Daily has the
+ * file ready it tells the meeting-summary function, and Gemini listens to the whole call once to write the transcript
+ * and the summary. Nobody presses anything, and nothing has to stay open after the call.
  */
-function useRecording(call: DailyCall | null, channel: RoomChannel | null, lang: 'ar' | 'en') {
+function useRecording(call: DailyCall | null, channel: RoomChannel | null) {
   const [state, setState] = useState<CaptureState>('off')
-  const [notes, setNotes] = useState<CaptureState>('off')
   const [since, setSince] = useState(0)
   const now = useAppStore(s => s.now)
-  const notesRef = useRef(notes)
-  notesRef.current = notes
-  const notesOn = notes === 'on'
-  const videoOn = state === 'on'
-  const announce = useCallback(() => channel?.send({ kind: 'mg-room', type: 'recording', on: notesOn || videoOn, video: videoOn }), [channel, notesOn, videoOn])
-  // The client is told whenever either one changes, and again when they join or reload mid-call.
+  const stateRef = useRef(state)
+  stateRef.current = state
+  const on = state === 'on'
+  const announce = useCallback(() => channel?.send({ kind: 'mg-room', type: 'recording', on }), [channel, on])
+  // The client is told whenever it changes, and again when they join or reload mid-call.
   useEffect(() => { announce() }, [announce])
   useEffect(() => channel?.listen(m => { if (m.type === 'hello') announce() }), [channel, announce])
 
@@ -142,15 +140,8 @@ function useRecording(call: DailyCall | null, channel: RoomChannel | null, lang:
     const started = () => { setState('on'); setSince(now()) }
     const stopped = () => setState('off')
     const failed = () => setState('error')
-    const notesStarted = () => setNotes('on')
-    const notesStopped = () => setNotes('off')
-    const notesFailed = () => setNotes('error')
     call.on('recording-started', started).on('recording-stopped', stopped).on('recording-error', failed)
-      .on('transcription-started', notesStarted).on('transcription-stopped', notesStopped).on('transcription-error', notesFailed)
-    return () => {
-      call.off('recording-started', started).off('recording-stopped', stopped).off('recording-error', failed)
-        .off('transcription-started', notesStarted).off('transcription-stopped', notesStopped).off('transcription-error', notesFailed)
-    }
+    return () => { call.off('recording-started', started).off('recording-stopped', stopped).off('recording-error', failed) }
   }, [call, now])
 
   // The client is anyone else in the call without the host's pass (staff join as owners).
@@ -159,31 +150,21 @@ function useRecording(call: DailyCall | null, channel: RoomChannel | null, lang:
     let present = false
     const sync = () => {
       const here = Object.values(call.participants()).some(p => !p.local && !p.owner)
-      if (here && !present && notesRef.current !== 'on' && notesRef.current !== 'starting') {
-        setNotes('starting')
-        // Without a language Daily transcribes in English, which turns an Arabic call into nonsense that the summary
-        // then "fills in". Deepgram's Nova-3 has an Arabic model that covers Egyptian dialect.
-        try { call.startTranscription({ language: lang, model: 'nova-3', punctuate: true }) } catch { setNotes('error') }
+      if (here && !present && stateRef.current !== 'on' && stateRef.current !== 'starting') {
+        setState('starting')
+        try { call.startRecording({ type: 'cloud-audio-only' }) } catch { setState('error') }
       } else if (!here && present) {
-        try { call.stopTranscription() } catch { /* already stopped */ }
+        // Stopping is what makes Daily finish the file and send it on for the summary.
+        try { call.stopRecording() } catch { /* already stopped */ }
       }
       present = here
     }
     call.on('joined-meeting', sync).on('participant-joined', sync).on('participant-left', sync)
     sync()
     return () => { call.off('joined-meeting', sync).off('participant-joined', sync).off('participant-left', sync) }
-  }, [call, lang])
+  }, [call])
 
-  const start = () => {
-    if (!call) { setState('on'); setSince(now()); return }
-    setState('starting')
-    try { call.startRecording() } catch { setState('error') }
-  }
-  const stop = () => {
-    if (!call) { setState('off'); return }
-    try { call.stopRecording() } catch { /* already stopped */ }
-  }
-  return { state, notes, since, start, stop }
+  return { state, since }
 }
 
 function RecPill({ since }: { since: number }) {
@@ -199,26 +180,17 @@ function RecPill({ since }: { since: number }) {
   )
 }
 
-function NotesPill() {
-  const { t } = useT()
-  return (
-    <span className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white">
-      <span className="size-2 animate-pulse rounded-full bg-gold" />{t('room.notesOn')}
-    </span>
-  )
-}
-
+/** Where the recording stands. Nothing to press: it follows the client in and out of the call. */
 function RecordControl({ recording }: { recording: Recording }) {
   const { t } = useT()
   const on = recording.state === 'on'
   return (
     <div className="rounded-2xl bg-paper p-4 ring-1 ring-line">
-      <Button variant={on ? 'danger' : 'primary'} className="w-full" disabled={recording.state === 'starting'} onClick={on ? recording.stop : recording.start}>
-        <span className={`size-2.5 rounded-full ${on ? 'bg-bad' : 'bg-bad animate-pulse'}`} />{t(on ? 'room.stopRecord' : 'room.record')}
-      </Button>
+      <p className="inline-flex items-center gap-2 text-sm font-semibold text-ink">
+        <span className={`size-2.5 rounded-full ${on ? 'animate-pulse bg-bad' : 'bg-line'}`} />{t(on ? 'room.recordingOn' : 'room.recordWaiting')}
+      </p>
       <p className="mt-2 text-xs leading-relaxed text-muted">{t('room.recordHint')}</p>
       {recording.state === 'error' && <Notice tone="bad" className="mt-2">{t('room.recordFailed')}</Notice>}
-      {recording.notes === 'error' && <Notice tone="bad" className="mt-2">{t('room.notesFailed')}</Notice>}
     </div>
   )
 }

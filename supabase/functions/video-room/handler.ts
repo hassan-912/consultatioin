@@ -27,10 +27,10 @@ export type Dependencies = {
 
 const ROOM_STATUSES = ['confirmed', 'checked-in']
 /**
- * The host (consultant) may record the call to the cloud and keep its transcript, which the meeting-summary
- * function turns into the client's written summary. The consultant's room starts it when the client joins.
+ * The call's audio (no video) is recorded to Daily's cloud from the moment the client joins until they leave; the
+ * meeting-summary function sends that file to Gemini, which writes the transcript and the summary in one go.
  */
-export const CALL_RECORDS = { enable_recording: 'cloud', enable_transcription_storage: true } as const
+export const CALL_RECORDS = { enable_recording: 'cloud-audio-only' } as const
 
 export function videoRoomHandler(deps: Dependencies) {
   const allowedOrigin = new URL(deps.siteUrl).origin
@@ -103,11 +103,12 @@ export function videoRoomHandler(deps: Dependencies) {
         }
       }
       // A rescheduled booking keeps its room: move the closing time with it, or Daily would refuse entry.
-      // Rooms made before recording existed get it switched on the same way.
+      // Rooms made before audio-only recording get it switched on the same way.
       const config = room.data?.config as Record<string, unknown> | undefined
-      if (room.status === 200 && (config?.exp !== exp || config?.enable_recording !== CALL_RECORDS.enable_recording || config?.enable_transcription_storage !== true)) {
+      if (room.status === 200 && (config?.exp !== exp || config?.enable_recording !== CALL_RECORDS.enable_recording)) {
         const updated = await daily(`/rooms/${name}`, { method: 'POST', payload: { properties: { exp, eject_at_room_exp: true, ...CALL_RECORDS } } })
         if (updated.status === 200) room = updated
+        else deps.log?.('daily_room_update_failed', { booking: booking.reference, status: updated.status })
       }
       const url = typeof room.data?.url === 'string' ? room.data.url : null
       if (room.status !== 200 || !url) {

@@ -20,8 +20,8 @@ export type RoomMessage =
   /** Client → consultant: "I just arrived, send me the card if it is shared." */
   | { kind: 'mg-room'; type: 'hello' }
   /** Consultant → client: the call is being recorded (or not any more). */
-  /** on: the call is being transcribed for the summary; video: it is also being recorded. */
-  | { kind: 'mg-room'; type: 'recording'; on: boolean; video?: boolean }
+  /** on: the call's audio is being recorded for the summary. */
+  | { kind: 'mg-room'; type: 'recording'; on: boolean }
 
 /** The private pipe between the people in one call. Daily in production, a BroadcastChannel in the prototype. */
 export interface RoomChannel {

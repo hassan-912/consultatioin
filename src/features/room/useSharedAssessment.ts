@@ -80,8 +80,7 @@ export function useConsultantAssessment(bookingId: string, channel: RoomChannel 
 /** The client's side: the card appears when the consultant sends it, and every change goes back to them. */
 export function useClientAssessment(channel: RoomChannel | null, now: () => number) {
   const [card, setCard] = useState<SharedAssessment | null>(null)
-  /** What the client is told: nothing, the transcript for the summary, or a video recording too. */
-  const [recording, setRecording] = useState<false | 'notes' | 'video'>(false)
+  const [recording, setRecording] = useState(false)
   const latest = useRef(card)
   latest.current = card
 
@@ -91,7 +90,7 @@ export function useClientAssessment(channel: RoomChannel | null, now: () => numb
       if (m.type === 'share') setCard(m.state)
       else if (m.type === 'edit') setCard(c => (c ? mergeShared(c, m.state) : c))
       else if (m.type === 'stop') setCard(null)
-      else if (m.type === 'recording') setRecording(m.on ? (m.video ? 'video' : 'notes') : false)
+      else if (m.type === 'recording') setRecording(m.on)
     })
     // Arriving late (or reloading): ask for the card in case it is already shared.
     channel.send({ kind: 'mg-room', type: 'hello' })
