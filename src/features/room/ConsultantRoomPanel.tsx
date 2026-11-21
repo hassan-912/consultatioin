@@ -203,8 +203,10 @@ function SummaryTab({ booking, recording }: { booking: Booking; recording: Recor
   const { t, lang } = useT()
   const [record, setRecord] = useState<MeetingSummaryRecord | null | undefined>(undefined)
   const [form, setForm] = useState({ overview: '', keyPoints: '', agreements: '', nextSteps: '' })
-  const [busy, setBusy] = useState<'' | 'generate' | 'publish' | 'pdf' | 'recording'>('')
+  const [busy, setBusy] = useState<'' | 'generate' | 'publish' | 'pdf' | 'recording' | 'transcript'>('')
   const [noRecording, setNoRecording] = useState(false)
+  // The call as it was heard: for the consultant to check a point before changing it. undefined: not opened yet.
+  const [transcript, setTranscript] = useState<string | null | undefined>(undefined)
 
   const fill = useCallback((r: MeetingSummaryRecord | null) => {
     setRecord(r)
@@ -278,6 +280,14 @@ function SummaryTab({ booking, recording }: { booking: Booking; recording: Recor
       <div className="border-t border-line pt-4">
         <Button variant="quiet" size="sm" disabled={busy !== ''} onClick={() => void recordingFile()}><Icon name="video" size={15} />{t('room.downloadRecording')}</Button>
         {noRecording && <p className="mt-1 text-xs text-muted">{t('room.noRecording')}</p>}
+        <Button variant="quiet" size="sm" className="mt-1" disabled={busy !== ''}
+          onClick={() => transcript === undefined ? void run('transcript', async () => setTranscript(await repo.meetingTranscript(booking.id))) : setTranscript(undefined)}>
+          <Icon name="list" size={15} />{t(transcript === undefined ? 'room.showTranscript' : 'room.hideTranscript')}
+        </Button>
+        {transcript === null && <p className="mt-1 text-xs text-muted">{t('room.noTranscriptYet')}</p>}
+        {transcript && (
+          <pre dir="auto" className="mt-2 max-h-80 overflow-y-auto whitespace-pre-wrap rounded-2xl bg-paper p-4 font-sans text-sm leading-relaxed text-slate ring-1 ring-line">{transcript}</pre>
+        )}
       </div>
     </div>
   )

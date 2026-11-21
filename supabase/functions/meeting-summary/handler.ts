@@ -1,51 +1,70 @@
-// After an online consultation: a written summary of the call. The call's audio is recorded (from when the client
-// joins until they leave); Gemini listens to it once and writes the transcript and the summary together.
-//   Daily webhook   "recording.ready-to-download": Daily says the audio is ready, so the summary is written and
-//                   published. One trigger per call, nothing polls and no browser has to stay open.
-//   generate        staff: write a fresh draft now (the consultant's "write it again").
-//   recording       staff: a download link for the call's audio.
-//   register-webhook  one-off setup (x-webhook-secret): tells Daily where to send the webhook.
+// After an online consultation: a written summary of the call, made from its audio recording in three short steps.
+// Each step is its own run of this function (a run may take at most 150 s on the free plan; a 45-minute call does
+// not fit in one), and each one starts the next:
+//   webhook          Daily: "recording.ready-to-download". Step 1: download the audio, upload it to Gemini.
+//   step transcribe  Step 2: Gemini 3.5 Transcribe (or, if it fails or is busy, a Flash model listening) writes the
+//                    transcript, which is kept. The uploaded audio is deleted.
+//   step summarize   Step 3: Flash writes the summary from the transcript text, and it is published.
+// Staff actions: generate (a fresh draft, from the kept transcript), recording (a download link for the audio).
+// register-webhook: one-off setup that tells Daily where to send the webhook.
 // The client reads the published summary through a database function, never through here.
 
 import type { RoomBooking } from '../video-room/handler.ts'
-import type { Audio, Heard } from './gemini.ts'
+import { GeminiError, type Audio, type GeminiClient, type GeminiFile } from './gemini.ts'
 
 const DAILY = 'https://api.daily.co/v1'
+/** Gemini 3.5 Transcribe hears up to an hour; with speaker labels only 30 minutes (a little margin on both). */
+const TRANSCRIBE_MAX_S = 3500
+const SPEAKERS_MAX_S = 1740
+/** What one model may take inside a step, leaving room under the 150 s limit for the rest of the step. */
+const TRANSCRIBE_TIMEOUT_MS = 125_000
+const SUMMARY_TIMEOUT_MS = 60_000
 
 export interface Summary { overview: string; keyPoints: string[]; agreements: string[]; nextSteps: string[]; lang: 'en' | 'ar' }
 /** What is stored. `source`: the recordings it was written from. `by_consultant`: a person published this wording. */
 export type StoredSummary = { summary: Summary; status: 'draft' | 'published'; source?: string | null; by_consultant?: boolean } & Record<string, unknown>
+export type Transcript = {
+  source: string; status: 'uploaded' | 'transcribed' | 'summarized' | 'failed'; files: GeminiFile[]
+  audio_seconds: number | null; transcript: string | null; model: string | null; error: string | null
+}
 
 export type Dependencies = {
   siteUrl: string
-  /** This function's own address, for the webhook Daily is told to call. */
+  /** This function's own address: for Daily's webhook, and for each step to start the next. */
   functionUrl: string
   /** Missing: answers SUMMARY_UNAVAILABLE. */
   dailyKey?: string
   /** Base64 key Daily signs its webhooks with (X-Webhook-Signature). Missing: webhooks are refused. */
   webhookHmac?: string
-  /** Shared with the database (Vault) for the one-off "register-webhook" call. */
+  /** Shared with the database (Vault): the one-off "register-webhook" call and the steps calling each other. */
   adminSecret?: string
   verifyUser: (jwt: string) => Promise<string | null>
   /** The booking as this staff member may see it (own consultant or admin), or null. */
   staffBooking: (bookingId: string, userId: string) => Promise<RoomBooking | null>
-  /** Any booking by id (for the webhook, which has no user). */
+  /** Any booking by id (for the webhook and the steps, which have no user). */
   bookingById: (bookingId: string) => Promise<RoomBooking | null>
-  /** Listens to the call's audio and writes transcript and summary. Throws when the model cannot. Missing: no AI. */
-  summarizeAudio?: (audio: Audio[], lang: 'en' | 'ar') => Promise<Heard>
+  /** Missing: no AI (GEMINI_API_KEY or GEMINI_BILLING not set). */
+  gemini?: Pick<GeminiClient, 'upload' | 'remove' | 'transcribeDedicated' | 'transcribeWithModel' | 'summarize'>
+  /** Tried in order for step 2. "gemini-3.5-transcribe" is the dedicated model; the others are Flash models listening. */
+  transcribers: string[]
+  /** Tried in order for step 3. */
+  summaryModels: string[]
   saveDraft: (bookingId: string, summary: Summary, source: string) => Promise<Record<string, unknown>>
   currentSummary: (bookingId: string) => Promise<StoredSummary | null>
   /** Publishes unless a person already published a summary; returns what is stored. */
   publishAuto: (bookingId: string, summary: Summary, source: string) => Promise<StoredSummary>
+  getTranscript: (bookingId: string) => Promise<Transcript | null>
+  putTranscript: (bookingId: string, patch: Partial<Transcript>) => Promise<unknown>
   /** Keeps work running after the reply (EdgeRuntime.waitUntil). Missing: the work finishes before replying. */
   background?: (work: Promise<unknown>) => void
+  now?: () => number
   fetch: typeof fetch
   log?: (event: string, fields: Record<string, string | number>) => void
 }
 
 /** Share of letters that are Arabic. An Arabic call that comes back as English-looking text was not heard properly. */
 export function arabicShare(text: string): number {
-  // Speaker labels ("العميل:") are not what was said, so they don't count.
+  // Speaker labels ("العميل:", "spk_1:") are not what was said, so they don't count.
   const letters = text.replace(/^[^:\n]{1,40}:/gm, '').match(/\p{L}/gu) ?? []
   return letters.length ? letters.filter(c => /[؀-ۿ]/.test(c)).length / letters.length : 0
 }
@@ -65,8 +84,12 @@ export async function dailySignature(hmacB64: string, timestamp: string, body: s
   return b64(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`${timestamp}.${body}`)))
 }
 
+const reason = (e: unknown) => (e instanceof Error ? e.message : 'unknown').slice(0, 160)
+const langOf = (booking: RoomBooking): Summary['lang'] => (booking.lang === 'ar' ? 'ar' : 'en')
+
 export function meetingSummaryHandler(deps: Dependencies) {
   const allowedOrigin = new URL(deps.siteUrl).origin
+  const now = deps.now ?? (() => Date.now())
 
   const daily = async (path: string, init?: { method?: string; payload?: unknown }) => {
     const res = await deps.fetch(`${DAILY}${path}`, {
@@ -84,7 +107,11 @@ export function meetingSummaryHandler(deps: Dependencies) {
     const all = (Array.isArray(list.data?.data) ? list.data!.data as Record<string, unknown>[] : [])
       .slice().sort((a, b) => Number(a.start_ts ?? 0) - Number(b.start_ts ?? 0))
     const finished = all.filter(r => r.status === 'finished')
-    return { busy: all.some(r => r.status === 'in-progress'), finished, source: finished.map(r => String(r.id)).join(',') }
+    return {
+      busy: all.some(r => r.status === 'in-progress'), finished,
+      source: finished.map(r => String(r.id)).join(','),
+      seconds: finished.reduce((s, r) => s + (Number(r.duration) || 0), 0),
+    }
   }
 
   /** Downloads each finished recording (a short-lived link from Daily). */
@@ -96,42 +123,115 @@ export function meetingSummaryHandler(deps: Dependencies) {
       if (!link) continue
       const res = await deps.fetch(link, { signal: AbortSignal.timeout(60000) })
       if (!res.ok) throw new Error(`download: ${res.status}`)
-      const type = res.headers.get('content-type') ?? ''
-      audio.push({ bytes: new Uint8Array(await res.arrayBuffer()), mimeType: /^audio\//.test(type) ? type.split(';')[0] : 'audio/mp4' })
+      const type = (res.headers.get('content-type') ?? '').split(';')[0]
+      audio.push({ bytes: new Uint8Array(await res.arrayBuffer()), mimeType: /^audio\//.test(type) ? type : 'audio/mp4' })
     }
     return audio
   }
 
-  /** The summary from the call's audio, or 'unavailable' when what came back was not the call. Throws on failure. */
-  async function write(booking: RoomBooking, recordings: Record<string, unknown>[]): Promise<Summary | 'unavailable'> {
-    const lang: Summary['lang'] = booking.lang === 'ar' ? 'ar' : 'en'
-    const audio = await audioOf(recordings)
-    if (!audio.length) return 'unavailable'
-    const heard = await deps.summarizeAudio!(audio, lang)
-    if (lang === 'ar' && arabicShare(heard.transcript) < 0.5) {
-      deps.log?.('transcript_wrong_language', { booking: booking.reference, arabic: Math.round(arabicShare(heard.transcript) * 100) })
-      return 'unavailable'
-    }
-    if (heard.dropped) deps.log?.('summary_points_dropped', { booking: booking.reference, dropped: heard.dropped })
-    return { overview: heard.overview, keyPoints: heard.keyPoints, agreements: heard.agreements, nextSteps: heard.nextSteps, lang }
+  /** Starts the next step as a fresh run (its own 150 s). That run answers at once and works in the background. */
+  async function next(step: 'transcribe' | 'summarize', booking: RoomBooking, attempt = 0) {
+    const res = await deps.fetch(deps.functionUrl, {
+      method: 'POST', signal: AbortSignal.timeout(20000),
+      headers: { 'Content-Type': 'application/json', 'x-webhook-secret': deps.adminSecret ?? '' },
+      body: JSON.stringify({ action: 'step', step, booking_id: booking.id, attempt }),
+    })
+    if (!res.ok) throw new Error(`step ${step}: ${res.status}`)
   }
 
-  /** Daily says a recording is ready: write and publish, once per set of recordings. */
-  async function onRecordingReady(booking: RoomBooking) {
+  /** Step 1. A failed earlier run is started again (the consultant pressed "write the summary"). */
+  async function prepare(booking: RoomBooking): Promise<string> {
     const stored = await deps.currentSummary(booking.id)
-    // A person published their own wording: never replace it.
+    // A person published their own wording: nothing to do.
     if (stored?.status === 'published' && stored.by_consultant) return 'kept'
     const rec = await recordingsOf(booking)
     // The client left and came back: the last part's webhook will cover all of it.
     if (rec.busy || !rec.finished.length) return 'waiting'
-    // Daily can send the same webhook twice.
-    if (stored?.source === rec.source && stored.status === 'published') return 'done'
-    // The consultant already wrote a draft from these same recordings: that one goes out, no second AI run.
-    if (stored?.source === rec.source) { await deps.publishAuto(booking.id, stored.summary, rec.source); return 'published' }
-    const summary = await write(booking, rec.finished)
-    if (summary === 'unavailable') return 'unavailable'
-    await deps.publishAuto(booking.id, summary, rec.source)
-    return 'published'
+    const t = await deps.getTranscript(booking.id)
+    // Daily can send the same webhook twice; and a failed run may be started again.
+    if (t?.source === rec.source && t.status !== 'failed') return 'already'
+    const audio = await audioOf(rec.finished)
+    if (!audio.length) return 'no-audio'
+    const files = await deps.gemini!.upload(audio)
+    await deps.putTranscript(booking.id, { source: rec.source, status: 'uploaded', files, audio_seconds: rec.seconds || null, transcript: null, model: null, error: null })
+    await next('transcribe', booking)
+    return 'uploaded'
+  }
+
+  /** Step 2: one model per run. A busy or slow one hands over to the next model in a fresh run. */
+  async function transcribe(booking: RoomBooking, attempt: number): Promise<string> {
+    const t = await deps.getTranscript(booking.id)
+    if (!t || t.status !== 'uploaded') return 'skipped'
+    const seconds = t.audio_seconds ?? 0
+    // The dedicated model cuts off after an hour (and does not say so); longer calls go to Flash.
+    const models = deps.transcribers.filter(m => m !== 'gemini-3.5-transcribe' || seconds <= TRANSCRIBE_MAX_S)
+    const model = models[attempt]
+    const gemini = deps.gemini!
+    const giveUp = async (error: string) => {
+      await deps.putTranscript(booking.id, { status: 'failed', error })
+      await gemini.remove(t.files)
+      return 'failed'
+    }
+    if (!model) return giveUp(t.error ?? 'no transcriber left')
+    const lang = langOf(booking)
+    let text: string
+    try {
+      text = model === 'gemini-3.5-transcribe'
+        ? await gemini.transcribeDedicated(t.files, lang, seconds > 0 && seconds <= SPEAKERS_MAX_S, TRANSCRIBE_TIMEOUT_MS)
+        : await gemini.transcribeWithModel(model, t.files, TRANSCRIBE_TIMEOUT_MS)
+      if (lang === 'ar' && arabicShare(text) < 0.5) throw new GeminiError(`${model}: not arabic (${Math.round(arabicShare(text) * 100)}%)`, true)
+    } catch (e) {
+      deps.log?.('transcribe_failed', { booking: booking.reference, model, reason: reason(e) })
+      const retry = e instanceof GeminiError ? e.transient : true
+      if (!retry || attempt + 1 >= models.length) return giveUp(reason(e))
+      await deps.putTranscript(booking.id, { error: reason(e) })
+      await next('transcribe', booking, attempt + 1)
+      return 'next-model'
+    }
+    await deps.putTranscript(booking.id, { status: 'transcribed', transcript: text, model, files: [], error: null })
+    await gemini.remove(t.files)
+    await next('summarize', booking)
+    return 'transcribed'
+  }
+
+  /** The summary from a transcript. Throws when no model could write one the transcript backs. */
+  async function write(booking: RoomBooking, transcript: string): Promise<Summary> {
+    const lang = langOf(booking)
+    const written = await deps.gemini!.summarize(deps.summaryModels, transcript, lang, SUMMARY_TIMEOUT_MS)
+    if (written.dropped) deps.log?.('summary_points_dropped', { booking: booking.reference, dropped: written.dropped })
+    return { overview: written.overview, keyPoints: written.keyPoints, agreements: written.agreements, nextSteps: written.nextSteps, lang }
+  }
+
+  /** Step 3. */
+  async function summarizeStep(booking: RoomBooking): Promise<string> {
+    const t = await deps.getTranscript(booking.id)
+    if (!t || t.status !== 'transcribed' || !t.transcript) return 'skipped'
+    const stored = await deps.currentSummary(booking.id)
+    if (stored?.status === 'published' && stored.by_consultant) {
+      await deps.putTranscript(booking.id, { status: 'summarized' })
+      return 'kept'
+    }
+    try {
+      // The consultant already wrote a draft from these same recordings: that one goes out, no second AI run.
+      const summary = stored?.source === t.source ? stored.summary : await write(booking, t.transcript)
+      await deps.publishAuto(booking.id, summary, t.source)
+      await deps.putTranscript(booking.id, { status: 'summarized', error: null })
+      return 'published'
+    } catch (e) {
+      await deps.putTranscript(booking.id, { status: 'failed', error: reason(e) })
+      throw e
+    }
+  }
+
+  /** Runs one step, logging how long it took (the free plan allows 150 s per run). */
+  async function timed(step: string, booking: RoomBooking, work: () => Promise<string>) {
+    const started = now()
+    try {
+      const outcome = await work()
+      deps.log?.('step', { booking: booking.reference, step, outcome, ms: now() - started })
+    } catch (e) {
+      deps.log?.('step_failed', { booking: booking.reference, step, reason: reason(e), ms: now() - started })
+    }
   }
 
   return async (request: Request): Promise<Response> => {
@@ -147,6 +247,12 @@ export function meetingSummaryHandler(deps: Dependencies) {
     const raw = await request.text()
     let body: Record<string, unknown> | null = null
     try { body = JSON.parse(raw) } catch { /* handled below */ }
+    /** Answer now and keep working (or, without a background runner, finish first). */
+    const later = async (work: Promise<unknown>, answer: Record<string, unknown>) => {
+      if (deps.background) { deps.background(work); return reply(200, answer) }
+      await work
+      return reply(200, answer)
+    }
 
     // Daily checks a new webhook address with {"test":"test"} and wants a 200 within 8 seconds.
     if (body?.test === 'test') return reply(200, { ok: true })
@@ -162,19 +268,27 @@ export function meetingSummaryHandler(deps: Dependencies) {
       const id = /^mg-([0-9a-f-]{36})$/i.exec(room)?.[1]
       const booking = id ? await deps.bookingById(id).catch(() => null) : null
       if (!booking || booking.format !== 'online') return reply(200, { ignored: 'room' })
-      if (!deps.dailyKey || !deps.summarizeAudio) return reply(200, { ignored: 'unavailable' })
-      const work = onRecordingReady(booking).then(
-        outcome => deps.log?.('webhook_done', { booking: booking.reference, outcome }),
-        e => deps.log?.('summary_failed', { booking: booking.reference, reason: e instanceof Error ? e.message.slice(0, 120) : 'unknown' }))
-      // Answer Daily at once; downloading, listening and writing take a minute or more.
-      if (deps.background) { deps.background(work); return reply(200, { started: true }) }
-      await work
-      return reply(200, { done: true })
+      if (!deps.dailyKey || !deps.gemini) return reply(200, { ignored: 'unavailable' })
+      return later(timed('prepare', booking, () => prepare(booking)), { started: true })
     }
 
     const action = body?.action
-    if (action === 'register-webhook') {
+    // The steps call each other with the shared secret.
+    if (action === 'step' || action === 'register-webhook') {
       if (!deps.adminSecret || !sameSecret(request.headers.get('x-webhook-secret'), deps.adminSecret)) return reply(401, { error: 'FORBIDDEN' })
+    }
+
+    if (action === 'step') {
+      const id = typeof body?.booking_id === 'string' ? body.booking_id : ''
+      const booking = /^[0-9a-f-]{36}$/i.test(id) ? await deps.bookingById(id).catch(() => null) : null
+      if (!booking || !deps.dailyKey || !deps.gemini) return reply(200, { ignored: true })
+      const attempt = Math.max(0, Math.min(5, Number(body?.attempt) || 0))
+      if (body?.step === 'transcribe') return later(timed(`transcribe#${attempt}`, booking, () => transcribe(booking, attempt)), { started: true })
+      if (body?.step === 'summarize') return later(timed('summarize', booking, () => summarizeStep(booking)), { started: true })
+      return reply(400, { error: 'INVALID_INPUT' })
+    }
+
+    if (action === 'register-webhook') {
       if (!deps.dailyKey || !deps.webhookHmac) return reply(503, { error: 'SUMMARY_UNAVAILABLE' })
       const existing = await daily('/webhooks')
       const got = existing.data as unknown
@@ -201,7 +315,7 @@ export function meetingSummaryHandler(deps: Dependencies) {
     }
     if (!booking) return reply(404, { error: 'NOT_FOUND' })
     if (booking.format !== 'online') return reply(400, { error: 'INVALID_INPUT' })
-    if (!deps.dailyKey || (action === 'generate' && !deps.summarizeAudio)) return reply(503, { error: 'SUMMARY_UNAVAILABLE' })
+    if (!deps.dailyKey || (action === 'generate' && !deps.gemini)) return reply(503, { error: 'SUMMARY_UNAVAILABLE' })
 
     try {
       const rec = await recordingsOf(booking)
@@ -214,11 +328,19 @@ export function meetingSummaryHandler(deps: Dependencies) {
       // Not "no recording": the client is still in the call, or Daily is still finishing the file.
       if (rec.busy) return reply(409, { error: 'TRANSCRIPT_PENDING' })
       if (!rec.finished.length) return reply(409, { error: 'NO_TRANSCRIPT' })
-      const summary = await write(booking, rec.finished)
-      if (summary === 'unavailable') return reply(409, { error: 'NO_TRANSCRIPT' })
-      return reply(200, await deps.saveDraft(booking.id, summary, rec.source))
+      const t = await deps.getTranscript(booking.id)
+      // The kept transcript: a new draft costs one short text request, the audio is not sent again.
+      if (t?.source === rec.source && t.transcript) return reply(200, await deps.saveDraft(booking.id, await write(booking, t.transcript), rec.source))
+      // Still being transcribed, or never started / failed: (re)start the steps; the summary appears when ready.
+      if (!(t?.source === rec.source && t.status === 'uploaded')) {
+        const b = booking
+        const work = timed('prepare', b, () => prepare(b))
+        if (deps.background) deps.background(work)
+        else await work
+      }
+      return reply(409, { error: 'TRANSCRIPT_PENDING' })
     } catch (e) {
-      deps.log?.('summary_failed', { booking: booking.reference, reason: e instanceof Error ? e.message.slice(0, 120) : 'unknown' })
+      deps.log?.('summary_failed', { booking: booking.reference, reason: reason(e) })
       return reply(503, { error: 'SUMMARY_UNAVAILABLE' })
     }
   }

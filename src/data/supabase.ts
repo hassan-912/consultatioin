@@ -461,6 +461,11 @@ export function createSupabaseRepo(clients: BackendClients): BookingRepo {
     async myMeetingSummary(token) {
       return (await result<MeetingSummary | null>(customer.rpc('get_my_meeting_summary', { p_manage_token: token }))) ?? null
     },
+    async meetingTranscript(bookingId) {
+      await requireStaff()
+      const r = await result<Row | null>(staff.rpc('staff_meeting_transcript', { p_booking_id: bookingId }))
+      return typeof r?.transcript === 'string' && r.transcript ? r.transcript : null
+    },
     async recordingLink(bookingId) {
       const data = await meetingFunction({ action: 'recording', booking_id: bookingId })
       return typeof data.link === 'string' ? data.link : null

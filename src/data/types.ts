@@ -177,6 +177,8 @@ export interface BookingRepo {
   myMeetingSummary(manageToken: string): Promise<MeetingSummary | null>
   /** Consultant/admin: a short-lived download link for the call recording, or null when there is none. */
   recordingLink(bookingId: string): Promise<string | null>
+  /** Consultant/admin: the call's transcript (what the summary was written from), or null before there is one. */
+  meetingTranscript(bookingId: string): Promise<string | null>
   /** Admin: delete a booking and everything attached to it. Cannot be undone. */
   adminDeleteBooking(bookingId: string): Promise<void>
   /** Everyone: the admin's edits to consultant profiles, by consultant id. */

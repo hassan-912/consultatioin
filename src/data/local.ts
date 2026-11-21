@@ -376,6 +376,8 @@ export function createLocalRepo(): BookingRepo {
       return r?.status === 'published' ? r.summary : null
     },
     async recordingLink(bookingId) { ownBooking(bookingId); return null },
+    // The prototype records nothing, so there is no transcript.
+    async meetingTranscript(bookingId) { ownBooking(bookingId); return null },
     async adminDeleteBooking(id) {
       if (get().staffSession?.role !== 'admin') throw new RepoError('FORBIDDEN')
       const b = get().bookings[id]

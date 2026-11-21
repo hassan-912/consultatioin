@@ -1,75 +1,86 @@
-import { geminiAllowed, geminiAudioSummarizer, normalizeForMatch, quoteIsInTranscript } from '../../supabase/functions/meeting-summary/gemini'
+import { GeminiError, geminiAllowed, geminiClient, normalizeForMatch, quoteIsInTranscript } from '../../supabase/functions/meeting-summary/gemini'
 
 const T = `المستشار: محتاجين كشف حساب آخر ستة شهور مختوم من البنك
 العميل: تمام هبعتهولك الأسبوع الجاي إن شاء الله`
 const point = (text: string, quote: string) => ({ text, quote })
 const good = {
-  transcript: T,
   overview: 'o',
   keyPoints: [point('k', 'محتاجين كشف حساب آخر ستة شهور')],
   agreements: [],
   nextSteps: [point('العميل: يرسل كشف الحساب', 'هبعتهولك الأسبوع الجاي إن شاء الله')],
 }
 const answer = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status })
-const ok = (out: unknown) => answer({ candidates: [{ finishReason: 'STOP', content: { parts: [{ text: JSON.stringify(out) }] } }] })
-const audio = [{ bytes: new Uint8Array([1, 2, 3]), mimeType: 'audio/mp4' }]
+const text = (out: string) => answer({ candidates: [{ finishReason: 'STOP', content: { parts: [{ text: out }] } }] })
+const files = [{ name: 'files/abc', uri: 'https://gen.example/files/abc', mimeType: 'audio/mp4' }]
 
-/** Google's Files API around the model calls: upload start, upload, (model answers…), delete. */
-function setup(...models: (Response | Error)[]) {
+function setup(...replies: (Response | Error)[]) {
   const calls: { url: string; method: string; headers: Record<string, string>; body?: unknown }[] = []
   const fetch = (async (url: string, init: RequestInit = {}) => {
     calls.push({ url, method: init.method ?? 'GET', headers: init.headers as Record<string, string>, body: init.body })
     if (url.includes('/upload/v1beta/files')) return new Response('{}', { headers: { 'x-goog-upload-url': 'https://upload.example/session-1' } })
     if (url === 'https://upload.example/session-1') return answer({ file: { name: 'files/abc', uri: 'https://gen.example/files/abc', mimeType: 'audio/mp4', state: 'ACTIVE' } })
     if (init.method === 'DELETE') return answer({})
-    const next = models.shift()!
+    const next = replies.shift()!
     if (next instanceof Error) throw next
     return next
   }) as typeof globalThis.fetch
-  return { calls, summarize: geminiAudioSummarizer({ apiKey: 'test-key', models: ['main', 'backup'], fetch }) }
+  return { calls, g: geminiClient({ apiKey: 'test-key', fetch }) }
 }
-const modelCalls = (calls: ReturnType<typeof setup>['calls']) => calls.filter(c => c.url.includes(':generateContent'))
 
-test('uploads the audio, asks one model once, keeps the key out of URLs, and deletes the audio afterwards', async () => {
-  const { calls, summarize } = setup(ok(good))
-  const r = await summarize(audio, 'ar')
-  expect(r).toMatchObject({ transcript: T, keyPoints: ['k'], nextSteps: ['العميل: يرسل كشف الحساب'], lang: 'ar', dropped: 0 })
-  expect(modelCalls(calls)).toHaveLength(1)
-  expect(String(modelCalls(calls)[0].body)).toContain('https://gen.example/files/abc')
-  expect(calls.every(c => !c.url.includes('test-key'))).toBe(true)
-  expect(calls.every(c => c.headers['x-goog-api-key'] === 'test-key')).toBe(true)
-  expect(calls.at(-1)).toMatchObject({ method: 'DELETE', url: expect.stringMatching(/\/files\/abc$/) })
+test('upload and remove: resumable upload, key only in a header, delete by file name', async () => {
+  const { calls, g } = setup()
+  expect(await g.upload([{ bytes: new Uint8Array([1, 2, 3]), mimeType: 'audio/mp4' }])).toEqual(files)
+  await g.remove(files)
+  expect(calls.map(c => c.method)).toEqual(['POST', 'POST', 'DELETE'])
+  expect(calls[0].headers['X-Goog-Upload-Header-Content-Type']).toBe('audio/mp4')
+  expect(calls.every(c => !c.url.includes('test-key') && c.headers['x-goog-api-key'] === 'test-key')).toBe(true)
 })
 
-test('the audio is deleted even when every model fails', async () => {
-  const { calls, summarize } = setup(answer({}, 503), answer({}, 429))
-  await expect(summarize(audio, 'ar')).rejects.toThrow('backup: 429')
-  expect(calls.at(-1)?.method).toBe('DELETE')
+test('Gemini 3.5 Transcribe: Interactions API, Egyptian Arabic, audio/m4a, the text wherever it comes back', async () => {
+  const { calls, g } = setup(answer({ status: 'completed', steps: [{ type: 'model_output', content: [{ type: 'text', text: T }] }] }),
+    answer({ outputs: [{ type: 'text', text: 'نص' }] }), answer({ output_text: 'نص آخر' }))
+  expect(await g.transcribeDedicated(files, 'ar', false, 1000)).toBe(T)
+  const sent = JSON.parse(String(calls[0].body))
+  expect(calls[0].url).toBe('https://generativelanguage.googleapis.com/v1beta/interactions')
+  expect(sent).toEqual({ model: 'gemini-3.5-transcribe', input: [{ type: 'audio', uri: files[0].uri, mime_type: 'audio/m4a' }],
+    generation_config: { transcription_config: { language_codes: ['ar-EG'], mode: { type: 'verbatim' } } } })
+  expect(await g.transcribeDedicated(files, 'ar', false, 1000)).toBe('نص')
+  expect(await g.transcribeDedicated(files, 'ar', false, 1000)).toBe('نص آخر')
 })
 
-test('an overloaded or timed-out model hands over to the fallback; a bad key stops at once', async () => {
-  const busy = setup(answer({}, 503), ok(good))
-  await busy.summarize(audio, 'ar')
-  expect(modelCalls(busy.calls).map(c => c.url.split('/').pop())).toEqual(['main:generateContent', 'backup:generateContent'])
-  expect((await setup(new Error('timeout'), ok(good)).summarize(audio, 'ar')).overview).toBe('o')
-  const bad = setup(answer({}, 403), ok(good))
-  await expect(bad.summarize(audio, 'ar')).rejects.toThrow('main: 403')
-  expect(modelCalls(bad.calls)).toHaveLength(1)
+test('with speaker labels, words are joined into one line per speaker turn', async () => {
+  const words = [['محتاجين', 'spk_1'], ['كشف', 'spk_1'], ['حساب', 'spk_1'], ['تمام', 'spk_2'], ['هبعته', 'spk_2']]
+  const { calls, g } = setup(answer({ steps: [{ content: [{ type: 'text', text: 'محتاجين كشف حساب تمام هبعته',
+    annotations: words.map(([t, s]) => ({ type: 'word_info', text: t, speaker: s })) }] }] }))
+  expect(await g.transcribeDedicated(files, 'ar', true, 1000)).toBe('spk_1: محتاجين كشف حساب\nspk_2: تمام هبعته')
+  expect(JSON.parse(String(calls[0].body)).generation_config.transcription_config.mode).toEqual({ type: 'verbatim', diarization_mode: 'speaker' })
 })
 
-test('a point its own transcript does not back is thrown away; none backed means no summary', async () => {
+test('busy, retired and slow models are worth another model; a bad key or request is not', async () => {
+  for (const [reply, transient] of [[answer({}, 429), true], [answer({}, 503), true], [answer({}, 404), true], [new Error('timeout'), true], [answer({}, 400), false], [answer({}, 403), false]] as const) {
+    const err = await setup(reply).g.transcribeDedicated(files, 'ar', false, 1000).catch(e => e)
+    expect(err).toBeInstanceOf(GeminiError)
+    expect((err as GeminiError).transient).toBe(transient)
+  }
+})
+
+test('Flash as the transcriber: listens to the file and returns the text; a cut-off answer is worth another try', async () => {
+  const { calls, g } = setup(text(T))
+  expect(await g.transcribeWithModel('flash', files, 1000)).toBe(T)
+  expect(String(calls[0].body)).toContain('"fileUri":"https://gen.example/files/abc"')
+  const cut = answer({ candidates: [{ finishReason: 'MAX_TOKENS', content: { parts: [{ text: 'المستشار:' }] } }] })
+  expect((await setup(cut).g.transcribeWithModel('flash', files, 1000).catch(e => e) as GeminiError).transient).toBe(true)
+})
+
+test('summarize: from the transcript text, falls back on a busy model, drops points the transcript does not back', async () => {
   const made = { ...good, keyPoints: [...good.keyPoints, point('Your visa will be approved', 'we guarantee your visa will be approved this month')] }
-  const r = await setup(ok(made)).summarize(audio, 'ar')
-  expect(r.keyPoints).toEqual(['k'])
-  expect(r.dropped).toBe(1)
-  await expect(setup(ok({ ...good, keyPoints: [point('x', 'nobody ever said these words at all')], nextSteps: [] })).summarize(audio, 'ar')).rejects.toThrow('ungrounded')
-})
-
-test('fails rather than saving a broken or cut-off answer', async () => {
-  await expect(setup(ok({ overview: 'o' })).summarize(audio, 'ar')).rejects.toThrow('bad_shape')
-  await expect(setup(answer({ promptFeedback: { blockReason: 'SAFETY' } })).summarize(audio, 'ar')).rejects.toThrow('blocked SAFETY')
-  const cut = answer({ candidates: [{ finishReason: 'MAX_TOKENS', content: { parts: [{ text: '{"transcript":' }] } }] })
-  await expect(setup(cut).summarize(audio, 'ar')).rejects.toThrow('MAX_TOKENS')
+  const { calls, g } = setup(answer({}, 503), text(JSON.stringify(made)))
+  const r = await g.summarize(['main', 'backup'], T, 'ar', 1000)
+  expect(r).toMatchObject({ keyPoints: ['k'], nextSteps: ['العميل: يرسل كشف الحساب'], lang: 'ar', dropped: 1 })
+  expect(calls.map(c => c.url.split('/').pop())).toEqual(['main:generateContent', 'backup:generateContent'])
+  expect(String(calls[1].body)).toContain('Write the summary in Arabic')
+  await expect(setup(text(JSON.stringify({ ...good, keyPoints: [point('x', 'nobody ever said these words at all')] }))).g.summarize(['main'], T, 'ar', 1000)).rejects.toThrow('ungrounded')
+  await expect(setup(text(JSON.stringify({ overview: 'o' }))).g.summarize(['main'], T, 'ar', 1000)).rejects.toThrow('bad_shape')
 })
 
 test('a quote matches despite tashkeel, hamza, punctuation and a slipped word, but not when it is too short', () => {
