@@ -49,36 +49,32 @@ export function ClientRoomSide({ ctx, consultantName }: { ctx: RoomContext; cons
 }
 
 /** How long the after-call page keeps asking (every 20 s) before it says the consultant will send the summary. */
-const AUTO_TRIES = 30
+const SUMMARY_TRIES = 30
 
 /**
- * The client's published meeting summary. Once an online call has started, asking also writes and publishes it
- * when the transcript is ready (see autoMeetingSummary). With `poll` it asks again every 20 s until it is there;
- * `gaveUp` turns true when the summary cannot be written now (no transcript, AI off), so the page stops spinning.
+ * The client's published meeting summary. The server writes and publishes it on its own a minute or two after the
+ * call (nothing here has to stay open for that); with `poll` this asks again every 20 s until it is there, and
+ * `gaveUp` turns true after ten minutes so the page stops spinning.
  */
 export function useMySummary(booking: Booking, poll = false) {
   const [summary, setSummary] = useState<MeetingSummary | null | undefined>(undefined)
   const [gaveUp, setGaveUp] = useState(false)
   const token = booking.manageToken
-  const now = useAppStore(s => s.now)
-  const canWrite = booking.format === 'online' && Date.parse(booking.startIso) <= now()
   useEffect(() => {
     let live = true
     let tries = 0
     let timer: ReturnType<typeof setTimeout>
-    const ask = async () => {
-      tries += 1
-      const auto = canWrite ? await repo.autoMeetingSummary({ manageToken: token }) : null
-      const found = auto?.state === 'published' ? auto.record.summary : await repo.myMeetingSummary(token)
+    const ask = () => repo.myMeetingSummary(token).then(found => {
       if (!live) return
+      tries += 1
       setSummary(found)
       if (found || !poll) return
-      if (auto?.state === 'unavailable' || tries >= AUTO_TRIES) setGaveUp(true)
-      else timer = setTimeout(() => void ask().catch(() => live && setGaveUp(true)), 20_000)
-    }
-    void ask().catch(() => { if (live) { setSummary(null); setGaveUp(true) } })
+      if (tries >= SUMMARY_TRIES) setGaveUp(true)
+      else timer = setTimeout(ask, 20_000)
+    }, () => { if (live) { setSummary(null); setGaveUp(true) } })
+    void ask()
     return () => { live = false; clearTimeout(timer) }
-  }, [token, poll, canWrite])
+  }, [token, poll])
   return { summary, gaveUp }
 }
 

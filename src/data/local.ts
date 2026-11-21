@@ -365,17 +365,15 @@ export function createLocalRepo(): BookingRepo {
       get().addAudit({ actor: get().staffSession?.role === 'admin' ? 'admin' : 'consultant', action: 'summary-published', bookingRef: b.reference })
     },
     async myMeetingSummary(token) {
-      const r = get().meetingSummaries[mustFind(token).id]
+      const b = mustFind(token)
+      let r = get().meetingSummaries[b.id]
+      // Stands in for the server's minute job: once an online call has started, its summary is written and published.
+      if (r?.status !== 'published' && b.format === 'online' && Date.parse(b.startIso) <= get().now()) {
+        r = { summary: r?.summary ?? demoSummary(b), status: 'published' as const, generatedAt: r?.generatedAt ?? get().now(), publishedAt: get().now() }
+        const record = r
+        useAppStore.setState(s => ({ meetingSummaries: { ...s.meetingSummaries, [b.id]: record } }))
+      }
       return r?.status === 'published' ? r.summary : null
-    },
-    async autoMeetingSummary(who) {
-      // The prototype has no transcript: it publishes the sample (or the consultant's draft) as the real one would.
-      const b = 'manageToken' in who ? mustFind(who.manageToken) : ownBooking(who.bookingId)
-      const before = get().meetingSummaries[b.id]
-      if (before?.status === 'published') return { state: 'published', record: before }
-      const record = { summary: before?.summary ?? demoSummary(b), status: 'published' as const, generatedAt: before?.generatedAt ?? get().now(), publishedAt: get().now() }
-      useAppStore.setState(s => ({ meetingSummaries: { ...s.meetingSummaries, [b.id]: record } }))
-      return { state: 'published', record }
     },
     async recordingLink(bookingId) { ownBooking(bookingId); return null },
     async adminDeleteBooking(id) {

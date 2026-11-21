@@ -90,13 +90,9 @@ export function createSupabaseRepo(clients: BackendClients): BookingRepo {
   }
   /** The meeting-summary edge function (staff only): writes summaries from transcripts and links recordings. */
   const meetingFunction = async (body: Row): Promise<Row> => {
-    // The client's "auto" call goes by manage link, with no sign-in.
-    let auth: Record<string, string> = {}
-    if (!body.manage_token) {
-      const session = await result(staff.auth.getSession())
-      if (!session.session) throw new RepoError('FORBIDDEN')
-      auth = { authorization: `Bearer ${session.session.access_token}` }
-    }
+    const session = await result(staff.auth.getSession())
+    if (!session.session) throw new RepoError('FORBIDDEN')
+    const auth = { authorization: `Bearer ${session.session.access_token}` }
     let response: Response
     try {
       const send = clients.fetch // detached on purpose: a native fetch throws if called as a method
@@ -108,7 +104,7 @@ export function createSupabaseRepo(clients: BackendClients): BookingRepo {
     } catch (e) { throw new RepoError('NETWORK', { cause: e }) }
     const data = await response.json().catch(() => ({})) as Row
     if (response.ok) return data
-    const known = ['FORBIDDEN', 'NOT_FOUND', 'INVALID_INPUT', 'NO_TRANSCRIPT']
+    const known = ['FORBIDDEN', 'NOT_FOUND', 'INVALID_INPUT', 'NO_TRANSCRIPT', 'TRANSCRIPT_PENDING']
     throw new RepoError(known.includes(data.error) ? data.error : 'SUMMARY_UNAVAILABLE')
   }
   const easykashPay = async (body: Row): Promise<Row> => {
@@ -464,12 +460,6 @@ export function createSupabaseRepo(clients: BackendClients): BookingRepo {
     },
     async myMeetingSummary(token) {
       return (await result<MeetingSummary | null>(customer.rpc('get_my_meeting_summary', { p_manage_token: token }))) ?? null
-    },
-    async autoMeetingSummary(who) {
-      const data = await meetingFunction({ action: 'auto', ...('manageToken' in who ? { manage_token: who.manageToken } : { booking_id: who.bookingId }) })
-      if (data.state !== 'published') return { state: data.state === 'pending' ? 'pending' : 'unavailable' }
-      if ('bookingId' in who) changed()
-      return { state: 'published', record: summaryRecord(data.record) }
     },
     async recordingLink(bookingId) {
       const data = await meetingFunction({ action: 'recording', booking_id: bookingId })

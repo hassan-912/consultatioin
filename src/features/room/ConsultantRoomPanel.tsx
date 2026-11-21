@@ -26,9 +26,7 @@ export function ConsultantRoomPanel({ booking, ctx, startOn = 'assessment' }: { 
   const { t } = useT()
   const [tab, setTab] = useState(startOn)
   const now = useAppStore(s => s.now)
-  const [summaryVersion, setSummaryVersion] = useState(0)
-  const autoSummary = useAutoSummary(booking.id, () => setSummaryVersion(v => v + 1))
-  const recording = useRecording(ctx?.call ?? null, ctx?.channel ?? null, booking.customer.consultationLang === 'ar' ? 'ar' : 'en', autoSummary)
+  const recording = useRecording(ctx?.call ?? null, ctx?.channel ?? null, booking.customer.consultationLang === 'ar' ? 'ar' : 'en')
   // Lives here, not in the tab, so switching tabs keeps the card shared.
   const assessment = useConsultantAssessment(booking.id, ctx?.channel ?? null, now)
   const tabs = [['assessment', t('room.tabAssessment')], ['summary', t('room.tabSummary')]] as const
@@ -52,7 +50,7 @@ export function ConsultantRoomPanel({ booking, ctx, startOn = 'assessment' }: { 
       <div className="max-h-[calc(78dvh-60px)] overflow-y-auto p-5">
         {tab === 'assessment'
           ? <AssessmentTab a={assessment} canShare={!!ctx} />
-          : <SummaryTab key={summaryVersion} booking={booking} recording={ctx ? recording : null} />}
+          : <SummaryTab booking={booking} recording={ctx ? recording : null} />}
       </div>
     </section>
   )
@@ -116,48 +114,22 @@ function AssessmentTab({ a, canShare }: { a: ReturnType<typeof useConsultantAsse
   )
 }
 
-/**
- * When the client leaves: ask the server to write and publish the summary, every 20 s until the transcript is ready
- * (the client's after-call page asks too; whichever comes first publishes, the other gets the same summary).
- */
-function useAutoSummary(bookingId: string, onPublished: () => void) {
-  const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
-  const done = useRef(onPublished)
-  done.current = onPublished
-  useEffect(() => () => clearTimeout(timer.current), [])
-  return useCallback(() => {
-    clearTimeout(timer.current)
-    let tries = 0
-    const ask = () => {
-      tries += 1
-      repo.autoMeetingSummary({ bookingId }).then(r => {
-        if (r.state === 'published') done.current()
-        else if (r.state === 'pending' && tries < 30) timer.current = setTimeout(ask, 20_000)
-      }, () => { if (tries < 30) timer.current = setTimeout(ask, 20_000) })
-    }
-    // Daily needs a moment to close the transcript once recording stops.
-    timer.current = setTimeout(ask, 30_000)
-  }, [bookingId])
-}
-
 /* ── Recording ─────────────────────────────────────────────────────────── */
 
 type Recording = ReturnType<typeof useRecording>
 type CaptureState = 'off' | 'starting' | 'on' | 'error'
 /**
  * Two separate things. The transcript, which the summary is written from, starts by itself as soon as the client is
- * in the call (in the consultation's language) and stops when they leave, which sets the automatic summary going
- * (`onClientLeft`). The video recording is the consultant's choice: nothing is recorded unless they press Record.
+ * in the call (in the consultation's language) and stops when they leave, so Daily can finish it; the server then
+ * writes and publishes the summary. The video recording is the consultant's choice: nothing is recorded unless they press Record.
  */
-function useRecording(call: DailyCall | null, channel: RoomChannel | null, lang: 'ar' | 'en', onClientLeft?: () => void) {
+function useRecording(call: DailyCall | null, channel: RoomChannel | null, lang: 'ar' | 'en') {
   const [state, setState] = useState<CaptureState>('off')
   const [notes, setNotes] = useState<CaptureState>('off')
   const [since, setSince] = useState(0)
   const now = useAppStore(s => s.now)
   const notesRef = useRef(notes)
   notesRef.current = notes
-  const leftRef = useRef(onClientLeft)
-  leftRef.current = onClientLeft
   const notesOn = notes === 'on'
   const videoOn = state === 'on'
   const announce = useCallback(() => channel?.send({ kind: 'mg-room', type: 'recording', on: notesOn || videoOn, video: videoOn }), [channel, notesOn, videoOn])
@@ -194,7 +166,6 @@ function useRecording(call: DailyCall | null, channel: RoomChannel | null, lang:
         try { call.startTranscription({ language: lang, model: 'nova-3', punctuate: true }) } catch { setNotes('error') }
       } else if (!here && present) {
         try { call.stopTranscription() } catch { /* already stopped */ }
-        leftRef.current?.()
       }
       present = here
     }
@@ -267,7 +238,20 @@ function SummaryTab({ booking, recording }: { booking: Booking; recording: Recor
     setRecord(r)
     if (r) setForm({ overview: r.summary.overview, keyPoints: r.summary.keyPoints.join('\n'), agreements: r.summary.agreements.join('\n'), nextSteps: r.summary.nextSteps.join('\n') })
   }, [])
-  useEffect(() => { repo.meetingSummary(booking.id).then(fill, e => { setRecord(null); reportActionError(e) }) }, [booking.id, fill])
+  // Until the server has written it (a minute or two after the client leaves), look again every 20 s, for up to 15 minutes.
+  useEffect(() => {
+    let live = true
+    let tries = 0
+    let timer: ReturnType<typeof setTimeout>
+    const ask = () => repo.meetingSummary(booking.id).then(r => {
+      if (!live) return
+      tries += 1
+      fill(r)
+      if (!r && tries < 45) timer = setTimeout(ask, 20_000)
+    }, e => { if (live) { setRecord(null); reportActionError(e) } })
+    void ask()
+    return () => { live = false; clearTimeout(timer) }
+  }, [booking.id, fill])
 
   const summary = (): MeetingSummary => ({
     overview: form.overview.trim(), keyPoints: lines(form.keyPoints), agreements: lines(form.agreements), nextSteps: lines(form.nextSteps),

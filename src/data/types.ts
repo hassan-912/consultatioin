@@ -9,8 +9,6 @@ import type { ReadinessRules } from '../assessment/readiness'
 import type { L10n } from '../domain/types'
 import type { AuditEntry, ConsultantProfile, MeetingSummary, MeetingSummaryRecord, VideoRoom } from '../domain/types'
 
-export type AutoSummary = { state: 'published'; record: MeetingSummaryRecord } | { state: 'pending' | 'unavailable' }
-
 // Same class the store actions throw, so existing `instanceof` checks keep working.
 export { SlotTaken } from '../store/actions'
 
@@ -175,11 +173,8 @@ export interface BookingRepo {
   generateMeetingSummary(bookingId: string): Promise<MeetingSummaryRecord>
   /** Consultant/admin: save the checked summary and give it to the client. */
   publishMeetingSummary(bookingId: string, summary: MeetingSummary): Promise<void>
-  /** Client: their published meeting summary, or null while the consultant is still preparing it. */
+  /** Client: their published meeting summary, or null until the server has written it. */
   myMeetingSummary(manageToken: string): Promise<MeetingSummary | null>
-  /** After the client leaves the room (client by manage link, or the consultant): write the summary from the
-   *  transcript and publish it at once. "pending" until the transcript is ready, so callers ask again. */
-  autoMeetingSummary(who: { manageToken: string } | { bookingId: string }): Promise<AutoSummary>
   /** Consultant/admin: a short-lived download link for the call recording, or null when there is none. */
   recordingLink(bookingId: string): Promise<string | null>
   /** Admin: delete a booking and everything attached to it. Cannot be undone. */
